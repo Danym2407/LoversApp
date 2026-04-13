@@ -19,6 +19,7 @@ const D = {
 
 function adminFetch(path, secret, options = {}) {
   return fetch(BASE + path, {
+    cache: 'no-store',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -26,6 +27,7 @@ function adminFetch(path, secret, options = {}) {
       ...(options.headers || {}),
     },
   }).then(async r => {
+    if (r.status === 304) return {};
     const json = await r.json();
     if (!r.ok) throw new Error(json.error || 'Error');
     return json;

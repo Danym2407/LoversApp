@@ -1,8 +1,27 @@
 const router  = require('express').Router();
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
+const crypto  = require('crypto');
+const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const db      = require('../database/db');
+
+// Migrate: add reset token columns if they don't exist
+try { db.prepare('ALTER TABLE users ADD COLUMN reset_token TEXT').run(); } catch {}
+try { db.prepare('ALTER TABLE users ADD COLUMN reset_token_expires TEXT').run(); } catch {}
+
+// Nodemailer transporter (Gmail App Password)
+function getTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.hostinger.com',
+    port: parseInt(process.env.EMAIL_PORT || '465'),
+    secure: true, // SSL en puerto 465
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+}
 
 // Stricter rate limit for auth endpoints — 10 req / 15 min
 const authLimiter = rateLimit({
@@ -102,6 +121,66 @@ router.post('/login', authLimiter, (req, res) => {
       coupled_user_id: user.coupled_user_id,
     },
   });
+});
+
+// ── POST /api/auth/forgot-password ───────────────────────────────────────────
+router.post('/forgot-password', authLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+
+  const user = db.prepare('SELECT id, name FROM users WHERE email = ?').get(email.toLowerCase());
+
+  // Always respond OK to not leak whether email exists
+  if (!user) return res.json({ message: 'Si el correo existe, recibirás un enlace.' });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+  db.prepare('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?')
+    .run(token, expires, user.id);
+
+  const resetUrl = `${process.env.FRONTEND_URL}/#reset-password?token=${token}`;
+
+  try {
+    await getTransporter().sendMail({
+      from: `"LoversApp" <${process.env.EMAIL_USER}>`,
+      to: email.toLowerCase(),
+      subject: '💌 Recupera tu contraseña',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;">
+          <h2 style="color:#C44455;">Hola, ${user.name} 💕</h2>
+          <p>Recibimos una solicitud para restablecer tu contraseña de LoversApp.</p>
+          <p>Haz clic aquí para crear una nueva contraseña (válido por 1 hora):</p>
+          <a href="${resetUrl}" style="display:inline-block;background:#C44455;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Restablecer contraseña</a>
+          <p style="margin-top:24px;color:#999;font-size:12px;">Si no solicitaste esto, ignora este correo.</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('Email error:', err.message);
+    return res.status(500).json({ error: 'No se pudo enviar el correo. Verifica la configuración de email.' });
+  }
+
+  res.json({ message: 'Si el correo existe, recibirás un enlace.' });
+});
+
+// ── POST /api/auth/reset-password ─────────────────────────────────────────────
+router.post('/reset-password', (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
+  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+
+  const user = db.prepare('SELECT id, reset_token_expires FROM users WHERE reset_token = ?').get(token);
+
+  if (!user) return res.status(400).json({ error: 'Token inválido o expirado' });
+  if (new Date(user.reset_token_expires) < new Date())
+    return res.status(400).json({ error: 'El enlace ha expirado, solicita uno nuevo' });
+
+  const hash = bcrypt.hashSync(password, 12);
+  db.prepare('UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?')
+    .run(hash, user.id);
+
+  res.json({ message: 'Contraseña actualizada correctamente' });
 });
 
 module.exports = router;

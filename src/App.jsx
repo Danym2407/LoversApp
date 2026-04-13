@@ -22,6 +22,7 @@ import PersonalityProfilePage from '@/pages/PersonalityProfilePage';
 import CitasPersonalizadasPage from '@/pages/CitasPersonalizadasPage';
 import CitasAleatoriasPage from '@/pages/CitasAleatoriasPage';
 import AdminPage from '@/pages/AdminPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import { Toaster } from '@/components/ui/toaster';
 import { initializeDates } from '@/data/dates';
 import BottomNav from '@/components/BottomNav';
@@ -43,6 +44,8 @@ function App() {
     // Hash-based shortcut: /#admin abre el panel directamente
     if (window.location.hash === '#admin') {
       setCurrentPage('admin');
+    } else if (window.location.hash.startsWith('#reset-password')) {
+      setCurrentPage('reset-password');
     }
   }, []);
 
@@ -89,6 +92,7 @@ function App() {
         {currentPage === 'citas-personalizadas' && <CitasPersonalizadasPage navigateTo={navigateTo} />}
         {currentPage === 'citas-aleatorias' && <CitasAleatoriasPage navigateTo={navigateTo} />}
         {currentPage === 'admin' && <AdminPage navigateTo={navigateTo} />}
+        {currentPage === 'reset-password' && <ResetPasswordPage navigateTo={navigateTo} />}
         {!NO_NAV_PAGES.has(currentPage) && (
           <BottomNav currentPage={currentPage} navigateTo={navigateTo} />
         )}

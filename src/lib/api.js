@@ -136,4 +136,10 @@ export const api = {
   createCountdown:  (data)      => request('POST',   '/countdowns', data),
   updateCountdown:  (id, data)  => request('PATCH',  `/countdowns/${id}`, data),
   deleteCountdown:  (id)        => request('DELETE', `/countdowns/${id}`),
+
+  // Password reset
+  forgotPassword: (email) =>
+    request('POST', '/auth/forgot-password', { email }),
+  resetPassword: (token, password) =>
+    request('POST', '/auth/reset-password', { token, password }),
 };

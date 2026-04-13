@@ -19,6 +19,11 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
   const [showTestModal, setShowTestModal] = useState(false);
   const [isRegistration, setIsRegistration] = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -232,7 +237,86 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
             >
               {loading ? "Conectando..." : isLogin ? "Entrar" : "Crear cuenta"}
             </motion.button>
+
+            {isLogin && (
+              <button type="button" onClick={() => { setShowForgot(true); setError(''); }}
+                style={{
+                  background: "none", border: "none", color: D.muted, cursor: "pointer",
+                  fontFamily: "Caveat, cursive", fontSize: 14, marginTop: 2, textDecoration: "underline"
+                }}
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
           </form>
+
+          {/* Forgot password inline modal */}
+          {showForgot && (
+            <div style={{
+              position: "fixed", inset: 0, zIndex: 100,
+              background: "rgba(28,14,16,0.45)", display: "flex",
+              alignItems: "center", justifyContent: "center", padding: 20
+            }}>
+              <div style={{
+                background: D.white, borderRadius: 20, padding: "28px 24px",
+                width: "100%", maxWidth: 370, boxShadow: "0 8px 40px rgba(28,14,16,0.18)"
+              }}>
+                <h3 className="lora" style={{ color: D.wine, fontSize: 20, margin: "0 0 8px" }}>Recuperar contraseña</h3>
+                {!forgotSent ? (
+                  <>
+                    <p className="caveat" style={{ color: D.muted, fontSize: 15, margin: "0 0 18px" }}>
+                      Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
+                    </p>
+                    <input
+                      type="email" value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)}
+                      placeholder="tu@correo.com"
+                      style={{ ...inputStyle, marginBottom: 12 }}
+                    />
+                    {forgotError && (
+                      <p className="caveat" style={{ color: D.coral, fontSize: 13, margin: "0 0 10px" }}>{forgotError}</p>
+                    )}
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button onClick={() => setShowForgot(false)} style={{
+                        flex: 1, padding: "10px 0", borderRadius: 12, border: `1.5px solid ${D.border}`,
+                        background: "transparent", color: D.muted, cursor: "pointer",
+                        fontFamily: "Caveat, cursive", fontSize: 15
+                      }}>Cancelar</button>
+                      <button disabled={forgotLoading} onClick={async () => {
+                        if (!forgotEmail) { setForgotError('Ingresa tu correo.'); return; }
+                        setForgotLoading(true); setForgotError('');
+                        try {
+                          await api.forgotPassword(forgotEmail);
+                          setForgotSent(true);
+                        } catch (e) {
+                          setForgotError(e.message || 'Error al enviar el correo.');
+                        } finally { setForgotLoading(false); }
+                      }} style={{
+                        flex: 1, padding: "10px 0", borderRadius: 12, border: "none",
+                        background: forgotLoading ? D.muted : D.coral, color: D.white, cursor: forgotLoading ? "not-allowed" : "pointer",
+                        fontFamily: "Caveat, cursive", fontSize: 15, fontWeight: 700
+                      }}>{forgotLoading ? "Enviando..." : "Enviar"}</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 32, textAlign: "center", margin: "8px 0 16px" }}>💌</p>
+                    <p className="caveat" style={{ color: D.green, fontSize: 16, textAlign: "center", margin: "0 0 18px" }}>
+                      ¡Listo! Si el correo existe, recibirás un enlace en tu bandeja de entrada.
+                    </p>
+                    <p className="caveat" style={{ color: D.muted, fontSize: 13, textAlign: "center", margin: "0 0 18px" }}>
+                      Revisa también la carpeta de spam.
+                    </p>
+                    <button onClick={() => { setShowForgot(false); setForgotSent(false); setForgotEmail(''); }} style={{
+                      width: "100%", padding: "10px 0", borderRadius: 12, border: "none",
+                      background: D.wine, color: D.white, cursor: "pointer",
+                      fontFamily: "Caveat, cursive", fontSize: 15
+                    }}>Cerrar</button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Backend note */}
           <div style={{
