@@ -1,526 +1,274 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, Star, Upload, Trash2, Calendar, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { ChevronLeft, Heart, Star, Upload, Trash2, Calendar, MapPin, RefreshCw, CheckCircle, Clock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import {
-  upsertCalendarEvent,
-  upsertTimelineEvent,
-  upsertCountdownEvent,
-  removeCalendarEventBySource,
-  removeTimelineEventBySource,
-  removeCountdownEventBySource
+  upsertCalendarEvent, upsertTimelineEvent, upsertCountdownEvent,
+  removeCalendarEventBySource, removeTimelineEventBySource, removeCountdownEventBySource
 } from '@/lib/eventSync';
 
-const DateDetailPage = ({ dateId, navigateTo }) => {
+const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+function Input({ value, onChange, placeholder, type='text', style={} }) {
+  return (
+    <input type={type} value={value||''} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.cream, fontSize:14, color:D.wine, outline:'none', boxSizing:'border-box', ...style }}/>
+  );
+}
+function TextArea({ value, onChange, placeholder, rows=4 }) {
+  return (
+    <textarea value={value||''} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
+      style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.cream, fontSize:14, color:D.wine, outline:'none', resize:'none', boxSizing:'border-box' }}/>
+  );
+}
+function SectionCard({ title, accent=D.coral, children }) {
+  return (
+    <div style={{ background:D.white, border:`1.5px solid ${D.border}`, borderLeft:`4px solid ${accent}`, borderRadius:18, padding:'16px 18px', marginBottom:14 }}>
+      <div className="lora" style={{ fontSize:15, fontWeight:600, color:D.wine, marginBottom:12 }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+export default function DateDetailPage({ dateId, navigateTo }) {
   const [date, setDate] = useState(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadDate();
-  }, [dateId]);
+  useEffect(() => { loadDate(); }, [dateId]);
 
   const loadDate = () => {
-    const dates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-    const normalizedId = Number(dateId);
-    const foundDate = dates.find(d => Number(d.id) === normalizedId);
-    setDate(foundDate);
+    const dates = JSON.parse(localStorage.getItem('coupleDates')||'[]');
+    const found = dates.find(d => Number(d.id) === Number(dateId));
+    setDate(found);
   };
 
-  const saveDate = (updatedDate) => {
-    const dates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-    const normalizedId = Number(dateId);
-    const index = dates.findIndex(d => Number(d.id) === normalizedId);
-    if (index >= 0) {
-      dates[index] = updatedDate;
-    } else {
-      dates.push(updatedDate);
-    }
+  const saveDate = (updated) => {
+    const dates = JSON.parse(localStorage.getItem('coupleDates')||'[]');
+    const idx = dates.findIndex(d => Number(d.id) === Number(dateId));
+    if (idx >= 0) dates[idx] = updated; else dates.push(updated);
     localStorage.setItem('coupleDates', JSON.stringify(dates));
-    setDate(updatedDate);
-    syncDateToEvents(updatedDate);
+    setDate(updated);
+    syncDateToEvents(updated);
   };
 
-  const syncDateToEvents = (updatedDate) => {
-    if (!updatedDate?.id) return;
-
-    const sourceType = 'date';
-    const sourceId = updatedDate.id;
-
-    if (updatedDate.status === 'completed') {
-      const dateStr = updatedDate.date || new Date().toISOString().slice(0, 10);
-      const title = updatedDate.name
-        ? `Cita #${updatedDate.id}: ${updatedDate.name}`
-        : `Cita #${updatedDate.id}`;
-
-      const photoCandidates = [
-        ...(updatedDate.danielaPhotos || []),
-        ...(updatedDate.eduardoPhotos || [])
-      ];
-      const coverPhoto = photoCandidates[0] || null;
-
-      const descriptionParts = [];
-      if (updatedDate.location) descriptionParts.push(`Lugar: ${updatedDate.location}`);
-      if (updatedDate.danielaOneWord) descriptionParts.push(`Daniela: ${updatedDate.danielaOneWord}`);
-      if (updatedDate.eduardoOneWord) descriptionParts.push(`Eduardo: ${updatedDate.eduardoOneWord}`);
-      const description = descriptionParts.length ? descriptionParts.join(' • ') : 'Cita completada';
-
-      upsertCalendarEvent({
-        title,
-        description,
-        dateStr,
-        photo: coverPhoto,
-        sourceType,
-        sourceId
-      });
-      upsertTimelineEvent({
-        title,
-        description,
-        dateStr,
-        image: '💞',
-        sourceType,
-        sourceId
-      });
+  const syncDateToEvents = (u) => {
+    if (!u?.id) return;
+    if (u.status === 'completed') {
+      const dateStr = u.date || new Date().toISOString().slice(0,10);
+      const title = u.name ? `Cita #${u.id}: ${u.name}` : `Cita #${u.id}`;
+      const descParts = [];
+      if (u.location) descParts.push(`Lugar: ${u.location}`);
+      if (u.danielaOneWord) descParts.push(`Daniela: ${u.danielaOneWord}`);
+      if (u.eduardoOneWord) descParts.push(`Eduardo: ${u.eduardoOneWord}`);
+      const description = descParts.length ? descParts.join(' • ') : 'Cita completada';
+      const coverPhoto = [...(u.danielaPhotos||[]),...(u.eduardoPhotos||[])][0]||null;
+      upsertCalendarEvent({ title, description, dateStr, photo:coverPhoto, sourceType:'date', sourceId:u.id });
+      upsertTimelineEvent({ title, description, dateStr, image:'💞', sourceType:'date', sourceId:u.id });
     } else {
-      removeCalendarEventBySource(sourceType, sourceId);
-      removeTimelineEventBySource(sourceType, sourceId);
+      removeCalendarEventBySource('date', u.id);
+      removeTimelineEventBySource('date', u.id);
     }
-
-    if (updatedDate.plannedDate) {
-      const title = updatedDate.name
-        ? `Cita planeada: ${updatedDate.name}`
-        : `Cita planeada #${updatedDate.id}`;
-      upsertCountdownEvent({
-        title,
-        dateStr: updatedDate.plannedDate,
-        emoji: '💖',
-        sourceType: 'date-plan',
-        sourceId: updatedDate.id
-      });
+    if (u.plannedDate) {
+      const title = u.name ? `Cita planeada: ${u.name}` : `Cita planeada #${u.id}`;
+      upsertCountdownEvent({ title, dateStr:u.plannedDate, emoji:'💖', sourceType:'date-plan', sourceId:u.id });
     } else {
-      removeCountdownEventBySource('date-plan', updatedDate.id);
+      removeCountdownEventBySource('date-plan', u.id);
     }
   };
 
   const handleMarkComplete = () => {
-    const updatedDate = { ...date, status: 'completed' };
-    saveDate(updatedDate);
-    toast({
-      title: "¡Cita completada! 🎉",
-      description: "Esta cita ha sido marcada como completada.",
-    });
+    saveDate({ ...date, status:'completed' });
+    toast({ title:'¡Cita completada! 🎉', description:'Marcada como completada.' });
   };
-
   const handleMarkPending = () => {
-    const updatedDate = { ...date, status: 'pending' };
-    saveDate(updatedDate);
-    toast({
-      title: "Cita marcada como pendiente",
-      description: "Esta cita ha sido marcada como pendiente.",
-    });
+    saveDate({ ...date, status:'pending' });
+    toast({ title:'Cita pendiente', description:'Marcada como pendiente.' });
   };
-
   const handleResyncCompleted = () => {
     removeCalendarEventBySource('date', date.id);
     removeTimelineEventBySource('date', date.id);
-    const updatedDate = { ...date, status: 'completed', resyncedAt: new Date().toISOString() };
-    saveDate(updatedDate);
-    toast({
-      title: "Cita actualizada",
-      description: "La cita se volvió a sincronizar en calendario y línea del tiempo.",
-    });
+    saveDate({ ...date, status:'completed', resyncedAt:new Date().toISOString() });
+    toast({ title:'Cita sincronizada', description:'Actualizada en calendario y línea del tiempo.' });
   };
-
   const handleSavePlan = () => {
-    if (!date?.plannedDate) {
-      toast({
-        title: 'Falta la fecha',
-        description: 'Selecciona una fecha planeada para guardarla.'
-      });
-      return;
-    }
-
-    saveDate({ ...date, plannedDate: date.plannedDate });
-    toast({
-      title: 'Plan guardado',
-      description: 'La cita quedó como planeada en Countdown.'
-    });
+    if (!date?.plannedDate) { toast({ title:'Falta la fecha', description:'Selecciona una fecha planeada.' }); return; }
+    saveDate({ ...date });
+    toast({ title:'Plan guardado', description:'Cita planeada en Countdown.' });
   };
-
-  const handleInputChange = (field, value) => {
-    const updatedDate = { ...date, [field]: value };
-    saveDate(updatedDate);
-  };
-
-  const handleRatingChange = (person, type, value) => {
-    const updatedDate = {
-      ...date,
-      [`${person}Rating`]: {
-        ...date[`${person}Rating`],
-        [type]: value
-      }
-    };
-    saveDate(updatedDate);
-  };
-
+  const handleInputChange = (field, value) => saveDate({ ...date, [field]:value });
+  const handleRatingChange = (person, type, value) => saveDate({ ...date, [`${person}Rating`]:{...date[`${person}Rating`],[type]:value} });
   const handlePhotoUpload = (person, files) => {
-    const selectedFiles = Array.from(files || []);
-    if (selectedFiles.length === 0) return;
-
-    selectedFiles.forEach((file) => {
+    Array.from(files||[]).forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const currentPhotos = date[`${person}Photos`] || [];
-        const updatedDate = {
-          ...date,
-          [`${person}Photos`]: [...currentPhotos, reader.result]
-        };
-        saveDate(updatedDate);
+        setDate(prev => {
+          const current = prev[`${person}Photos`]||[];
+          const updated = { ...prev, [`${person}Photos`]:[...current, reader.result] };
+          saveDate(updated);
+          return updated;
+        });
       };
       reader.readAsDataURL(file);
     });
   };
-
   const handleRemovePhoto = (person, index) => {
-    const currentPhotos = date[`${person}Photos`] || [];
-    const updatedPhotos = currentPhotos.filter((_, i) => i !== index);
-    const updatedDate = {
-      ...date,
-      [`${person}Photos`]: updatedPhotos
-    };
-    saveDate(updatedDate);
+    const photos = (date[`${person}Photos`]||[]).filter((_,i) => i!==index);
+    saveDate({ ...date, [`${person}Photos`]:photos });
   };
 
   if (!date) return null;
 
-  const RatingStars = ({ person, type }) => {
-    const rating = date[`${person}Rating`][type];
-    const Icon = type === 'hearts' ? Heart : Star;
-    const color = type === 'hearts' ? 'text-red-500' : 'text-yellow-400';
-
+  function RatingRow({ person, type }) {
+    const rating = date[`${person}Rating`]?.[type] || 0;
+    const isHeart = type === 'hearts';
     return (
-      <div className="flex gap-1">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Icon
-            key={i}
-            className={`w-6 h-6 cursor-pointer transition-all duration-200 hover:scale-110 ${
-              i < rating ? `${color} fill-current` : 'text-gray-300'
-            }`}
-            onClick={() => handleRatingChange(person, type, i + 1)}
-          />
-        ))}
+      <div style={{ marginBottom:10 }}>
+        <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>{isHeart ? '❤️ Emocional' : '⭐ Diversión'}</div>
+        <div style={{ display:'flex', gap:4 }}>
+          {[...Array(5)].map((_,i) => (
+            isHeart
+              ? <Heart key={i} size={22} color={D.coral} fill={i<rating?D.coral:'none'} strokeWidth={1.5} style={{ cursor:'pointer' }} onClick={() => handleRatingChange(person, type, i+1)}/>
+              : <Star key={i} size={22} color={D.gold} fill={i<rating?D.gold:'none'} strokeWidth={1.5} style={{ cursor:'pointer' }} onClick={() => handleRatingChange(person, type, i+1)}/>
+          ))}
+        </div>
       </div>
     );
-  };
+  }
+
+  function PhotoGrid({ person, label }) {
+    const photos = date[`${person}Photos`]||[];
+    return (
+      <SectionCard title={`POV: ${label}`} accent={person==='daniela'?D.coral:D.blue}>
+        <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'8px', border:`1.5px dashed ${D.border}`, borderRadius:12, cursor:'pointer', marginBottom:10, background:D.cream }}>
+          <Upload size={14} color={D.muted}/>
+          <span className="caveat" style={{ fontSize:13, color:D.muted }}>Subir fotos</span>
+          <input type="file" accept="image/*" multiple style={{ display:'none' }} onChange={e => handlePhotoUpload(person, e.target.files)}/>
+        </label>
+        {photos.length > 0 ? (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            {photos.map((photo,i) => (
+              <div key={i} style={{ position:'relative', borderRadius:12, overflow:'hidden' }}>
+                <img src={photo} alt="" style={{ width:'100%', height:80, objectFit:'cover', display:'block' }}/>
+                <button onClick={() => handleRemovePhoto(person, i)}
+                  style={{ position:'absolute', top:4, right:4, width:22, height:22, borderRadius:'50%', background:D.coral, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <Trash2 size={10} color={D.white}/>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding:'16px', textAlign:'center', background:D.cream, borderRadius:12 }}>
+            <span className="caveat" style={{ fontSize:13, color:D.muted }}>Las fotos aparecerán aquí</span>
+          </div>
+        )}
+      </SectionCard>
+    );
+  }
+
+  const isCompleted = date.status === 'completed';
 
   return (
-    <div className="min-h-screen bg-white">
+    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', paddingBottom:88 }}>
+      <style>{STYLE}</style>
+
       {/* Header */}
-      <div className="border-b-2 border-black bg-white sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <Button
-            onClick={() => navigateTo('dates')}
-            variant="ghost"
-            className="mb-4 text-black hover:bg-gray-100"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver a la lista
-          </Button>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-serif text-black mb-2">
-                Cita #{date.id}
-              </h1>
-              <input
-                type="text"
-                value={date.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                className="text-2xl font-serif text-gray-700 border-0 border-b-2 border-transparent hover:border-gray-300 focus:border-black focus:outline-none bg-transparent transition-all w-full max-w-md"
-                placeholder="Nombre de la cita"
-              />
+      <div style={{ padding:'48px 20px 14px', background:D.cream, borderBottom:`1.5px solid ${D.border}`, position:'sticky', top:0, zIndex:40 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+          <button onClick={() => navigateTo('dates')}
+            style={{ width:38, height:38, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            <ChevronLeft size={16} color={D.coral} strokeWidth={2.5}/>
+          </button>
+          <div style={{ textAlign:'center' }}>
+            <div className="caveat" style={{ fontSize:13, fontWeight:700, color:D.muted }}>Cita {String(date.id).padStart(2,'0')}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ width:8, height:8, borderRadius:'50%', background: isCompleted ? D.green : date.plannedDate ? D.gold : D.muted }}/>
+              <span className="caveat" style={{ fontSize:11, color:D.muted }}>{isCompleted?'Completada':date.plannedDate?'Planeada':'Pendiente'}</span>
             </div>
-            {date.status === 'completed' ? (
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={handleResyncCompleted}
-                  className="bg-black hover:bg-gray-800 text-white transition-all duration-300"
-                >
-                  Guardar y sincronizar
-                </Button>
-                <Button
-                  onClick={handleMarkPending}
-                  className="bg-gray-600 hover:bg-gray-700 text-white transition-all duration-300"
-                >
-                  Marcar como pendiente
-                </Button>
-              </div>
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            {isCompleted ? (
+              <>
+                <button onClick={handleResyncCompleted} title="Sincronizar"
+                  style={{ width:38, height:38, borderRadius:'50%', background:`${D.green}18`, border:`1.5px solid ${D.green}44`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                  <RefreshCw size={14} color={D.green}/>
+                </button>
+                <button onClick={handleMarkPending} title="Marcar pendiente"
+                  style={{ width:38, height:38, borderRadius:'50%', background:`${D.muted}18`, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                  <Clock size={14} color={D.muted}/>
+                </button>
+              </>
             ) : (
-              <Button
-                onClick={handleMarkComplete}
-                className="bg-black hover:bg-gray-800 text-white transition-all duration-300"
-              >
-                Marcar como completada
-              </Button>
+              <button onClick={handleMarkComplete}
+                style={{ width:38, height:38, borderRadius:'50%', background:D.green, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                <CheckCircle size={16} color={D.white}/>
+              </button>
             )}
           </div>
         </div>
+        <input value={date.name||''} onChange={e => handleInputChange('name', e.target.value)} placeholder="Nombre de la cita"
+          className="lora" style={{ width:'100%', fontSize:18, fontWeight:600, color:D.wine, border:'none', borderBottom:`1.5px solid ${D.border}`, background:'transparent', outline:'none', paddingBottom:4, boxSizing:'border-box' }}/>
       </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Date and Location */}
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <div>
-            <Label className="text-sm font-sans text-gray-600 mb-2 flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Fecha
-            </Label>
-            <input
-              type="date"
-              value={date.date || ''}
-              onChange={(e) => handleInputChange('date', e.target.value)}
-              className="w-full px-4 py-3 border-2 border-black rounded-lg font-sans text-black focus:outline-none focus:ring-2 focus:ring-black"
-            />
+      <div style={{ padding:'18px' }}>
+        {/* Date, Location, PlannedDate */}
+        <SectionCard title="📋 Detalles" accent={D.blue}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+            <div>
+              <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>📅 Fecha real</div>
+              <Input type="date" value={date.date} onChange={v => handleInputChange('date', v)}/>
+            </div>
+            <div>
+              <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>📍 Lugar</div>
+              <Input value={date.location} onChange={v => handleInputChange('location', v)} placeholder="¿Dónde fue?"/>
+            </div>
           </div>
           <div>
-            <Label className="text-sm font-sans text-gray-600 mb-2 flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              Ubicación
-            </Label>
-            <input
-              type="text"
-              value={date.location || ''}
-              onChange={(e) => handleInputChange('location', e.target.value)}
-              placeholder="¿Dónde fue la cita?"
-              className="w-full px-4 py-3 border-2 border-black rounded-lg font-sans text-black focus:outline-none focus:ring-2 focus:ring-black"
-            />
-          </div>
-          <div>
-            <Label className="text-sm font-sans text-gray-600 mb-2 flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Fecha planeada
-            </Label>
-            <input
-              type="date"
-              value={date.plannedDate || ''}
-              onChange={(e) => handleInputChange('plannedDate', e.target.value)}
-              className="w-full px-4 py-3 border-2 border-black rounded-lg font-sans text-black focus:outline-none focus:ring-2 focus:ring-black"
-            />
-            <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-xs text-gray-500">Se mostrará en Countdown.</p>
-              <button
-                type="button"
-                onClick={handleSavePlan}
-                className="px-3 py-1 text-xs font-semibold bg-yellow-100 text-black border border-yellow-600 rounded-full hover:bg-yellow-200 transition"
-              >
-                Guardar Plan
+            <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>🗓️ Fecha planeada</div>
+            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <Input type="date" value={date.plannedDate} onChange={v => handleInputChange('plannedDate', v)} style={{ flex:1 }}/>
+              <button onClick={handleSavePlan}
+                style={{ padding:'8px 14px', borderRadius:20, background:`${D.gold}18`, border:`1px solid ${D.gold}55`, cursor:'pointer', whiteSpace:'nowrap' }}>
+                <span className="caveat" style={{ fontSize:12, fontWeight:700, color:D.gold }}>Guardar Plan</span>
               </button>
             </div>
+            <div className="caveat" style={{ fontSize:11, color:D.muted, marginTop:4 }}>Se mostrará en Countdown.</div>
           </div>
-        </div>
+        </SectionCard>
 
-        {/* Photo Galleries */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Daniela's POV */}
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-4">POV: Daniela</h3>
-            <label className="w-full border-2 border-black hover:bg-gray-50 mb-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md cursor-pointer">
-              <Upload className="w-4 h-4" />
-              Subir fotos
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => handlePhotoUpload('daniela', e.target.files)}
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-2 min-h-[100px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
-              {(date.danielaPhotos || []).length > 0 ? (
-                date.danielaPhotos.map((photo, index) => (
-                  <div key={`daniela-photo-${index}`} className="relative group">
-                    <img
-                      src={photo}
-                      alt={`Foto Daniela ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg border-2 border-yellow-500"
-                    />
-                    <button
-                      onClick={() => handleRemovePhoto('daniela', index)}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="col-span-2 text-sm text-gray-500 text-center font-sans">
-                  Las fotos aparecerán aquí
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Eduardo's POV */}
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-4">POV: Eduardo</h3>
-            <label className="w-full border-2 border-black hover:bg-gray-50 mb-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md cursor-pointer">
-              <Upload className="w-4 h-4" />
-              Subir fotos
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => handlePhotoUpload('eduardo', e.target.files)}
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-2 min-h-[100px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
-              {(date.eduardoPhotos || []).length > 0 ? (
-                date.eduardoPhotos.map((photo, index) => (
-                  <div key={`eduardo-photo-${index}`} className="relative group">
-                    <img
-                      src={photo}
-                      alt={`Foto Eduardo ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg border-2 border-yellow-500"
-                    />
-                    <button
-                      onClick={() => handleRemovePhoto('eduardo', index)}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="col-span-2 text-sm text-gray-500 text-center font-sans">
-                  Las fotos aparecerán aquí
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* Photo grids */}
+        <PhotoGrid person="daniela" label="Daniela"/>
+        <PhotoGrid person="eduardo" label="Eduardo"/>
 
         {/* Ratings */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Daniela's Rating */}
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-6">Calificación de Daniela</h3>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-sans text-gray-600 mb-2 flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-red-500" />
-                  Emocional
-                </Label>
-                <RatingStars person="daniela" type="hearts" />
-              </div>
-              <div>
-                <Label className="text-sm font-sans text-gray-600 mb-2 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-yellow-400" />
-                  Diversión
-                </Label>
-                <RatingStars person="daniela" type="stars" />
-              </div>
-            </div>
-          </div>
-
-          {/* Eduardo's Rating */}
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-6">Calificación de Eduardo</h3>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-sans text-gray-600 mb-2 flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-red-500" />
-                  Emocional
-                </Label>
-                <RatingStars person="eduardo" type="hearts" />
-              </div>
-              <div>
-                <Label className="text-sm font-sans text-gray-600 mb-2 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-yellow-400" />
-                  Diversión
-                </Label>
-                <RatingStars person="eduardo" type="stars" />
-              </div>
-            </div>
-          </div>
-        </div>
+        {[{person:'daniela',label:'Calificación de Daniela',accent:D.coral},{person:'eduardo',label:'Calificación de Eduardo',accent:D.blue}].map(({person,label,accent}) => (
+          <SectionCard key={person} title={label} accent={accent}>
+            <RatingRow person={person} type="hearts"/>
+            <RatingRow person={person} type="stars"/>
+          </SectionCard>
+        ))}
 
         {/* Reviews */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Daniela's Review */}
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-4">Reseña de Daniela</h3>
-            <textarea
-              value={date.danielaReview || ''}
-              onChange={(e) => handleInputChange('danielaReview', e.target.value)}
-              placeholder="¿Qué te pareció esta cita?"
-              className="w-full h-32 px-4 py-3 border-2 border-gray-300 rounded-lg font-sans text-black focus:outline-none focus:border-black resize-none"
-            />
-          </div>
+        {[{person:'daniela',label:'Reseña de Daniela',field:'danielaReview',accent:D.coral},{person:'eduardo',label:'Reseña de Eduardo',field:'eduardoReview',accent:D.blue}].map(({person,label,field,accent}) => (
+          <SectionCard key={field} title={label} accent={accent}>
+            <TextArea value={date[field]} onChange={v => handleInputChange(field, v)} placeholder="¿Qué te pareció esta cita?"/>
+          </SectionCard>
+        ))}
 
-          {/* Eduardo's Review */}
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-4">Reseña de Eduardo</h3>
-            <textarea
-              value={date.eduardoReview || ''}
-              onChange={(e) => handleInputChange('eduardoReview', e.target.value)}
-              placeholder="¿Qué te pareció esta cita?"
-              className="w-full h-32 px-4 py-3 border-2 border-gray-300 rounded-lg font-sans text-black focus:outline-none focus:border-black resize-none"
-            />
-          </div>
-        </div>
+        {/* One word */}
+        {[{field:'danielaOneWord',label:'Una palabra (Daniela)',accent:D.coral},{field:'eduardoOneWord',label:'Una palabra (Eduardo)',accent:D.blue}].map(({field,label,accent}) => (
+          <SectionCard key={field} title={label} accent={accent}>
+            <Input value={date[field]} onChange={v => handleInputChange(field, v)} placeholder="Una palabra..."/>
+          </SectionCard>
+        ))}
 
-        {/* One Word */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-4">La cita en una palabra (Daniela)</h3>
-            <input
-              type="text"
-              value={date.danielaOneWord || ''}
-              onChange={(e) => handleInputChange('danielaOneWord', e.target.value)}
-              placeholder="Una palabra..."
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg font-sans text-black focus:outline-none focus:border-black"
-            />
-          </div>
-
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-4">La cita en una palabra (Eduardo)</h3>
-            <input
-              type="text"
-              value={date.eduardoOneWord || ''}
-              onChange={(e) => handleInputChange('eduardoOneWord', e.target.value)}
-              placeholder="Una palabra..."
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg font-sans text-black focus:outline-none focus:border-black"
-            />
-          </div>
-        </div>
-
-        {/* Best Part */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-4">Lo mejor de la cita (Daniela)</h3>
-            <textarea
-              value={date.danielaBestPart || ''}
-              onChange={(e) => handleInputChange('danielaBestPart', e.target.value)}
-              placeholder="¿Cuál fue tu parte favorita?"
-              className="w-full h-24 px-4 py-3 border-2 border-gray-300 rounded-lg font-sans text-black focus:outline-none focus:border-black resize-none"
-            />
-          </div>
-
-          <div className="border-2 border-black rounded-lg p-6">
-            <h3 className="text-xl font-serif text-black mb-4">Lo mejor de la cita (Eduardo)</h3>
-            <textarea
-              value={date.eduardoBestPart || ''}
-              onChange={(e) => handleInputChange('eduardoBestPart', e.target.value)}
-              placeholder="¿Cuál fue tu parte favorita?"
-              className="w-full h-24 px-4 py-3 border-2 border-gray-300 rounded-lg font-sans text-black focus:outline-none focus:border-black resize-none"
-            />
-          </div>
-        </div>
+        {/* Best part */}
+        {[{field:'danielaBestPart',label:'Lo mejor (Daniela)',accent:D.coral},{field:'eduardoBestPart',label:'Lo mejor (Eduardo)',accent:D.blue}].map(({field,label,accent}) => (
+          <SectionCard key={field} title={label} accent={accent}>
+            <TextArea value={date[field]} onChange={v => handleInputChange(field, v)} placeholder="¿Cuál fue tu parte favorita?" rows={3}/>
+          </SectionCard>
+        ))}
       </div>
     </div>
   );
-};
-
-export default DateDetailPage;
+}

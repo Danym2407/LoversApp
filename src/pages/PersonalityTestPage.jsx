@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
-import { upsertCalendarEvent } from '@/lib/eventSync';
+﻿import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight, CheckCircle, Heart } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { upsertCalendarEvent } from "@/lib/eventSync";
+import { api } from "@/lib/api";
+
+const D = {
+  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
+  border: "#EDE0D0", muted: "#9A7A6A"
+};
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
 
 export default function PersonalityTestPage({ navigateTo }) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -11,330 +19,184 @@ export default function PersonalityTestPage({ navigateTo }) {
   const { toast } = useToast();
 
   const questions = [
-    {
-      id: 'birthDate',
-      type: 'date',
-      question: '¿Cuál es tu fecha de nacimiento?',
-      subtitle: 'Esto nos ayuda a entender mejor tu etapa de vida',
-      options: null
-    },
-    {
-      id: 'partnerBirthDate',
-      type: 'date',
-      question: '¿Cuál es la fecha de nacimiento de tu pareja?',
-      subtitle: 'Para tener una visión completa de ambos',
-      options: null
-    },
-    {
-      id: 'lifeStage',
-      type: 'single',
-      question: '¿En qué etapa de vida están?',
-      subtitle: 'Selecciona la que mejor aplique',
-      options: [
-        { id: 'secondary', label: '🏫 Secundaria' },
-        { id: 'high_school', label: '📚 Preparatoria' },
-        { id: 'university', label: '🎓 Universidad' },
-        { id: 'professional', label: '💼 Profesionales' },
-        { id: 'established', label: '🏡 Establecidos' }
-      ]
-    },
-    {
-      id: 'personalityType',
-      type: 'single',
-      question: '¿Cómo describirías tu personalidad general?',
-      subtitle: 'Tu naturaleza predominante',
-      options: [
-        { id: 'very_calm', label: '😌 Muy tranquilo/a' },
-        { id: 'calm', label: '😊 Tranquilo/a' },
-        { id: 'balanced', label: '⚖️ Balanceado/a' },
-        { id: 'adventurous', label: '🎢 Aventurero/a' },
-        { id: 'very_adventurous', label: '🔥 Muy aventurero/a' }
-      ]
-    },
-    {
-      id: 'partnerPersonality',
-      type: 'single',
-      question: '¿Cómo describirías la personalidad de tu pareja?',
-      subtitle: 'Su naturaleza predominante',
-      options: [
-        { id: 'very_calm', label: '😌 Muy tranquilo/a' },
-        { id: 'calm', label: '😊 Tranquilo/a' },
-        { id: 'balanced', label: '⚖️ Balanceado/a' },
-        { id: 'adventurous', label: '🎢 Aventurero/a' },
-        { id: 'very_adventurous', label: '🔥 Muy aventurero/a' }
-      ]
-    },
-    {
-      id: 'budget',
-      type: 'single',
-      question: '¿Cuál es vuestro presupuesto típico para citas?',
-      subtitle: 'Esto nos ayuda a sugerir opciones acordes',
-      options: [
-        { id: 'very_low', label: '💰 Muy bajo (< $100 MXN)' },
-        { id: 'low', label: '💵 Bajo ($100-300 MXN)' },
-        { id: 'medium', label: '💴 Medio ($300-800 MXN)' },
-        { id: 'high', label: '💶 Alto ($800-2,500 MXN)' },
-        { id: 'very_high', label: '💎 Muy alto (> $2,500 MXN)' }
-      ]
-    },
-    {
-      id: 'hobbies',
-      type: 'multiple',
-      question: '¿Cuáles son vuestros hobbies e intereses? (Selecciona varios)',
-      subtitle: 'Nos ayuda a personalizar las citas',
-      options: [
-        { id: 'sports', label: '⚽ Deportes' },
-        { id: 'arts', label: '🎨 Artes' },
-        { id: 'music', label: '🎵 Música' },
-        { id: 'movies', label: '🎬 Películas/Series' },
-        { id: 'outdoor', label: '🏕️ Actividades al aire libre' },
-        { id: 'food', label: '🍽️ Gastronomía' },
-        { id: 'travel', label: '✈️ Viajes' },
-        { id: 'gaming', label: '🎮 Videojuegos' },
-        { id: 'tech', label: '💻 Tecnología' },
-        { id: 'books', label: '📖 Literatura' }
-      ]
-    },
-    {
-      id: 'preferredEnvironment',
-      type: 'single',
-      question: '¿Prefieren citas más en...',
-      subtitle: 'Tu zona de confort',
-      options: [
-        { id: 'indoor', label: '🏠 Interior (cafés, cines, restaurantes)' },
-        { id: 'outdoor', label: '🌳 Exterior (parques, plazas, naturaleza)' },
-        { id: 'mixed', label: '🔄 Ambas por igual' }
-      ]
-    },
-    {
-      id: 'dateFrequency',
-      type: 'single',
-      question: '¿Con qué frecuencia prefieren salir?',
-      subtitle: 'Para ajustar el ritmo de citas',
-      options: [
-        { id: 'weekly', label: '📅 Una o más veces por semana' },
-        { id: 'biweekly', label: '📆 Cada dos semanas' },
-        { id: 'monthly', label: '🗓️ Más o menos mensual' },
-        { id: 'spontaneous', label: '⚡ Espontáneamente' }
-      ]
-    },
-    {
-      id: 'surpriseFactor',
-      type: 'single',
-      question: '¿Qué tan importantes son las sorpresas?',
-      subtitle: 'Nivel de espontaneidad que disfrutan',
-      options: [
-        { id: 'no_surprises', label: '📋 Prefiero planeado' },
-        { id: 'some_surprises', label: '🎁 Algunas sorpresas' },
-        { id: 'often_surprises', label: '🎉 Sorpresas frecuentes' },
-        { id: 'spontaneous', label: '🌀 Totalmente espontáneo' }
-      ]
-    },
-    {
-      id: 'physicalActivity',
-      type: 'single',
-      question: '¿Qué nivel de actividad física prefieren?',
-      subtitle: 'Para equilibrar citas activas vs relajadas',
-      options: [
-        { id: 'sedentary', label: '🛋️ Sedentario' },
-        { id: 'light', label: '🚶 Ligero' },
-        { id: 'moderate', label: '🚴 Moderado' },
-        { id: 'intense', label: '💪 Intenso' }
-      ]
-    },
-    {
-      id: 'socialSettings',
-      type: 'single',
-      question: '¿Prefieren citas sociales o íntimas?',
-      subtitle: 'Con amigos o solo ustedes dos',
-      options: [
-        { id: 'intimate', label: '👫 Solo nosotros dos' },
-        { id: 'with_friends', label: '👥 Con amigos' },
-        { id: 'mixed', label: '🔄 Ambas' }
-      ]
-    },
-    {
-      id: 'culturalInterests',
-      type: 'multiple',
-      question: '¿Qué tipo de actividades culturales les llaman?',
-      subtitle: 'Selecciona varias opciones',
-      options: [
-        { id: 'museums', label: '🖼️ Museos' },
-        { id: 'theater', label: '🎭 Teatro' },
-        { id: 'concerts', label: '🎤 Conciertos' },
-        { id: 'exhibitions', label: '🎨 Exposiciones' },
-        { id: 'none', label: '❌ Ninguna en particular' }
-      ]
-    },
-    {
-      id: 'nightLife',
-      type: 'single',
-      question: '¿Les interesa la vida nocturna?',
-      subtitle: 'Bares, discotecas, después de cena, etc.',
-      options: [
-        { id: 'not_interested', label: '😴 No nos interesa' },
-        { id: 'occasional', label: '🌙 Ocasionalmente' },
-        { id: 'sometimes', label: '⭐ A veces' },
-        { id: 'often', label: '🌃 Muy a menudo' }
-      ]
-    },
-    {
-      id: 'seasonPreference',
-      type: 'single',
-      question: '¿En qué estación se sienten mejor citas?',
-      subtitle: 'Para ajustar sugerencias',
-      options: [
-        { id: 'spring', label: '🌸 Primavera' },
-        { id: 'summer', label: '☀️ Verano' },
-        { id: 'fall', label: '🍂 Otoño' },
-        { id: 'winter', label: '❄️ Invierno' },
-        { id: 'any', label: '🔄 Cualquier época' }
-      ]
-    },
-    {
-      id: 'citasTimeline',
-      type: 'single',
-      question: '¿En cuánto tiempo planean terminar las 100 citas?',
-      subtitle: 'Meta realista para disfrutar juntos',
-      options: [
-        { id: 'one_month', label: '⚡ 1 mes (intenso!)' },
-        { id: 'three_months', label: '🎯 3 meses (rápido)' },
-        { id: 'six_months', label: '📅 6 meses (moderado)' },
-        { id: 'one_year', label: '⏰ 1 año (tranquilo)' },
-        { id: 'two_years', label: '🐢 2+ años (sin prisa)' },
-        { id: 'no_deadline', label: '∞ Sin fecha límite' }
-      ]
-    },
-    {
-      id: 'additionalComments',
-      type: 'text',
-      question: '¿Algo más que debamos saber?',
-      subtitle: 'Preferencias especiales, fobias, alergias, etc. (opcional)',
-      placeholder: 'Cuéntanos más sobre ustedes...'
-    }
+    { id: "birthDate", type: "date", question: "¿Cuál es tu fecha de nacimiento?", subtitle: "Esto nos ayuda a entender mejor tu etapa de vida", options: null },
+    { id: "partnerBirthDate", type: "date", question: "¿Cuál es la fecha de nacimiento de tu pareja?", subtitle: "Para tener una visión completa de ambos", options: null },
+    { id: "lifeStage", type: "single", question: "¿En qué etapa de vida están?", subtitle: "Selecciona la que mejor aplique", options: [
+      { id: "secondary", label: "🏫 Secundaria" }, { id: "high_school", label: "📚 Preparatoria" },
+      { id: "university", label: "🎓 Universidad" }, { id: "professional", label: "💼 Profesionales" },
+      { id: "established", label: "🏡 Establecidos" }
+    ]},
+    { id: "personalityType", type: "single", question: "¿Cómo describirías tu personalidad general?", subtitle: "Tu naturaleza predominante", options: [
+      { id: "very_calm", label: "😌 Muy tranquilo/a" }, { id: "calm", label: "😊 Tranquilo/a" },
+      { id: "balanced", label: "⚖️ Balanceado/a" }, { id: "adventurous", label: "🎢 Aventurero/a" },
+      { id: "very_adventurous", label: "🔥 Muy aventurero/a" }
+    ]},
+    { id: "partnerPersonality", type: "single", question: "¿Cómo describirías la personalidad de tu pareja?", subtitle: "Su naturaleza predominante", options: [
+      { id: "very_calm", label: "😌 Muy tranquilo/a" }, { id: "calm", label: "😊 Tranquilo/a" },
+      { id: "balanced", label: "⚖️ Balanceado/a" }, { id: "adventurous", label: "🎢 Aventurero/a" },
+      { id: "very_adventurous", label: "🔥 Muy aventurero/a" }
+    ]},
+    { id: "budget", type: "single", question: "¿Cuál es vuestro presupuesto típico para citas?", subtitle: "Esto nos ayuda a sugerir opciones acordes", options: [
+      { id: "very_low", label: "💰 Muy bajo (< $100 MXN)" }, { id: "low", label: "💵 Bajo ($100-300 MXN)" },
+      { id: "medium", label: "💴 Medio ($300-800 MXN)" }, { id: "high", label: "💶 Alto ($800-2,500 MXN)" },
+      { id: "very_high", label: "💎 Muy alto (> $2,500 MXN)" }
+    ]},
+    { id: "hobbies", type: "multiple", question: "¿Cuáles son vuestros hobbies e intereses? (Selecciona varios)", subtitle: "Nos ayuda a personalizar las citas", options: [
+      { id: "sports", label: "⚽ Deportes" }, { id: "arts", label: "🎨 Artes" }, { id: "music", label: "🎵 Música" },
+      { id: "movies", label: "🎬 Películas/Series" }, { id: "outdoor", label: "🏕️ Actividades al aire libre" },
+      { id: "food", label: "🍽️ Gastronomía" }, { id: "travel", label: "✈️ Viajes" },
+      { id: "gaming", label: "🎮 Videojuegos" }, { id: "tech", label: "💻 Tecnología" }, { id: "books", label: "📖 Literatura" },
+      { id: "cooking", label: "🍳 Cocinar" }, { id: "photography", label: "📷 Fotografía" },
+      { id: "dancing", label: "💃 Bailar" }, { id: "pets", label: "🐾 Mascotas" }
+    ]},
+    { id: "preferredEnvironment", type: "single", question: "¿Prefieren citas más en...", subtitle: "Tu zona de confort", options: [
+      { id: "indoor", label: "🏠 Interior (cafés, cines, restaurantes)" },
+      { id: "outdoor", label: "🌳 Exterior (parques, plazas, naturaleza)" },
+      { id: "mixed", label: "🔄 Ambas por igual" }
+    ]},
+    { id: "dateFrequency", type: "single", question: "¿Con qué frecuencia prefieren salir?", subtitle: "Para ajustar el ritmo de citas", options: [
+      { id: "weekly", label: "📅 Una o más veces por semana" }, { id: "biweekly", label: "📆 Cada dos semanas" },
+      { id: "monthly", label: "🗓️ Más o menos mensual" }, { id: "spontaneous", label: "⚡ Espontáneamente" }
+    ]},
+    { id: "surpriseFactor", type: "single", question: "¿Qué tan importantes son las sorpresas?", subtitle: "Nivel de espontaneidad que disfrutan", options: [
+      { id: "no_surprises", label: "📋 Prefiero planeado" }, { id: "some_surprises", label: "🎁 Algunas sorpresas" },
+      { id: "often_surprises", label: "🎉 Sorpresas frecuentes" }, { id: "spontaneous", label: "🌀 Totalmente espontáneo" }
+    ]},
+    { id: "physicalActivity", type: "single", question: "¿Qué nivel de actividad física prefieren?", subtitle: "Para equilibrar citas activas vs relajadas", options: [
+      { id: "sedentary", label: "🛋️ Sedentario" }, { id: "light", label: "🚶 Ligero" },
+      { id: "moderate", label: "🚴 Moderado" }, { id: "intense", label: "💪 Intenso" }
+    ]},
+    { id: "socialSettings", type: "single", question: "¿Prefieren citas sociales o íntimas?", subtitle: "Con amigos o solo ustedes dos", options: [
+      { id: "intimate", label: "👫 Solo nosotros dos" }, { id: "with_friends", label: "👥 Con amigos" }, { id: "mixed", label: "🔄 Ambas" }
+    ]},
+    { id: "culturalInterests", type: "multiple", question: "¿Qué tipo de actividades culturales les llaman?", subtitle: "Selecciona varias opciones", options: [
+      { id: "museums", label: "🖼️ Museos" }, { id: "theater", label: "🎭 Teatro" },
+      { id: "concerts", label: "🎤 Conciertos" }, { id: "exhibitions", label: "🎨 Exposiciones" },
+      { id: "none", label: "❌ Ninguna en particular" }
+    ]},
+    { id: "nightLife", type: "single", question: "¿Les interesa la vida nocturna?", subtitle: "Bares, discotecas, después de cena, etc.", options: [
+      { id: "not_interested", label: "😴 No nos interesa" }, { id: "occasional", label: "🌙 Ocasionalmente" },
+      { id: "sometimes", label: "⭐ A veces" }, { id: "often", label: "🌃 Muy a menudo" }
+    ]},
+    { id: "smokes", type: "single", question: "¿Alguno de ustedes fuma?", subtitle: "Nos ayuda a recomendar lugares con o sin zonas de fumadores", options: [
+      { id: "none", label: "🚭 Ninguno fuma" },
+      { id: "one",  label: "🚬 Solo uno de nosotros" },
+      { id: "both", label: "💨 Ambos fumamos" }
+    ]},
+    { id: "drinks", type: "single", question: "¿Cómo se relacionan con el alcohol?", subtitle: "Ajustamos sugerencias a su estilo de vida", options: [
+      { id: "never",    label: "🧃 No tomamos alcohol" },
+      { id: "social",   label: "🥂 Solo en celebraciones" },
+      { id: "moderate", label: "🍷 Moderado (fines de semana)" },
+      { id: "frequent", label: "🍻 Frecuentemente" }
+    ]},
+    { id: "seasonPreference", type: "single", question: "¿En qué estación se sienten mejor citas?", subtitle: "Para ajustar sugerencias", options: [
+      { id: "spring", label: "🌸 Primavera" }, { id: "summer", label: "☀️ Verano" },
+      { id: "fall", label: "🍂 Otoño" }, { id: "winter", label: "❄️ Invierno" }, { id: "any", label: "🔄 Cualquier época" }
+    ]},
+    { id: "citasTimeline", type: "single", question: "¿En cuánto tiempo planean terminar las 100 citas?", subtitle: "Meta realista para disfrutar juntos", options: [
+      { id: "one_month", label: "⚡ 1 mes (intenso!)" }, { id: "three_months", label: "🎯 3 meses (rápido)" },
+      { id: "six_months", label: "📅 6 meses (moderado)" }, { id: "one_year", label: "⏰ 1 año (tranquilo)" },
+      { id: "two_years", label: "🐢 2+ años (sin prisa)" }, { id: "no_deadline", label: "∞ Sin fecha límite" }
+    ]},
+    { id: "additionalComments", type: "text", question: "¿Algo más que debamos saber?", subtitle: "Preferencias especiales, fobias, alergias, etc. (opcional)", placeholder: "Cuéntanos más sobre ustedes..." }
   ];
 
-  const calculatePersonality = (testAnswers) => {
-    // Calcular puntuación de aventura basada en múltiples factores
-    const personalityScores = {
-      'very_calm': 1,
-      'calm': 2,
-      'balanced': 3,
-      'adventurous': 4,
-      'very_adventurous': 5
-    };
-    
-    const activityScores = {
-      'sedentary': 1,
-      'light': 2,
-      'moderate': 3,
-      'intense': 4
-    };
-    
-    const surpriseScores = {
-      'no_surprises': 1,
-      'some_surprises': 2,
-      'often_surprises': 4,
-      'spontaneous': 5
-    };
-    
-    const nightLifeScores = {
-      'not_interested': 1,
-      'occasional': 2,
-      'sometimes': 3,
-      'often': 5
-    };
-    
-    // Calcular promedio de personalidad
-    const myPersonalityScore = personalityScores[testAnswers.personalityType] || 3;
-    const partnerPersonalityScore = personalityScores[testAnswers.partnerPersonality] || 3;
-    const personalityAvg = (myPersonalityScore + partnerPersonalityScore) / 2;
-    
-    // Calcular promedio de actividad
-    const activityScore = activityScores[testAnswers.physicalActivity] || 2;
-    
-    // Calcular promedio de sorpresas
-    const surpriseScore = surpriseScores[testAnswers.surpriseFactor] || 2;
-    
-    // Calcular promedio de vida nocturna
-    const nightLifeScore = nightLifeScores[testAnswers.nightLife] || 1;
-    
-    // Puntuación total combinada (0-5 escala)
-    const adventureScore = (personalityAvg + activityScore + surpriseScore + nightLifeScore) / 4;
-    
-    // Clasificar personalidad basada en múltiples factores
-    if (adventureScore <= 2) return 'tranquilo';
-    if (adventureScore >= 3.8) return 'extremo';
-    return 'hibrido';
+  const calculatePersonality = (a) => {
+    const ps = { very_calm:1, calm:2, balanced:3, adventurous:4, very_adventurous:5 };
+    const as = { sedentary:1, light:2, moderate:3, intense:4 };
+    const ss = { no_surprises:1, some_surprises:2, often_surprises:4, spontaneous:5 };
+    const ns = { not_interested:1, occasional:2, sometimes:3, often:5 };
+    const avg = ((ps[a.personalityType]||3)+(ps[a.partnerPersonality]||3))/2;
+    const score = (avg+(as[a.physicalActivity]||2)+(ss[a.surpriseFactor]||2)+(ns[a.nightLife]||1))/4;
+    if (score <= 2) return "tranquilo";
+    if (score >= 3.8) return "extremo";
+    return "hibrido";
   };
 
-  const calculateBudgetLevel = (budget) => {
-    const budgetMap = {
-      'very_low': 1,
-      'low': 2,
-      'medium': 3,
-      'high': 4,
-      'very_high': 5
-    };
-    return budgetMap[budget] || 3;
+  const calculateBudgetLevel = (budget) => ({ very_low:1, low:2, medium:3, high:4, very_high:5 }[budget] || 3);
+
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return null;
+    const today = new Date(), birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
   };
 
-  const generatePersonalityProfile = (testAnswers) => {
-    // Generar un perfil detallado del usuario
-    const profile = {
-      personalityType: testAnswers.personalityType,
-      partnerPersonalityType: testAnswers.partnerPersonality,
-      activityLevel: testAnswers.physicalActivity,
-      surpriseLevel: testAnswers.surpriseFactor,
-      socialSetting: testAnswers.socialSettings,
-      environment: testAnswers.preferredEnvironment,
-      frequency: testAnswers.dateFrequency,
-      nightLife: testAnswers.nightLife,
-      culturalInterests: testAnswers.culturalInterests || [],
-      timeline: testAnswers.citasTimeline,
-      seasonPreference: testAnswers.seasonPreference,
-      hobbies: testAnswers.hobbies || [],
-      budget: testAnswers.budget,
-      additionalNotes: testAnswers.additionalComments
+  const completeTest = () => {
+    const personality = calculatePersonality(answers);
+    const budgetLevel = calculateBudgetLevel(answers.budget);
+    const testResult = {
+      completed: true, personality, budgetLevel,
+      age: calculateAge(answers.birthDate),
+      partnerAge: calculateAge(answers.partnerBirthDate),
+      ...answers,
+      completedAt: new Date().toISOString()
     };
-    return profile;
+    const userData = JSON.parse(localStorage.getItem("loversappUser") || "{}");
+    userData.personalityTest = testResult;
+    localStorage.setItem("loversappUser", JSON.stringify(userData));
+
+    // Persist to server if authenticated
+    if (localStorage.getItem('loversappToken')) {
+      api.updateMe({ personality_test: testResult }).catch(() => {});
+    }
+
+    const normalizeDate = (dateStr) => {
+      if (!dateStr) return null;
+      const [y, m, d] = dateStr.split("-").map(Number);
+      if (!y || !m || !d) return null;
+      const now = new Date();
+      const norm = new Date(now.getFullYear(), m-1, d);
+      return `${norm.getFullYear()}-${String(norm.getMonth()+1).padStart(2,"0")}-${String(norm.getDate()).padStart(2,"0")}`;
+    };
+
+    const upsertImportantDate = ({ sourceType, title, dateStr, description, type, icon, color }) => {
+      if (!dateStr) return;
+      const normalizedDate = normalizeDate(dateStr);
+      if (!normalizedDate) return;
+      const stored = JSON.parse(localStorage.getItem("importantDates") || "[]");
+      const existing = stored.find(item => item.sourceType === sourceType);
+      const baseItem = { title, date: normalizedDate, description, type, icon, color, sourceType };
+      const updated = existing
+        ? stored.map(item => item.id === existing.id ? { ...item, ...baseItem } : item)
+        : [{ id: Date.now(), ...baseItem }, ...stored];
+      const savedItem = existing ? updated.find(item => item.id === existing.id) : updated[0];
+      localStorage.setItem("importantDates", JSON.stringify(updated));
+      upsertCalendarEvent({
+        title: `${type==="birthday"?"Cumpleaños":"Fecha"}: ${title}`,
+        description: description || "Fecha importante",
+        dateStr: normalizedDate,
+        sourceType: "important-date",
+        sourceId: savedItem.id
+      });
+    };
+
+    const userName = userData.name?.trim() || "";
+    const partnerName = userData.partner?.trim() || "";
+    upsertImportantDate({ sourceType:"user-birthday", title: userName?`Cumpleaños de ${userName}`:"Tu cumpleaños", dateStr:answers.birthDate, description:"Cumpleaños", type:"birthday", icon:"🎂", color:"from-blue-500 to-cyan-500" });
+    upsertImportantDate({ sourceType:"partner-birthday", title: partnerName?`Cumpleaños de ${partnerName}`:"Cumpleaños de tu pareja", dateStr:answers.partnerBirthDate, description:"Cumpleaños", type:"birthday", icon:"🎂", color:"from-blue-500 to-cyan-500" });
+    setCompleted(true);
+    toast({ title: "¡Test completado!", description: "Hemos personalizado tus 100 citas especiales" });
   };
 
   const handleAnswer = (questionId, value) => {
     const question = questions[currentQuestion];
-    
-    if (question.type === 'multiple') {
+    if (question.type === "multiple") {
       const current = answers[questionId] || [];
-      if (current.includes(value)) {
-        setAnswers({
-          ...answers,
-          [questionId]: current.filter(v => v !== value)
-        });
-      } else {
-        setAnswers({
-          ...answers,
-          [questionId]: [...current, value]
-        });
-      }
+      setAnswers({ ...answers, [questionId]: current.includes(value) ? current.filter(v=>v!==value) : [...current, value] });
     } else {
-      setAnswers({
-        ...answers,
-        [questionId]: value
-      });
+      setAnswers({ ...answers, [questionId]: value });
     }
   };
 
   const handleNext = () => {
     const question = questions[currentQuestion];
-    
-    if (!answers[question.id]) {
-      toast({
-        title: 'Por favor responde',
-        description: 'Completa esta pregunta antes de continuar'
-      });
+    if (question.type !== "text" && !answers[question.id]) {
+      toast({ title: "Por favor responde", description: "Completa esta pregunta antes de continuar" });
       return;
     }
-    
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
@@ -342,215 +204,89 @@ export default function PersonalityTestPage({ navigateTo }) {
     }
   };
 
-  const completeTest = () => {
-    const personality = calculatePersonality(answers);
-    const budgetLevel = calculateBudgetLevel(answers.budget);
-    const detailedProfile = generatePersonalityProfile(answers);
-    
-    const testResult = {
-      completed: true,
-      personality,
-      budgetLevel,
-      profile: detailedProfile,
-      age: calculateAge(answers.birthDate),
-      partnerAge: calculateAge(answers.partnerBirthDate),
-      ...answers,
-      completedAt: new Date().toISOString()
-    };
-    
-    // Guardar en localStorage
-    const userData = JSON.parse(localStorage.getItem('loversappUser') || '{}');
-    userData.personalityTest = testResult;
-    localStorage.setItem('loversappUser', JSON.stringify(userData));
-
-    const normalizeToCurrentYear = (dateStr) => {
-      if (!dateStr) return null;
-      const [year, month, day] = dateStr.split('-').map(Number);
-      if (!year || !month || !day) return null;
-      const now = new Date();
-      const normalized = new Date(now.getFullYear(), month - 1, day);
-      const yyyy = normalized.getFullYear();
-      const mm = String(normalized.getMonth() + 1).padStart(2, '0');
-      const dd = String(normalized.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
-
-    const upsertImportantDate = ({
-      sourceType,
-      title,
-      dateStr,
-      description,
-      type,
-      icon,
-      color
-    }) => {
-      if (!dateStr) return;
-      const normalizedDate = normalizeToCurrentYear(dateStr);
-      if (!normalizedDate) return;
-
-      const stored = JSON.parse(localStorage.getItem('importantDates') || '[]');
-      const existing = stored.find((item) => item.sourceType === sourceType);
-      const baseItem = {
-        title,
-        date: normalizedDate,
-        description,
-        type,
-        icon,
-        color,
-        sourceType
-      };
-
-      const updated = existing
-        ? stored.map((item) => (item.id === existing.id ? { ...item, ...baseItem } : item))
-        : [{ id: Date.now(), ...baseItem }, ...stored];
-
-      const savedItem = existing
-        ? updated.find((item) => item.id === existing.id)
-        : updated[0];
-
-      localStorage.setItem('importantDates', JSON.stringify(updated));
-
-      upsertCalendarEvent({
-        title: `${type === 'birthday' ? 'Cumpleaños' : 'Fecha'}: ${title}`,
-        description: description || 'Fecha importante',
-        dateStr: normalizedDate,
-        sourceType: 'important-date',
-        sourceId: savedItem.id
-      });
-    };
-
-    const userName = userData.name?.trim() || '';
-    const partnerName = userData.partner?.trim() || '';
-
-    upsertImportantDate({
-      sourceType: 'user-birthday',
-      title: userName ? `Cumpleaños de ${userName}` : 'Tu cumpleaños',
-      dateStr: answers.birthDate,
-      description: 'Cumpleaños',
-      type: 'birthday',
-      icon: '🎂',
-      color: 'from-blue-500 to-cyan-500'
-    });
-
-    upsertImportantDate({
-      sourceType: 'partner-birthday',
-      title: partnerName ? `Cumpleaños de ${partnerName}` : 'Cumpleaños de tu pareja',
-      dateStr: answers.partnerBirthDate,
-      description: 'Cumpleaños',
-      type: 'birthday',
-      icon: '🎂',
-      color: 'from-blue-500 to-cyan-500'
-    });
-    
-    setCompleted(true);
-    
-    toast({
-      title: '¡Test completado!',
-      description: 'Hemos personalizado tus 100 citas especiales'
-    });
-  };
-
-  const calculateAge = (birthDate) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
-  };
-
-  const isAnswered = answers[questions[currentQuestion].id];
+  const handlePrevious = () => { if (currentQuestion > 0) setCurrentQuestion(currentQuestion - 1); };
 
   if (completed) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4">
+      <div style={{ minHeight: "100vh", background: D.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <style>{STYLE}</style>
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
+          initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-          className="text-center max-w-md"
+          transition={{ duration: 0.5 }}
+          style={{ width: "100%", maxWidth: 400, textAlign: "center" }}
         >
-          {/* Animated Icon */}
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ delay: 0.3, duration: 0.6, type: "spring" }}
-            className="mb-6"
+            transition={{ delay: 0.2, duration: 0.6, type: "spring" }}
+            style={{ marginBottom: 20 }}
           >
-            <div className="relative inline-block">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 bg-gradient-to-r from-red-500 to-pink-500 rounded-full blur-lg opacity-50"
-              />
-              <CheckCircle className="w-28 h-28 text-red-500 mx-auto fill-red-500 relative z-10" />
+            <div style={{
+              width: 96, height: 96, borderRadius: "50%", background: D.wine,
+              display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto"
+            }}>
+              <Heart size={44} color={D.blush} fill={D.blush} />
             </div>
           </motion.div>
 
-          {/* Success Text */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <h1 className="text-4xl font-black text-black mb-4">¡Perfecto! 💕</h1>
-            <p className="text-gray-700 mb-8 text-lg leading-relaxed">
-              Hemos personalizado vuestras <span className="font-bold text-red-500">100 citas especiales</span> según vuestra personalidad, edad, presupuesto y preferencias.
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+            <h1 className="lora" style={{ fontSize: 30, fontWeight: 700, color: D.wine, margin: "0 0 12px" }}>
+              ¡Perfecto! 💕
+            </h1>
+            <p style={{ fontFamily: "Lora, serif", fontSize: 16, color: D.muted, lineHeight: 1.7, margin: "0 0 20px" }}>
+              Hemos personalizado vuestras <strong style={{ color: D.coral }}>100 citas especiales</strong> según vuestra personalidad, edad, presupuesto y preferencias.
             </p>
           </motion.div>
 
-          {/* Stats */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
-            className="bg-white border-3 border-red-500 rounded-xl p-4 mb-8 space-y-2"
+            style={{
+              background: D.white, border: `1.5px solid ${D.border}`,
+              borderLeft: `4px solid ${D.coral}`, borderRadius: 16,
+              padding: "16px 18px", marginBottom: 20, textAlign: "left"
+            }}
           >
-            <p className="text-sm text-gray-600">
-              <span className="font-bold text-black">Personalidad:</span> {answers.personalityType ? answers.personalityType.replace(/_/g, ' ').toUpperCase() : 'Equilibrada'}
-            </p>
-            {answers.citasTimeline && (
-              <p className="text-sm text-gray-600">
-                <span className="font-bold text-black">Meta:</span> Completar en {answers.citasTimeline.replace(/_/g, ' ').toUpperCase()}
+            {[
+              { label: "Personalidad", value: answers.personalityType?.replace(/_/g," ") || "Equilibrada" },
+              answers.citasTimeline && { label: "Meta", value: answers.citasTimeline.replace(/_/g," ") },
+              answers.hobbies?.length > 0 && { label: "Intereses", value: answers.hobbies.slice(0,3).join(", ") }
+            ].filter(Boolean).map((item, i) => (
+              <p key={i} className="caveat" style={{ fontSize: 15, color: D.muted, margin: i === 0 ? 0 : "6px 0 0" }}>
+                <strong style={{ color: D.wine }}>{item.label}:</strong> {item.value}
               </p>
-            )}
-            {answers.hobbies && answers.hobbies.length > 0 && (
-              <p className="text-sm text-gray-600">
-                <span className="font-bold text-black">Intereses:</span> {answers.hobbies.join(', ')}
-              </p>
-            )}
+            ))}
           </motion.div>
 
-          {/* Button */}
           <motion.button
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigateTo('citas-personalizadas')}
-            className="w-full px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg transition font-bold text-lg border-3 border-red-600"
+            whileTap={{ scale: 0.97 }}
+            onClick={() => navigateTo("citas-personalizadas")}
+            style={{
+              width: "100%", padding: "14px 0", borderRadius: 16, border: "none",
+              background: D.coral, color: D.white, cursor: "pointer",
+              fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 700, marginBottom: 10
+            }}
           >
             Ver mis 100 Citas Personalizadas ❤️
           </motion.button>
-
-          {/* Alternative Action */}
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.1 }}
-            onClick={() => navigateTo('dashboard')}
-            className="w-full mt-3 px-6 py-2 border-2 border-black text-black rounded-lg hover:bg-black hover:text-white transition font-semibold"
+            onClick={() => navigateTo("dashboard")}
+            style={{
+              width: "100%", padding: "11px 0", borderRadius: 14,
+              border: `1.5px solid ${D.border}`, background: D.white,
+              color: D.muted, cursor: "pointer",
+              fontFamily: "Caveat, cursive", fontSize: 16
+            }}
           >
-            Ir al Dashboard
+            Ir al inicio
           </motion.button>
         </motion.div>
       </div>
@@ -559,110 +295,151 @@ export default function PersonalityTestPage({ navigateTo }) {
 
   const question = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const isAnswered = question.type === "text" || !!answers[question.id];
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 80 }}>
+      <style>{STYLE}</style>
+
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b-2 border-black">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigateTo('dashboard')}
-            className="flex items-center gap-2 text-black hover:text-red-500 transition mb-4"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            Volver
-          </button>
-          <h1 className="text-2xl font-bold text-black mb-2">Conocerte Mejor ❤️</h1>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+      <div style={{
+        position: "sticky", top: 0, zIndex: 10, background: D.cream,
+        borderBottom: `1.5px solid ${D.border}`, padding: "48px 20px 14px"
+      }}>
+        <div style={{ maxWidth: 500, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <button onClick={() => navigateTo("dashboard")} style={{
+              width: 36, height: 36, borderRadius: "50%", border: `1.5px solid ${D.border}`,
+              background: D.white, display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", flexShrink: 0
+            }}>
+              <ChevronLeft size={18} color={D.coral} />
+            </button>
+            <div style={{ flex: 1 }}>
+              <h1 className="lora" style={{ fontSize: 20, fontWeight: 700, color: D.wine, margin: 0 }}>
+                Conocerte Mejor ❤️
+              </h1>
+              <p className="caveat" style={{ fontSize: 14, color: D.muted, margin: 0 }}>
+                Pregunta {currentQuestion + 1} de {questions.length}
+              </p>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div style={{ height: 6, background: D.border, borderRadius: 4, overflow: "hidden" }}>
             <motion.div
-              initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              className="bg-red-500 h-2 rounded-full transition-all"
+              style={{ height: "100%", background: D.coral, borderRadius: 4 }}
+              transition={{ duration: 0.3 }}
             />
           </div>
-          <p className="text-xs text-gray-600 mt-2">
-            Pregunta {currentQuestion + 1} de {questions.length}
-          </p>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <motion.div
-          key={currentQuestion}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-        >
-          <h2 className="text-2xl font-bold text-black mb-2">{question.question}</h2>
-          <p className="text-gray-600 mb-6">{question.subtitle}</p>
+      {/* Question */}
+      <div style={{ maxWidth: 500, margin: "0 auto", padding: "22px 20px" }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentQuestion}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.22 }}
+          >
+            <h2 className="lora" style={{ fontSize: 21, fontWeight: 700, color: D.wine, margin: "0 0 8px" }}>
+              {question.question}
+            </h2>
+            <p className="caveat" style={{ fontSize: 15, color: D.muted, margin: "0 0 20px" }}>
+              {question.subtitle}
+            </p>
 
-          {/* Render según tipo de pregunta */}
-          {question.type === 'date' && (
-            <input
-              type="date"
-              value={answers[question.id] || ''}
-              onChange={(e) => handleAnswer(question.id, e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none text-lg"
-            />
-          )}
+            {question.type === "date" && (
+              <input type="date" value={answers[question.id] || ""}
+                onChange={(e) => handleAnswer(question.id, e.target.value)}
+                style={{
+                  width: "100%", padding: "12px 14px", border: `1.5px solid ${D.border}`,
+                  borderRadius: 14, background: D.white, outline: "none",
+                  fontFamily: "Lora, Georgia, serif", fontSize: 16, color: D.wine,
+                  boxSizing: "border-box"
+                }} />
+            )}
 
-          {question.type === 'text' && (
-            <textarea
-              value={answers[question.id] || ''}
-              onChange={(e) => handleAnswer(question.id, e.target.value)}
-              placeholder={question.placeholder}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none resize-none h-32"
-            />
-          )}
+            {question.type === "text" && (
+              <textarea value={answers[question.id] || ""}
+                onChange={(e) => handleAnswer(question.id, e.target.value)}
+                placeholder={question.placeholder}
+                style={{
+                  width: "100%", padding: "12px 14px", border: `1.5px solid ${D.border}`,
+                  borderRadius: 14, background: D.white, outline: "none",
+                  fontFamily: "Lora, Georgia, serif", fontSize: 15, color: D.wine,
+                  resize: "none", height: 120, boxSizing: "border-box"
+                }} />
+            )}
 
-          {(question.type === 'single' || question.type === 'multiple') && (
-            <div className="space-y-3">
-              {question.options.map((option) => (
-                <motion.button
-                  key={option.id}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleAnswer(question.id, option.id)}
-                  className={`w-full p-4 border-2 rounded-lg transition text-left font-semibold ${
-                    question.type === 'multiple'
-                      ? answers[question.id]?.includes(option.id)
-                        ? 'border-red-500 bg-red-50 text-black'
-                        : 'border-gray-300 hover:border-red-500 text-black'
-                      : answers[question.id] === option.id
-                      ? 'border-red-500 bg-red-50 text-black'
-                      : 'border-gray-300 hover:border-red-500 text-black'
-                  }`}
-                >
-                  {option.label}
-                </motion.button>
-              ))}
-            </div>
-          )}
-        </motion.div>
+            {(question.type === "single" || question.type === "multiple") && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {question.options.map(opt => {
+                  const sel = question.type === "multiple"
+                    ? (answers[question.id] || []).includes(opt.id)
+                    : answers[question.id] === opt.id;
+                  return (
+                    <motion.button
+                      key={opt.id}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleAnswer(question.id, opt.id)}
+                      style={{
+                        padding: "13px 16px", border: `1.5px solid ${sel ? D.coral : D.border}`,
+                        borderRadius: 14, background: sel ? "#FEF1F3" : D.white,
+                        cursor: "pointer", textAlign: "left",
+                        fontFamily: "Lora, Georgia, serif", fontSize: 15,
+                        color: sel ? D.coral : D.wine, fontWeight: sel ? 700 : 400,
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      {opt.label}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black px-4 py-4">
-        <div className="max-w-2xl mx-auto flex gap-4">
+      {/* Navigation */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        background: D.cream, borderTop: `1.5px solid ${D.border}`,
+        padding: "14px 20px"
+      }}>
+        <div style={{ maxWidth: 500, margin: "0 auto", display: "flex", gap: 10 }}>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.97 }}
             onClick={handlePrevious}
             disabled={currentQuestion === 0}
-            className="flex-1 py-3 border-2 border-black text-black rounded-lg hover:bg-gray-100 transition font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{
+              flex: 1, padding: "12px 0", borderRadius: 14,
+              border: `1.5px solid ${D.border}`, background: D.white,
+              color: currentQuestion === 0 ? D.border : D.wine,
+              cursor: currentQuestion === 0 ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              fontFamily: "Caveat, cursive", fontSize: 16
+            }}
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft size={16} />
             Anterior
           </motion.button>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.97 }}
             onClick={handleNext}
-            className="flex-1 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{
+              flex: 2, padding: "12px 0", borderRadius: 14, border: "none",
+              background: D.coral, color: D.white, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              fontFamily: "Lora, Georgia, serif", fontSize: 16, fontWeight: 700
+            }}
           >
-            {currentQuestion === questions.length - 1 ? 'Completar' : 'Siguiente'}
-            <ChevronRight className="w-5 h-5" />
+            {currentQuestion === questions.length - 1 ? "Completar" : "Siguiente"}
+            <ChevronRight size={16} />
           </motion.button>
         </div>
       </div>

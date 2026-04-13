@@ -1,104 +1,58 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Heart, Mail, Lock, User, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
-import PersonalityTestModal from '@/components/PersonalityTestModal';
+﻿import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Heart, X, Eye, EyeOff } from "lucide-react";
+import PersonalityTestModal from "@/components/PersonalityTestModal";
+import { api } from "@/lib/api";
 
-const LoginPage = ({ onLoginSuccess, onClose, defaultTab = 'login', onStartTest }) => {
-  const [isLogin, setIsLogin] = useState(defaultTab === 'login');
-  const [formData, setFormData] = useState({
-    name: '',
-    partner: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
+const D = {
+  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
+  border: "#EDE0D0", muted: "#9A7A6A"
+};
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login", onStartTest }) {
+  const [isLogin, setIsLogin] = useState(defaultTab === "login");
+  const [formData, setFormData] = useState({ name: "", partner: "", email: "", password: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showTestModal, setShowTestModal] = useState(false);
   const [isRegistration, setIsRegistration] = useState(false);
-  const { toast } = useToast();
+  const [showPass, setShowPass] = useState(false);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
-    // Simulamos un pequeño delay
-    setTimeout(() => {
+    try {
       if (isLogin) {
-        // Login
-        if (!formData.email || !formData.password) {
-          toast({
-            title: "Error",
-            description: "Por favor completa todos los campos"
-          });
-          setLoading(false);
-          return;
-        }
-
-        // Guardamos los datos en localStorage (sin borrar nombre/pareja)
-        const existingUser = JSON.parse(localStorage.getItem('loversappUser') || '{}');
-        const user = {
-          ...existingUser,
-          email: formData.email,
-          loginDate: new Date().toISOString()
-        };
+        const { token, user } = await api.login(formData.email, formData.password);
+        localStorage.setItem('loversappToken', token);
         localStorage.setItem('loversappUser', JSON.stringify(user));
-        
-        toast({
-          title: "¡Bienvenido! 💕",
-          description: "Has iniciado sesión correctamente"
-        });
-        
         setLoading(false);
         onLoginSuccess();
       } else {
-        // Registro
-        if (!formData.name || !formData.partner || !formData.email || !formData.password || !formData.confirmPassword) {
-          toast({
-            title: "Error",
-            description: "Por favor completa todos los campos"
-          });
-          setLoading(false);
-          return;
-        }
-
         if (formData.password !== formData.confirmPassword) {
-          toast({
-            title: "Error",
-            description: "Las contraseñas no coinciden"
-          });
+          setError('Las contraseñas no coinciden.');
           setLoading(false);
           return;
         }
-
-        // Guardamos los datos en localStorage
-        const user = {
-          name: formData.name,
-          partner: formData.partner,
-          email: formData.email,
-          createdDate: new Date().toISOString()
-        };
+        const { token, user } = await api.register(
+          formData.name, formData.partner, formData.email, formData.password
+        );
+        localStorage.setItem('loversappToken', token);
         localStorage.setItem('loversappUser', JSON.stringify(user));
-        
-        toast({
-          title: "¡Bienvenidos! 💕",
-          description: `${formData.name} y ${formData.partner}, su cuenta fue creada`
-        });
-
         setLoading(false);
         setIsRegistration(true);
         setShowTestModal(true);
       }
-    }, 800);
+    } catch (err) {
+      setError(err.message || 'Error al conectar con el servidor.');
+      setLoading(false);
+    }
   };
 
   const handleStartTest = () => {
@@ -112,208 +66,185 @@ const LoginPage = ({ onLoginSuccess, onClose, defaultTab = 'login', onStartTest 
     onLoginSuccess();
   };
 
+  const inputStyle = {
+    width: "100%", padding: "11px 14px", border: `1.5px solid ${D.border}`,
+    borderRadius: 12, background: D.cream, outline: "none",
+    fontFamily: "Lora, Georgia, serif", fontSize: 15, color: D.wine,
+    boxSizing: "border-box"
+  };
+
   return (
     <>
-      <PersonalityTestModal 
-        isOpen={showTestModal} 
-        onStart={handleStartTest}
-        onSkip={handleSkipTest}
-      />
-      
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative Elements */}
-      <div className="fixed top-10 left-10 w-32 h-32 bg-pink-200 rounded-full opacity-10 blur-3xl pointer-events-none" />
-      <div className="fixed bottom-20 right-10 w-40 h-40 bg-purple-200 rounded-full opacity-10 blur-3xl pointer-events-none" />
-
-      {/* Close Button */}
-      {onClose && (
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={onClose}
-          className="fixed top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-gray-800 transition z-50"
-        >
-          <X className="w-6 h-6" />
-        </motion.button>
+      <style>{STYLE}</style>
+      {showTestModal && (
+        <PersonalityTestModal
+          onStartTest={handleStartTest}
+          onSkip={handleSkipTest}
+        />
       )}
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        {/* Header */}
-        <div className="text-center mb-8">
-          <motion.h1
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-5xl font-black text-red-500 mb-2"
-          >
-            LoversApp
-          </motion.h1>
-          <motion.p
-            initial={{ y: -10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-gray-600 flex items-center justify-center gap-2"
-          >
-            <Heart className="w-5 h-5 text-red-500 fill-red-500" />
-            Nuestra app de pareja
-          </motion.p>
+      <div style={{
+        minHeight: "100vh", background: D.cream, display: "flex",
+        alignItems: "center", justifyContent: "center", padding: "20px",
+        position: "relative"
+      }}>
+        {/* Doodle bg circles */}
+        <div style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+          {[{ top: "8%", left: "5%", size: 90, color: D.blush, opacity: 0.4 },
+            { top: "70%", right: "4%", size: 120, color: D.gold, opacity: 0.18 },
+            { bottom: "10%", left: "8%", size: 70, color: D.coral, opacity: 0.13 }].map((c, i) => (
+            <div key={i} style={{
+              position: "absolute", top: c.top, left: c.left, right: c.right, bottom: c.bottom,
+              width: c.size, height: c.size, borderRadius: "50%",
+              background: c.color, opacity: c.opacity
+            }} />
+          ))}
         </div>
 
-        {/* Form Card */}
+        {onClose && (
+          <button onClick={onClose} style={{
+            position: "fixed", top: 18, right: 18, zIndex: 20,
+            width: 38, height: 38, borderRadius: "50%", border: `1.5px solid ${D.border}`,
+            background: D.white, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer"
+          }}>
+            <X size={18} color={D.wine} />
+          </button>
+        )}
+
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            position: "relative", zIndex: 1, width: "100%", maxWidth: 420,
+            background: D.white, border: `1.5px solid ${D.border}`,
+            borderRadius: 24, padding: "32px 28px", boxShadow: "0 4px 32px rgba(28,14,16,0.08)"
+          }}
         >
+          {/* Logo */}
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%", background: D.wine,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 12px"
+            }}>
+              <Heart size={26} color={D.blush} fill={D.blush} />
+            </div>
+            <h1 className="lora" style={{ fontSize: 26, fontWeight: 700, color: D.wine, margin: 0 }}>
+              100 Citas
+            </h1>
+            <p className="caveat" style={{ fontSize: 16, color: D.muted, margin: "4px 0 0" }}>
+              Tu diario de amor ♡
+            </p>
+          </div>
+
           {/* Tabs */}
-          <div className="flex gap-2 mb-8">
-            <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-3 rounded-xl font-bold transition-all ${
-                isLogin
-                  ? 'bg-black text-white'
-                  : 'bg-gray-100 text-black hover:bg-gray-200'
-              }`}
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-3 rounded-xl font-bold transition-all ${
-                !isLogin
-                  ? 'bg-black text-white'
-                  : 'bg-gray-100 text-black hover:bg-gray-200'
-              }`}
-            >
-              Registrarse
-            </button>
+          <div style={{
+            display: "flex", gap: 6, marginBottom: 24,
+            background: D.cream, borderRadius: 14, padding: 4
+          }}>
+            {[{ key: true, label: "Iniciar Sesión" }, { key: false, label: "Registrarse" }].map(tab => (
+              <button key={String(tab.key)} onClick={() => setIsLogin(tab.key)} style={{
+                flex: 1, padding: "9px 0", borderRadius: 10, border: "none",
+                background: isLogin === tab.key ? D.wine : "transparent",
+                color: isLogin === tab.key ? D.white : D.muted,
+                cursor: "pointer", fontFamily: "Caveat, cursive", fontSize: 16,
+                fontWeight: isLogin === tab.key ? 700 : 400, transition: "all 0.2s"
+              }}>
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {!isLogin && (
               <>
-                {/* Name Field */}
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
-                    Tu nombre
+                  <label className="caveat" style={{ fontSize: 15, color: D.wine, display: "block", marginBottom: 5 }}>
+                    Tu nombre ♡
                   </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="Ej: Daniela"
-                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition"
-                    />
-                  </div>
+                  <input name="name" value={formData.name} onChange={handleChange} required
+                    placeholder="Ej. Daniela" style={inputStyle} />
                 </div>
-
-                {/* Partner Field */}
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="caveat" style={{ fontSize: 15, color: D.wine, display: "block", marginBottom: 5 }}>
                     Nombre de tu pareja
                   </label>
-                  <div className="relative">
-                    <Heart className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="partner"
-                      value={formData.partner}
-                      onChange={handleInputChange}
-                      placeholder="Ej: Eduardo"
-                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition"
-                    />
-                  </div>
+                  <input name="partner" value={formData.partner} onChange={handleChange}
+                    placeholder="Ej. Eduardo" style={inputStyle} />
                 </div>
               </>
             )}
-
-            {/* Email Field */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="caveat" style={{ fontSize: 15, color: D.wine, display: "block", marginBottom: 5 }}>
                 Correo electrónico
               </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="tu@email.com"
-                  className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition"
-                />
-              </div>
+              <input name="email" type="email" value={formData.email} onChange={handleChange} required
+                placeholder="tu@correo.com" style={inputStyle} />
             </div>
-
-            {/* Password Field */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="caveat" style={{ fontSize: 15, color: D.wine, display: "block", marginBottom: 5 }}>
                 Contraseña
               </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition"
-                />
+              <div style={{ position: "relative" }}>
+                <input name="password" type={showPass ? "text" : "password"} value={formData.password}
+                  onChange={handleChange} required placeholder="••••••••"
+                  style={{ ...inputStyle, paddingRight: 42 }} />
+                <button type="button" onClick={() => setShowPass(!showPass)} style={{
+                  position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", cursor: "pointer", padding: 0
+                }}>
+                  {showPass ? <EyeOff size={16} color={D.muted} /> : <Eye size={16} color={D.muted} />}
+                </button>
               </div>
             </div>
-
-            {/* Confirm Password Field (only for register) */}
             {!isLogin && (
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="caveat" style={{ fontSize: 15, color: D.wine, display: "block", marginBottom: 5 }}>
                   Confirmar contraseña
                 </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition"
-                  />
-                </div>
+                <input name="confirmPassword" type="password" value={formData.confirmPassword}
+                  onChange={handleChange} required placeholder="••••••••" style={inputStyle} />
               </div>
             )}
 
-            {/* Submit Button */}
-            <Button
+            {error && (
+              <div style={{
+                padding: "10px 14px", background: "#FEE8EC",
+                borderRadius: 12, border: `1px solid ${D.coral}44`
+              }}>
+                <p className="caveat" style={{ fontSize: 14, color: D.coral, margin: 0, textAlign: "center" }}>
+                  {error}
+                </p>
+              </div>
+            )}
+
+            <motion.button
+              whileTap={{ scale: 0.97 }}
               type="submit"
               disabled={loading}
-              className="w-full h-12 mt-6 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all"
+              style={{
+                width: "100%", padding: "13px 0", borderRadius: 14, border: "none",
+                background: loading ? D.muted : D.coral, color: D.white, cursor: loading ? "not-allowed" : "pointer",
+                fontFamily: "Lora, Georgia, serif", fontSize: 16, fontWeight: 700,
+                marginTop: 4, transition: "background 0.2s"
+              }}
             >
-              {loading ? 'Cargando...' : isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
-            </Button>
+              {loading ? "Conectando..." : isLogin ? "Entrar" : "Crear cuenta"}
+            </motion.button>
           </form>
 
-          {/* Demo Mode Notice */}
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-            <p className="text-xs text-yellow-800 font-semibold">
-              💡 Nota: Esta es una demostración. Los datos se guardan localmente en tu navegador.
+          {/* Backend note */}
+          <div style={{
+            marginTop: 20, padding: "10px 14px", background: D.cream,
+            borderRadius: 12, border: `1px solid ${D.border}`
+          }}>
+            <p className="caveat" style={{ fontSize: 13, color: D.muted, margin: 0, textAlign: "center" }}>
+              🔒 Tus datos se guardan de forma segura en el servidor.
             </p>
           </div>
         </motion.div>
-      </motion.div>
-    </div>
+      </div>
     </>
   );
-};
-
-export default LoginPage;
+}

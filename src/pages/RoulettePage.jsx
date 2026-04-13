@@ -1,332 +1,200 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Heart, Star, Volume2, VolumeX, RefreshCw, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronLeft, Heart, Star, RefreshCw, Calendar } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
-const RoulettePage = ({ navigateTo }) => {
-  const [dates, setDates] = useState([]);
+const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+function BgDoodles() {
+  return (
+    <svg style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0, opacity: 0.18 }} aria-hidden>
+      <text x="12%" y="18%" fontSize="22" fill={D.coral}>✦</text>
+      <text x="78%" y="12%" fontSize="16" fill={D.gold}>★</text>
+      <text x="88%" y="55%" fontSize="20" fill={D.blue}>✦</text>
+      <text x="6%"  y="72%" fontSize="14" fill={D.green}>★</text>
+      <ellipse cx="50%" cy="50%" rx="44%" ry="34%" fill="none" stroke={D.blush} strokeWidth="1.2" strokeDasharray="6 8"/>
+    </svg>
+  );
+}
+
+export default function RoulettePage({ navigateTo }) {
   const [pendingDates, setPendingDates] = useState([]);
-  const [gameState, setGameState] = useState('idle'); // idle, spinning, envelope, card
+  const [gameState, setGameState] = useState('idle'); // idle | spinning | envelope | card
   const [selectedDate, setSelectedDate] = useState(null);
   const [rotation, setRotation] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const wheelRef = useRef(null);
   const { toast } = useToast();
 
-  // Load dates
   useEffect(() => {
-    const storedDates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-    setDates(storedDates);
-    const pending = storedDates.filter(d => d.status === 'pending');
-    setPendingDates(pending);
+    const stored = JSON.parse(localStorage.getItem('coupleDates') || '[]');
+    setPendingDates(stored.filter(d => d.status !== 'completed'));
   }, []);
 
-  // Spin Logic
   const spinWheel = () => {
     if (pendingDates.length === 0) {
-      toast({
-        title: "¡Misión cumplida! 🎉",
-        description: "Ya no quedan citas pendientes. ¡Han completado su diario!",
-      });
+      toast({ title: '¡Misión cumplida! 🎉', description: 'Ya no quedan citas pendientes.' });
       return;
     }
-
+    const idx = Math.floor(Math.random() * pendingDates.length);
+    setSelectedDate(pendingDates[idx]);
     setGameState('spinning');
-    
-    // Pick random date
-    const randomIndex = Math.floor(Math.random() * pendingDates.length);
-    const result = pendingDates[randomIndex];
-    setSelectedDate(result);
-
-    // Calculate rotation: current + (5 to 10 full spins) + random segment offset
-    // This ensures it always spins forward significantly
-    const spins = 360 * (5 + Math.random() * 5); 
-    const randomOffset = Math.random() * 360;
-    const newRotation = rotation + spins + randomOffset;
-    
-    setRotation(newRotation);
-
-    // Play sound if not muted (Placeholder logic)
-    if (!isMuted) {
-      // In a real app, you would play an audio file here
-      // const audio = new Audio('/spin.mp3');
-      // audio.play().catch(e => console.log('Audio play failed'));
-    }
-
-    // Wait for spin animation to finish (approx 4 seconds based on CSS transition)
-    setTimeout(() => {
-      setGameState('envelope');
-    }, 4000);
+    const newRot = rotation + 360 * (5 + Math.random() * 5) + Math.random() * 360;
+    setRotation(newRot);
+    setTimeout(() => setGameState('envelope'), 3500);
   };
 
-  const openEnvelope = () => {
-    setGameState('card');
-    if (!isMuted) {
-      // Celebration sound placeholder
-    }
-  };
+  const reset = () => { setGameState('idle'); setSelectedDate(null); };
 
-  const resetGame = () => {
-    setGameState('idle');
-    setSelectedDate(null);
-  };
-
-  // Confetti Component
-  const Confetti = () => {
-    return (
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-50">
-        {Array.from({ length: 50 }).map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ 
-              y: -50, 
-              x: Math.random() * window.innerWidth,
-              rotate: 0,
-              opacity: 1 
-            }}
-            animate={{ 
-              y: window.innerHeight + 100, 
-              rotate: Math.random() * 360,
-              opacity: 0
-            }}
-            transition={{ 
-              duration: 2 + Math.random() * 3,
-              ease: "linear",
-              delay: Math.random() * 0.5
-            }}
-            className="absolute top-0"
-          >
-            {i % 2 === 0 ? (
-              <Heart className="w-6 h-6 text-red-500 fill-red-500" />
-            ) : (
-              <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
-            )}
-          </motion.div>
-        ))}
-      </div>
-    );
-  };
+  const SEGMENTS = 12;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col relative overflow-hidden">
-      {/* Decorative Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
-        <div className="absolute top-10 left-10 transform -rotate-12"><Heart size={64} /></div>
-        <div className="absolute bottom-20 right-20 transform rotate-12"><Star size={64} /></div>
-        <div className="absolute top-1/2 left-20 transform rotate-45"><Star size={48} /></div>
-        <div className="absolute bottom-10 left-1/3 transform -rotate-12"><Heart size={48} /></div>
-      </div>
+    <div style={{ background: D.cream, minHeight: '100vh', maxWidth: 430, margin: '0 auto', paddingBottom: 40, position: 'relative', overflow: 'hidden' }}>
+      <style>{STYLE}</style>
+      <BgDoodles />
 
       {/* Header */}
-      <div className="p-6 flex justify-between items-center z-10">
-        <Button
-          onClick={() => navigateTo('home')}
-          variant="ghost"
-          className="text-black hover:bg-gray-100"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver
-        </Button>
-        <Button
-          onClick={() => setIsMuted(!isMuted)}
-          variant="ghost"
-          size="icon"
-          className="text-black hover:bg-gray-100 rounded-full"
-        >
-          {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-        </Button>
+      <div style={{ padding: '48px 20px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: D.cream, borderBottom: `1.5px solid ${D.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
+        <button onClick={() => navigateTo('home')}
+          style={{ width: 38, height: 38, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5} />
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="lora" style={{ fontSize: 20, fontWeight: 600, color: D.wine }}>Ruleta de Citas</div>
+          <div className="caveat" style={{ fontSize: 11, color: D.muted }}>{pendingDates.length} citas pendientes ✦</div>
+        </div>
+        <div style={{ width: 38 }} />
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
+      <div style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 1 }}>
         <AnimatePresence mode="wait">
-          
-          {/* STATE: WHEEL */}
+
+          {/* IDLE / SPINNING */}
           {(gameState === 'idle' || gameState === 'spinning') && (
-            <motion.div
-              key="wheel-container"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.5 } }}
-              className="flex flex-col items-center"
-            >
-              <h2 className="text-4xl md:text-5xl font-serif text-black mb-12 text-center">
-                ¿Qué cita nos toca?
-              </h2>
+            <motion.div key="wheel" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
 
-              <div className="relative mb-12">
-                {/* Pointer */}
-                <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-20">
+              <div className="lora" style={{ fontSize: 22, fontWeight: 600, color: D.wine, marginBottom: 28, textAlign: 'center' }}>¿Qué cita nos toca?</div>
+
+              {/* Pointer */}
+              <div style={{ marginBottom: -6, zIndex: 2 }}>
+                <motion.div animate={gameState === 'spinning' ? { rotate: [-8, 8, -8] } : {}} transition={{ repeat: Infinity, duration: 0.2 }}>
+                  <Heart size={32} color={D.coral} fill={D.coral} />
+                </motion.div>
+              </div>
+
+              {/* Wheel */}
+              <div style={{ width: 280, height: 280, position: 'relative', marginBottom: 32 }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `6px solid ${D.wine}`, background: D.white, overflow: 'hidden', boxShadow: '0 8px 32px rgba(28,14,16,0.18)' }}>
                   <motion.div
-                    animate={gameState === 'spinning' ? { rotate: [-10, 10, -10] } : {}}
-                    transition={{ repeat: Infinity, duration: 0.2 }}
+                    style={{ width: '100%', height: '100%', position: 'relative' }}
+                    animate={{ rotate: rotation }}
+                    transition={{ duration: 3.5, ease: [0.15, 0, 0.15, 1] }}
                   >
-                    <Heart className="w-12 h-12 text-red-500 fill-red-500 drop-shadow-md" />
-                  </motion.div>
-                </div>
-
-                {/* The Wheel */}
-                <div className="relative w-80 h-80 md:w-96 md:h-96">
-                  {/* Outer rim */}
-                  <div className="absolute inset-0 rounded-full border-8 border-black bg-white shadow-xl overflow-hidden">
-                    <motion.div
-                      ref={wheelRef}
-                      className="w-full h-full relative"
-                      animate={{ rotate: rotation }}
-                      transition={{ 
-                        duration: 4, 
-                        ease: [0.15, 0, 0.15, 1] // Custom bezier for realistic spin-down
-                      }}
-                    >
-                      {/* Wheel Segments - Visual only */}
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="absolute w-full h-full top-0 left-0"
-                          style={{ transform: `rotate(${i * 30}deg)` }}
-                        >
-                          <div className="w-1 h-1/2 mx-auto bg-gray-100 origin-bottom mt-0" />
-                          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-xs font-mono text-gray-400">
-                            {['★', '♥', '★', '♥'][i % 4]}
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Center Hub */}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                         <div className="w-32 h-32 rounded-full border-4 border-black bg-white flex items-center justify-center z-10">
-                            <span className="font-serif text-xl italic">Daniela & Eduardo</span>
-                         </div>
+                    {Array.from({ length: SEGMENTS }).map((_, i) => (
+                      <div key={i} style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0, transform: `rotate(${i * 30}deg)` }}>
+                        <div style={{ width: 2, height: '50%', background: i % 2 === 0 ? `${D.blush}88` : `${D.border}`, margin: '0 auto' }} />
                       </div>
-                    </motion.div>
-                  </div>
+                    ))}
+                    {/* Center hub */}
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 100, height: 100, borderRadius: '50%', border: `4px solid ${D.wine}`, background: D.cream, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                        <span className="lora" style={{ fontSize: 10, color: D.wine, fontStyle: 'italic', textAlign: 'center', lineHeight: 1.3 }}>Daniela{'\n'}&{'\n'}Eduardo</span>
+                      </div>
+                    </div>
+                  </motion.div>
                 </div>
               </div>
 
-              <Button
-                onClick={spinWheel}
-                disabled={gameState === 'spinning'}
-                className="h-16 px-12 text-xl bg-black text-white hover:bg-gray-800 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed group"
-              >
-                {gameState === 'spinning' ? (
-                  <span className="flex items-center">
-                    <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
-                    Girando...
-                  </span>
-                ) : (
-                  <span className="flex items-center">
-                    Girar la ruleta
-                    <Star className="w-5 h-5 ml-2 group-hover:rotate-180 transition-transform duration-500 text-yellow-400 fill-yellow-400" />
-                  </span>
-                )}
-              </Button>
+              <button onClick={spinWheel} disabled={gameState === 'spinning'}
+                style={{ padding: '14px 40px', borderRadius: 30, background: gameState === 'spinning' ? D.muted : D.wine, border: 'none', cursor: gameState === 'spinning' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                {gameState === 'spinning'
+                  ? <><RefreshCw size={18} color={D.white} style={{ animation: 'spin 1s linear infinite' }} /><span className="caveat" style={{ fontSize: 16, fontWeight: 700, color: D.white }}>Girando...</span></>
+                  : <><span className="caveat" style={{ fontSize: 18, fontWeight: 700, color: D.white }}>Girar la ruleta</span><Star size={18} color={D.gold} fill={D.gold} /></>
+                }
+              </button>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </motion.div>
           )}
 
-          {/* STATE: ENVELOPE */}
+          {/* ENVELOPE */}
           {gameState === 'envelope' && (
-            <motion.div
-              key="envelope-container"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center cursor-pointer"
-              onClick={openEnvelope}
-            >
-               <h2 className="text-3xl font-serif text-black mb-8 animate-pulse">
-                ¡Tenemos una cita! Toca para abrir 💌
-              </h2>
-
+            <motion.div key="envelope" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
+              onClick={() => setGameState('card')}>
+              <div className="lora" style={{ fontSize: 20, fontWeight: 600, color: D.wine, marginBottom: 28, textAlign: 'center' }}>
+                ¡Tenemos una cita!<br/>
+                <span style={{ fontSize: 15, color: D.muted, fontStyle: 'italic' }}>Toca para abrir 💌</span>
+              </div>
               <motion.div
-                initial={{ scale: 0.5, rotate: -10 }}
+                initial={{ scale: 0.6, rotate: -8 }}
                 animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                whileHover={{ scale: 1.05, rotate: 2 }}
-                className="relative w-80 h-56"
+                transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                whileHover={{ scale: 1.06, rotate: 2 }}
+                style={{ width: 240, height: 160, position: 'relative' }}
               >
-                {/* Envelope Back */}
-                <div className="absolute inset-0 bg-gray-100 border-2 border-black rounded-lg shadow-xl" />
-                
-                {/* Envelope Flap (Closed) */}
-                <div className="absolute top-0 left-0 w-full h-0 border-l-[160px] border-l-transparent border-t-[100px] border-t-gray-200 border-r-[160px] border-r-transparent drop-shadow-sm origin-top" />
-                
-                {/* Envelope Bottom Folds */}
-                <div className="absolute bottom-0 left-0 w-full h-0 border-l-[160px] border-l-transparent border-b-[112px] border-b-white border-r-[160px] border-r-transparent rounded-b-lg opacity-90" />
-                
-                {/* Wax Seal */}
-                <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-md border-4 border-red-700">
-                    <Heart className="w-8 h-8 text-white fill-white" />
-                  </div>
+                <div style={{ position: 'absolute', inset: 0, background: `${D.blush}66`, border: `2px solid ${D.border}`, borderRadius: 16, boxShadow: '0 8px 32px rgba(28,14,16,0.14)' }} />
+                {/* Flap */}
+                <div style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0,
+                  borderLeft: '120px solid transparent', borderRight: '120px solid transparent', borderTop: `72px solid ${D.border}` }} />
+                {/* Seal */}
+                <div style={{ position: 'absolute', top: '38%', left: '50%', transform: 'translate(-50%,-50%)', width: 52, height: 52, borderRadius: '50%', background: D.coral, border: `3px solid ${D.wine}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Heart size={24} color={D.white} fill={D.white} />
                 </div>
               </motion.div>
             </motion.div>
           )}
 
-          {/* STATE: CARD REVEAL */}
+          {/* CARD REVEAL */}
           {gameState === 'card' && selectedDate && (
-            <motion.div
-              key="card-result"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-col items-center w-full max-w-md px-4"
-            >
-              <Confetti />
-              
-              <div className="bg-white p-8 rounded-lg shadow-2xl border-4 border-black w-full text-center relative mb-8">
-                {/* Card Decoration */}
-                <div className="absolute top-4 left-4"><Heart className="w-6 h-6 text-red-500" /></div>
-                <div className="absolute top-4 right-4"><Star className="w-6 h-6 text-yellow-400" /></div>
-                <div className="absolute bottom-4 left-4"><Star className="w-6 h-6 text-yellow-400" /></div>
-                <div className="absolute bottom-4 right-4"><Heart className="w-6 h-6 text-red-500" /></div>
+            <motion.div key="card" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
 
-                <div className="mb-6">
-                  <span className="inline-block px-4 py-1 bg-black text-white rounded-full font-mono text-sm mb-4">
-                    CITA #{selectedDate.id}
-                  </span>
-                  <h3 className="text-4xl md:text-5xl font-serif text-black leading-tight mb-2">
-                    {selectedDate.name}
-                  </h3>
-                </div>
-
-                <div className="w-full h-0.5 bg-gray-100 my-6" />
-
-                <div className="space-y-4">
-                  <Button
-                    onClick={() => navigateTo('detail', selectedDate.id)}
-                    className="w-full h-14 text-lg bg-black text-white hover:bg-gray-800 transition-all rounded-lg group"
-                  >
-                    <Calendar className="w-5 h-5 mr-2" />
-                    Ver detalles de la cita
-                  </Button>
-                  
-                  <Button
-                    onClick={resetGame}
-                    variant="outline"
-                    className="w-full h-14 text-lg border-2 border-black hover:bg-gray-50 transition-all rounded-lg"
-                  >
-                    <RefreshCw className="w-5 h-5 mr-2" />
-                    Girar otra vez
-                  </Button>
-                </div>
+              {/* Confetti */}
+              <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 50 }}>
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <motion.div key={i}
+                    initial={{ y: -20, x: `${Math.random() * 100}vw`, opacity: 1 }}
+                    animate={{ y: '100vh', opacity: 0 }}
+                    transition={{ duration: 2 + Math.random() * 2, ease: 'linear', delay: Math.random() * 0.5 }}
+                    style={{ position: 'absolute', top: 0 }}>
+                    {i % 2 === 0 ? <Heart size={16} color={D.coral} fill={D.coral} /> : <Star size={16} color={D.gold} fill={D.gold} />}
+                  </motion.div>
+                ))}
               </div>
 
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
-                className="text-gray-500 font-serif italic"
-              >
-                Esta será su próxima historia juntos 💌
-              </motion.p>
+              <div style={{ background: D.white, border: `2px solid ${D.border}`, borderTop: `4px solid ${D.coral}`, borderRadius: 24, padding: '32px 24px', textAlign: 'center', width: '100%', boxShadow: '0 12px 40px rgba(28,14,16,0.12)', position: 'relative', marginBottom: 16 }}>
+                <div style={{ position: 'absolute', top: 16, left: 16 }}><Heart size={16} color={D.coral} /></div>
+                <div style={{ position: 'absolute', top: 16, right: 16 }}><Star size={16} color={D.gold} /></div>
+
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ padding: '3px 14px', background: D.wine, borderRadius: 20 }}>
+                    <span className="caveat" style={{ fontSize: 12, fontWeight: 700, color: D.white }}>CITA #{selectedDate.id}</span>
+                  </span>
+                </div>
+                <div className="lora" style={{ fontSize: 26, fontWeight: 600, color: D.wine, marginBottom: 4, lineHeight: 1.3 }}>{selectedDate.name}</div>
+
+                <div style={{ height: 1, background: D.border, margin: '16px 0' }} />
+
+                <button onClick={() => navigateTo('detail', selectedDate.id)}
+                  style={{ width: '100%', padding: '13px', borderRadius: 14, background: D.wine, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+                  <Calendar size={16} color={D.white} />
+                  <span className="caveat" style={{ fontSize: 15, fontWeight: 700, color: D.white }}>Ver detalles de la cita</span>
+                </button>
+
+                <button onClick={reset}
+                  style={{ width: '100%', padding: '13px', borderRadius: 14, background: D.cream, border: `1.5px solid ${D.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <RefreshCw size={16} color={D.wine} />
+                  <span className="caveat" style={{ fontSize: 15, fontWeight: 700, color: D.wine }}>Girar otra vez</span>
+                </button>
+              </div>
+
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}>
+                <span className="lora" style={{ fontSize: 14, color: D.muted, fontStyle: 'italic' }}>Esta será su próxima historia juntos 💌</span>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
     </div>
   );
-};
-
-export default RoulettePage;
+}

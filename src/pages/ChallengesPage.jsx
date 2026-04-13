@@ -1,109 +1,125 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Plus, Flame, Smile, Gift } from 'lucide-react';
-import { motion } from 'framer-motion';
+﻿import React, { useState, useEffect } from 'react';
+import { ChevronLeft, Plus, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '@/lib/api';
+
+const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+function BgDoodles() {
+  return (
+    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.2}} viewBox="0 0 390 700" fill="none">
+      <text x="355" y="90" fontSize="12" fill="#D4A520" fontFamily="serif">✦</text>
+      <text x="20" y="200" fontSize="9" fill="#C44455" fontFamily="serif">✦</text>
+      <text x="360" y="320" fontSize="8" fill="#5B8ECC" fontFamily="serif">★</text>
+      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
+    </svg>
+  );
+}
+
+const DEFAULT_CHALLENGES = [
+  { id:1, type:'kiss',       title:'Beso Sorpresa',      description:'Dale un beso sorpresa en un momento inesperado', icon:'💋', accent:D.coral },
+  { id:2, type:'compliment', title:'Cumplido del Día',   description:'Dale un cumplido sincero que lo/la haga sonreír',  icon:'😊', accent:D.gold  },
+  { id:3, type:'surprise',   title:'Sorpresa Romántica', description:'Planea una cita sorpresa especial',                icon:'🎁', accent:D.blue  },
+];
 
 export default function ChallengesPage({ navigateTo }) {
-  const [challenges] = useState([
-    {
-      id: 1,
-      type: 'kiss',
-      title: 'Beso Sorpresa',
-      description: 'Dale un beso sorpresa en un momento inesperado',
-      icon: '💋',
-      color: 'from-red-500 to-pink-500'
-    },
-    {
-      id: 2,
-      type: 'compliment',
-      title: 'Cumplido del Día',
-      description: 'Dale un cumplido sincero que lo/la haga sonreír',
-      icon: '😊',
-      color: 'from-yellow-500 to-orange-500'
-    },
-    {
-      id: 3,
-      type: 'surprise',
-      title: 'Sorpresa Romántica',
-      description: 'Plana una cita sorpresa especial',
-      icon: '🎁',
-      color: 'from-purple-500 to-pink-500'
-    }
-  ]);
-
+  const [challenges] = useState(DEFAULT_CHALLENGES);
   const [completed, setCompleted] = useState({});
 
-  const toggleCompleted = (id) => {
-    setCompleted(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+  useEffect(() => {
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.getChallenges()
+        .then(rows => {
+          // rows = [{ challenge_id, type, completed, completed_at }, ...]
+          const map = {};
+          rows.forEach(r => { if (r.completed) map[r.challenge_id] = true; });
+          setCompleted(map);
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const toggle = async (id) => {
+    const ch = challenges.find(c => c.id === id);
+    setCompleted(p => ({ ...p, [id]: !p[id] }));
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.toggleChallenge(id, ch?.type).catch(() => {});
+    }
   };
 
+  const counts = { kiss: 0, compliment: 0, surprise: 0 };
+  Object.entries(completed).forEach(([id, done]) => {
+    if (done) {
+      const ch = challenges.find(c => c.id === Number(id));
+      if (ch) counts[ch.type]++;
+    }
+  });
+
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div style={{background:D.cream,minHeight:'100vh',maxWidth:430,margin:'0 auto',position:'relative',overflow:'hidden',paddingBottom:88}}>
+      <style>{STYLE}</style>
+      <BgDoodles />
+
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b-2 border-black">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex items-center gap-4">
-          <button
-            onClick={() => navigateTo('dashboard')}
-            className="p-2 hover:bg-gray-200 rounded-lg transition"
-          >
-            <ChevronLeft className="w-6 h-6 text-black" />
-          </button>
-          <h1 className="text-3xl font-bold text-black">Retos Diarios</h1>
+      <div style={{padding:'48px 20px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1.5px solid ${D.border}`,background:D.cream,position:'sticky',top:0,zIndex:40}}>
+        <button onClick={() => navigateTo('dashboard')}
+          style={{width:38,height:38,borderRadius:'50%',background:D.white,border:`1.5px solid ${D.border}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5}/>
+        </button>
+        <div style={{textAlign:'center'}}>
+          <div className="lora" style={{fontSize:20,fontWeight:600,color:D.wine,letterSpacing:1}}>Retos Diarios</div>
+          <div className="caveat" style={{fontSize:11,color:D.muted,letterSpacing:1}}>¡Haz uno hoy!</div>
         </div>
+        <div style={{width:38}}/>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-4 border-2 border-red-500 text-center shadow-md">
-            <p className="text-2xl font-bold text-red-600">💋</p>
-            <p className="text-sm text-black font-semibold mt-1">Besos: <span className="font-bold text-red-600">0</span></p>
-          </div>
-          <div className="bg-white rounded-xl p-4 border-2 border-yellow-500 text-center shadow-md">
-            <p className="text-2xl font-bold text-yellow-600">😊</p>
-            <p className="text-sm text-black font-semibold mt-1">Cumplidos: <span className="font-bold text-yellow-600">0</span></p>
-          </div>
-          <div className="bg-white rounded-xl p-4 border-2 border-red-500 text-center shadow-md">
-            <p className="text-2xl font-bold text-red-600">🎁</p>
-            <p className="text-sm text-black font-semibold mt-1">Sorpresas: <span className="font-bold text-red-600">0</span></p>
-          </div>
+      <div style={{padding:'20px 20px 0',position:'relative',zIndex:1}}>
+        {/* Stats strip */}
+        <div style={{background:D.wine,borderRadius:18,padding:'16px 20px',display:'flex',justifyContent:'space-around',marginBottom:22}}>
+          {[{icon:'💋',label:'Besos',count:counts.kiss},{icon:'😊',label:'Cumplidos',count:counts.compliment},{icon:'🎁',label:'Sorpresas',count:counts.surprise}].map(s=>(
+            <div key={s.label} style={{textAlign:'center'}}>
+              <div style={{fontSize:22}}>{s.icon}</div>
+              <div className="caveat" style={{fontSize:20,fontWeight:700,color:D.white,lineHeight:1}}>{s.count}</div>
+              <div className="caveat" style={{fontSize:11,color:'rgba(255,255,255,0.6)'}}>{s.label}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Challenges Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {challenges.map((challenge, index) => (
-            <motion.div
-              key={challenge.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`${challenge.id % 2 === 0 ? 'border-red-500' : 'border-yellow-500'} bg-white rounded-2xl p-8 text-black shadow-lg hover:shadow-xl transition cursor-pointer transform hover:scale-105 relative overflow-hidden border-2`}
-              onClick={() => toggleCompleted(challenge.id)}
-            >
-              {/* Checkmark overlay when completed */}
-              {completed[challenge.id] && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                  <div className="text-6xl">✓</div>
+        {/* Challenge cards */}
+        <div style={{display:'flex',flexDirection:'column',gap:14}}>
+          {challenges.map((ch,i) => (
+            <motion.div key={ch.id} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*0.08}}
+              whileTap={{scale:0.97}} onClick={() => toggle(ch.id)}
+              style={{background:D.white,borderRadius:20,border:`1.5px solid ${D.border}`,borderLeft:`4px solid ${ch.accent}`,
+                padding:'18px 18px',cursor:'pointer',position:'relative',overflow:'hidden',opacity:completed[ch.id]?0.7:1}}>
+              {completed[ch.id] && (
+                <div style={{position:'absolute',inset:0,background:'rgba(28,14,16,0.12)',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:19,zIndex:2}}>
+                  <span style={{fontSize:44}}>✓</span>
                 </div>
               )}
-
-              <div className="text-5xl mb-4">{challenge.icon}</div>
-              <h3 className="text-2xl font-bold mb-2">{challenge.title}</h3>
-              <p className="text-black font-semibold">{challenge.description}</p>
-              
-              <div className="mt-6 pt-4 border-t-2 border-gray-300">
-                <p className="text-sm font-semibold text-black">Click para marcar como completado</p>
+              <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
+                <div style={{width:48,height:48,borderRadius:14,background:`${ch.accent}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,flexShrink:0}}>
+                  {ch.icon}
+                </div>
+                <div style={{flex:1}}>
+                  <div className="lora" style={{fontSize:16,fontWeight:600,color:D.wine,marginBottom:4}}>{ch.title}</div>
+                  <div style={{fontSize:13,color:D.muted,lineHeight:1.5}}>{ch.description}</div>
+                  <div className="caveat" style={{fontSize:12,color:ch.accent,marginTop:8,fontWeight:700}}>
+                    {completed[ch.id] ? '¡Completado! ✦' : 'Toca para marcar ✓'}
+                  </div>
+                </div>
               </div>
             </motion.div>
           ))}
         </div>
 
-        {/* Add Challenge Button */}
-        <button className="mt-8 w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-xl hover:shadow-lg transition font-semibold text-lg">
-          <Plus className="w-6 h-6" />
-          Crear Reto Personalizado
+        {/* Add custom challenge CTA */}
+        <button style={{marginTop:20,width:'100%',padding:'14px',borderRadius:16,background:D.wine,border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <Plus size={18} color={D.white}/>
+          <span className="caveat" style={{fontSize:16,fontWeight:700,color:D.white}}>Crear Reto Personalizado</span>
         </button>
       </div>
     </div>

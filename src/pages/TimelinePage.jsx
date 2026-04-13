@@ -1,217 +1,153 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getTimelineEvents } from '@/lib/eventSync';
 
+const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
 export default function TimelinePage({ navigateTo }) {
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [photoIndex, setPhotoIndex] = useState(0);
+  const [events, setEvents]           = useState([]);
+  const [selectedEvent, setSelected]  = useState(null);
+  const [photoIndex, setPhotoIndex]   = useState(0);
 
-  useEffect(() => {
-    setEvents(getTimelineEvents());
-  }, []);
+  useEffect(() => { setEvents(getTimelineEvents()); }, []);
 
-  const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [events]);
+  const sorted = useMemo(() => [...events].sort((a,b) => new Date(a.date)-new Date(b.date)), [events]);
 
-  const openEvent = (event) => {
-    setSelectedEvent(event);
-    setPhotoIndex(0);
-  };
-
-  const closeEvent = () => {
-    setSelectedEvent(null);
-    setPhotoIndex(0);
-  };
-
-  const resolvePhotos = () => {
-    if (!selectedEvent) return [];
-
-    if (selectedEvent.sourceType === 'date' && selectedEvent.sourceId) {
-      const dates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-      const match = dates.find((item) => Number(item.id) === Number(selectedEvent.sourceId));
-      if (match) {
-        return [
-          ...(match.danielaPhotos || []),
-          ...(match.eduardoPhotos || [])
-        ];
-      }
+  const resolvePhotos = (ev) => {
+    if (!ev) return [];
+    if (ev.sourceType === 'date' && ev.sourceId) {
+      const dates = JSON.parse(localStorage.getItem('coupleDates')||'[]');
+      const m = dates.find(d => Number(d.id)===Number(ev.sourceId));
+      if (m) return [...(m.danielaPhotos||[]),...(m.eduardoPhotos||[])];
     }
-
-    if (selectedEvent.image && selectedEvent.image.startsWith('data:image')) {
-      return [selectedEvent.image];
-    }
-
+    if (ev.image && ev.image.startsWith('data:image')) return [ev.image];
     return [];
   };
 
-  const photos = resolvePhotos();
-  const hasMultiplePhotos = photos.length > 1;
-
-  const getCoverImage = (event) => {
-    if (!event) return null;
-
-    if (event.sourceType === 'date' && event.sourceId) {
-      const dates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-      const match = dates.find((item) => Number(item.id) === Number(event.sourceId));
-      if (match) {
-        const firstPhoto = (match.danielaPhotos || [])[0] || (match.eduardoPhotos || [])[0];
-        if (firstPhoto) return firstPhoto;
-      }
+  const getCover = (ev) => {
+    if (!ev) return null;
+    if (ev.sourceType === 'date' && ev.sourceId) {
+      const dates = JSON.parse(localStorage.getItem('coupleDates')||'[]');
+      const m = dates.find(d => Number(d.id)===Number(ev.sourceId));
+      if (m) return (m.danielaPhotos||[])[0]||(m.eduardoPhotos||[])[0]||null;
     }
-
-    if (event.image && String(event.image).startsWith('data:image')) {
-      return event.image;
-    }
-
+    if (ev.image && ev.image.startsWith('data:image')) return ev.image;
     return null;
   };
 
+  const photos = selectedEvent ? resolvePhotos(selectedEvent) : [];
+
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div style={{background:D.cream,minHeight:'100vh',maxWidth:430,margin:'0 auto',position:'relative',overflow:'hidden',paddingBottom:88}}>
+      <style>{STYLE}</style>
+
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b-2 border-black">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex items-center gap-4">
-          <button
-            onClick={() => navigateTo('dashboard')}
-            className="p-2 hover:bg-gray-200 rounded-lg transition"
-          >
-            <ChevronLeft className="w-6 h-6 text-black" />
-          </button>
-          <h1 className="text-3xl font-bold text-black">Línea del Tiempo</h1>
+      <div style={{padding:'48px 20px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1.5px solid ${D.border}`,background:D.cream,position:'sticky',top:0,zIndex:40}}>
+        <button onClick={() => navigateTo('dashboard')}
+          style={{width:38,height:38,borderRadius:'50%',background:D.white,border:`1.5px solid ${D.border}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5}/>
+        </button>
+        <div style={{textAlign:'center'}}>
+          <div className="lora" style={{fontSize:20,fontWeight:600,color:D.wine,letterSpacing:1}}>Línea del Tiempo</div>
+          <div className="caveat" style={{fontSize:11,color:D.muted}}>Nuestra historia ✦</div>
         </div>
+        <button onClick={() => navigateTo('moments')}
+          style={{width:38,height:38,borderRadius:'50%',background:D.coral,border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+          <Plus size={17} color={D.white}/>
+        </button>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Add Event Button */}
-        <button
-          onClick={() => navigateTo('moments')}
-          className="mb-12 w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-xl hover:shadow-lg transition font-semibold text-lg"
-        >
-          <Plus className="w-6 h-6" />
-          Agregar Momento
-        </button>
+      <div style={{padding:'20px',position:'relative',zIndex:1}}>
+        {sorted.length === 0 ? (
+          <div style={{textAlign:'center',padding:'48px 0'}}>
+            <div style={{fontSize:40,marginBottom:12}}>📖</div>
+            <p className="lora" style={{color:D.muted}}>Aún no hay momentos</p>
+            <p className="caveat" style={{fontSize:13,color:D.muted,marginTop:4}}>Guarda una cita para verla aquí</p>
+          </div>
+        ) : (
+          <div style={{position:'relative',paddingLeft:36}}>
+            {/* Vertical line */}
+            <div style={{position:'absolute',left:10,top:4,bottom:4,width:2,background:`repeating-linear-gradient(180deg,${D.coral} 0,${D.coral} 8px,transparent 8px,transparent 16px)`}}/>
 
-        {/* Timeline */}
-        <div className="relative">
-          {/* Vertical Line */}
-          <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-1 bg-red-500 transform md:-translate-x-1/2"></div>
-
-          {/* Events */}
-          {sortedEvents.length > 0 ? (
-            <div className="space-y-12">
-              {sortedEvents.map((event, index) => (
-                <motion.div
-                  key={event.id}
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.2 }}
-                  className={`flex ${index % 2 === 0 ? 'md:flex-row-reverse' : ''}`}
-                  onClick={() => openEvent(event)}
-                >
-                  {/* Left/Right Content */}
-                  <div className="md:w-1/2 md:px-8 ml-24 md:ml-0">
-                    <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-yellow-500 hover:shadow-xl transition cursor-pointer">
-                      {getCoverImage(event) ? (
-                        <img
-                          src={getCoverImage(event)}
-                          alt={event.title}
-                          className="w-full h-48 object-cover rounded-xl border-2 border-yellow-500 mb-4"
-                        />
-                      ) : (
-                        <div className="text-4xl mb-3">{event.image}</div>
-                      )}
-                      <p className="text-sm text-black font-semibold mb-2 bg-yellow-100 px-3 py-1 rounded border border-yellow-600 inline-block">
-                        {new Date(event.date).toLocaleDateString('es-ES', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </p>
-                      <h3 className="text-xl font-bold text-black mb-2">{event.title}</h3>
-                      <p className="text-black font-semibold">{event.description}</p>
+            {sorted.map((ev,i)=>{
+              const cover = getCover(ev);
+              const isEmoji = ev.image && !ev.image.startsWith('data:image');
+              return (
+                <motion.div key={ev.id} initial={{opacity:0,x:-16}} animate={{opacity:1,x:0}} transition={{delay:i*0.06}}
+                  onClick={() => { setSelected(ev); setPhotoIndex(0); }}
+                  style={{marginBottom:20,cursor:'pointer',position:'relative'}}>
+                  {/* Dot */}
+                  <div style={{position:'absolute',left:-31,top:16,width:14,height:14,borderRadius:'50%',background:D.coral,border:`2px solid ${D.cream}`,zIndex:2}}/>
+                  <div style={{background:D.white,borderRadius:18,border:`1.5px solid ${D.border}`,overflow:'hidden'}}>
+                    {cover && <img src={cover} alt={ev.title} style={{width:'100%',height:100,objectFit:'cover'}}/>}
+                    <div style={{padding:'12px 14px'}}>
+                      {!cover && isEmoji && <div style={{fontSize:28,marginBottom:6}}>{ev.image}</div>}
+                      <span style={{padding:'2px 10px',borderRadius:20,background:`${D.gold}22`,border:`1px solid ${D.gold}44`,display:'inline-block',marginBottom:6}}>
+                        <span className="caveat" style={{fontSize:11,color:D.wine,fontWeight:700}}>
+                          {new Date(ev.date).toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'})}
+                        </span>
+                      </span>
+                      <div className="lora" style={{fontSize:15,fontWeight:600,color:D.wine,lineHeight:1.3}}>{ev.title}</div>
+                      {ev.description && <div style={{fontSize:12,color:D.muted,marginTop:4,lineHeight:1.5}}>{ev.description}</div>}
                     </div>
-                  </div>
-
-                  {/* Timeline Dot */}
-                  <div className="absolute left-0 md:left-1/2 top-4 w-16 h-16 md:w-12 md:h-12 bg-red-50 rounded-full border-4 border-white shadow-lg flex items-center justify-center transform md:-translate-x-1/2">
-                    <div className="w-8 h-8 md:w-6 md:h-6 bg-red-500 rounded-full"></div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white border-2 border-black rounded-2xl p-8 text-center">
-              <p className="text-lg font-semibold text-black">Aún no hay momentos registrados.</p>
-              <p className="text-gray-600 mt-2">Guarda una salida o un momento para verlo aquí.</p>
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={closeEvent}>
-          <div
-            className="bg-white rounded-2xl shadow-2xl border-2 border-black max-w-3xl w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-black">{selectedEvent.title}</h2>
-              <button onClick={closeEvent} className="p-2 hover:bg-gray-100 rounded-lg transition">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-sm text-black font-semibold mb-4 bg-yellow-100 px-3 py-1 rounded border border-yellow-600 inline-block">
-              {new Date(selectedEvent.date).toLocaleDateString('es-ES', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </p>
-
-            {photos.length > 0 ? (
-              <div className="relative">
-                <img
-                  src={photos[photoIndex]}
-                  alt={`${selectedEvent.title} ${photoIndex + 1}`}
-                  className="w-full h-[420px] object-contain bg-black rounded-xl border-2 border-yellow-500"
-                />
-
-                {hasMultiplePhotos && (
-                  <>
-                    <button
-                      onClick={() => setPhotoIndex((photoIndex - 1 + photos.length) % photos.length)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 border border-black rounded-full p-2 hover:bg-white"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => setPhotoIndex((photoIndex + 1) % photos.length)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 border border-black rounded-full p-2 hover:bg-white"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                    <div className="mt-3 text-center text-sm text-gray-600 font-semibold">
-                      Foto {photoIndex + 1} de {photos.length}
+      {/* Detail overlay */}
+      <AnimatePresence>
+        {selectedEvent && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+            style={{position:'fixed',inset:0,background:'rgba(28,14,16,0.7)',zIndex:100,display:'flex',alignItems:'flex-end'}}
+            onClick={() => setSelected(null)}>
+            <motion.div initial={{y:60,opacity:0}} animate={{y:0,opacity:1}} exit={{y:60,opacity:0}}
+              onClick={e=>e.stopPropagation()}
+              style={{background:D.cream,borderRadius:'24px 24px 0 0',padding:24,width:'100%',maxHeight:'85vh',overflowY:'auto'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                <div className="lora" style={{fontSize:18,fontWeight:600,color:D.wine}}>{selectedEvent.title}</div>
+                <button onClick={() => setSelected(null)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20} color={D.muted}/></button>
+              </div>
+              <span style={{padding:'3px 12px',borderRadius:20,background:`${D.gold}22`,border:`1px solid ${D.gold}44`,display:'inline-block',marginBottom:14}}>
+                <span className="caveat" style={{fontSize:12,color:D.wine,fontWeight:700}}>
+                  {new Date(selectedEvent.date).toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'})}
+                </span>
+              </span>
+              {photos.length > 0 ? (
+                <>
+                  <img src={photos[photoIndex]} alt="" style={{width:'100%',maxHeight:'50vh',objectFit:'contain',borderRadius:16,border:`1.5px solid ${D.gold}`,background:D.wine}}/>
+                  {photos.length > 1 && (
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:16,marginTop:12}}>
+                      <button onClick={() => setPhotoIndex(p=>(p-1+photos.length)%photos.length)}
+                        style={{width:34,height:34,borderRadius:'50%',background:D.white,border:`1.5px solid ${D.border}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+                        <ChevronLeft size={16} color={D.wine}/>
+                      </button>
+                      <span className="caveat" style={{fontSize:13,color:D.muted}}>{photoIndex+1} / {photos.length}</span>
+                      <button onClick={() => setPhotoIndex(p=>(p+1)%photos.length)}
+                        style={{width:34,height:34,borderRadius:'50%',background:D.white,border:`1.5px solid ${D.border}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+                        <ChevronRight size={16} color={D.wine}/>
+                      </button>
                     </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-600 font-semibold">
-                No hay fotos para este momento.
-              </div>
-            )}
-
-            {selectedEvent.description && (
-              <p className="mt-4 text-black font-semibold">{selectedEvent.description}</p>
-            )}
-          </div>
-        </div>
-      )}
+                  )}
+                </>
+              ) : (
+                <div style={{textAlign:'center',padding:'24px',background:D.white,borderRadius:16,border:`1.5px dashed ${D.border}`}}>
+                  <div style={{fontSize:36,marginBottom:8}}>{selectedEvent.image||'📖'}</div>
+                  <p className="caveat" style={{color:D.muted,fontSize:13}}>Sin fotos para este momento</p>
+                </div>
+              )}
+              {selectedEvent.description && (
+                <p style={{fontSize:14,color:D.wine,lineHeight:1.7,marginTop:14}}>{selectedEvent.description}</p>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

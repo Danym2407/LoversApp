@@ -21,8 +21,12 @@ import PersonalityTestPage from '@/pages/PersonalityTestPage';
 import PersonalityProfilePage from '@/pages/PersonalityProfilePage';
 import CitasPersonalizadasPage from '@/pages/CitasPersonalizadasPage';
 import CitasAleatoriasPage from '@/pages/CitasAleatoriasPage';
+import AdminPage from '@/pages/AdminPage';
 import { Toaster } from '@/components/ui/toaster';
 import { initializeDates } from '@/data/dates';
+import BottomNav from '@/components/BottomNav';
+
+const NO_NAV_PAGES = new Set(['personality-test', 'personality-profile', 'admin']);
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -33,9 +37,13 @@ function App() {
 
   useEffect(() => {
     initializeDates();
-    // Verificar si el usuario ya está autenticado
-    const user = localStorage.getItem('loversappUser');
-    setIsAuthenticated(!!user);
+    const token = localStorage.getItem('loversappToken');
+    const user  = localStorage.getItem('loversappUser');
+    setIsAuthenticated(!!(token && user));
+    // Hash-based shortcut: /#admin abre el panel directamente
+    if (window.location.hash === '#admin') {
+      setCurrentPage('admin');
+    }
   }, []);
 
   const navigateTo = (page, dateId = null) => {
@@ -47,6 +55,7 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('loversappUser');
+    localStorage.removeItem('loversappToken');
     setIsAuthenticated(false);
     setCurrentPage('dashboard');
   };
@@ -58,23 +67,8 @@ function App() {
         <meta name="description" content="LoversApp: La aplicación para parejas enamoradas. Citas, calendario, retos diarios, cartas digitales, línea del tiempo y más." />
       </Helmet>
       
-      <div className="min-h-screen bg-white">
-        {showLoginModal && !isAuthenticated ? (
-          <LoginPage 
-            onLoginSuccess={() => {
-              setIsAuthenticated(true);
-              setShowLoginModal(false);
-            }}
-            onClose={() => setShowLoginModal(false)}
-            defaultTab={loginTab}
-            onStartTest={() => navigateTo('personality-test')}
-          />
-        ) : (
-          <>
-            {currentPage === 'dashboard' && <DashboardPage navigateTo={navigateTo} onLogout={handleLogout} onOpenLogin={(tab = 'login') => {
-              setLoginTab(tab);
-              setShowLoginModal(true);
-            }} isAuthenticated={isAuthenticated} />}
+      <div style={{ background: '#FEF8F0', minHeight: '100vh' }}>
+        {currentPage === 'dashboard' && <DashboardPage navigateTo={navigateTo} onLogout={handleLogout} onOpenLogin={(tab = 'login') => { setLoginTab(tab); setShowLoginModal(true); }} isAuthenticated={isAuthenticated} />}
         {currentPage === 'profile' && <ProfilePage navigateTo={navigateTo} />}
         {currentPage === 'home' && <HomePage navigateTo={navigateTo} />}
         {currentPage === 'dates' && <DatesListPage navigateTo={navigateTo} />}
@@ -94,9 +88,21 @@ function App() {
         {currentPage === 'personality-profile' && <PersonalityProfilePage navigateTo={navigateTo} />}
         {currentPage === 'citas-personalizadas' && <CitasPersonalizadasPage navigateTo={navigateTo} />}
         {currentPage === 'citas-aleatorias' && <CitasAleatoriasPage navigateTo={navigateTo} />}
-            <Toaster />
-          </>
+        {currentPage === 'admin' && <AdminPage navigateTo={navigateTo} />}
+        {!NO_NAV_PAGES.has(currentPage) && (
+          <BottomNav currentPage={currentPage} navigateTo={navigateTo} />
         )}
+        {showLoginModal && !isAuthenticated && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+            <LoginPage
+              onLoginSuccess={() => { setIsAuthenticated(true); setShowLoginModal(false); }}
+              onClose={() => setShowLoginModal(false)}
+              defaultTab={loginTab}
+              onStartTest={() => { setShowLoginModal(false); navigateTo('personality-test'); }}
+            />
+          </div>
+        )}
+        <Toaster />
       </div>
     </>
   );

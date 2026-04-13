@@ -1,310 +1,246 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Heart, Star, Book, TrendingUp, Shuffle, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+﻿import React, { useState, useEffect } from 'react';
+import { ChevronLeft, Search, Heart } from 'lucide-react';
+import { api, mapCoupleDate } from '@/lib/api';
 
-const HomePage = ({ navigateTo }) => {
-  const [completedCount, setCompletedCount] = useState(0);
-  const [relationshipStartDate, setRelationshipStartDate] = useState(null);
-  const [boyfriendDate, setBoyfriendDate] = useState(null);
-  const [timeData, setTimeData] = useState({ years: 0, days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const { toast } = useToast();
+// ── BgDoodles ──────────────────────────────────────────────────────────────────
+function BgDoodles() {
+  return (
+    <svg style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.25 }} viewBox="0 0 390 820" fill="none">
+      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
+      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
+      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
+      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
+      <text x="352" y="560" fontSize="9"  fill="#E8A020" fontFamily="serif">✦</text>
+      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
+      <path d="M15 340 Q35 335 43 348" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
-  // Calcular tiempo juntos (años, días, horas, minutos, segundos)
-  const calculateDaysTogether = () => {
-    const userData = localStorage.getItem('loversappUser');
-    if (userData) {
-      const user = JSON.parse(userData);
-      if (user.relationshipStartDate) {
-        setRelationshipStartDate(user.relationshipStartDate);
-        const startDate = new Date(user.relationshipStartDate);
-        const now = new Date();
-        
-        // Calcular la diferencia
-        let years = now.getFullYear() - startDate.getFullYear();
-        let months = now.getMonth() - startDate.getMonth();
-        let days = now.getDate() - startDate.getDate();
-        
-        // Ajustar si es necesario
-        if (days < 0) {
-          months--;
-          const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-          days += prevMonth.getDate();
-        }
-        
-        if (months < 0) {
-          years--;
-          months += 12;
-        }
-        
-        // Calcular horas, minutos, segundos
-        let hours = now.getHours() - startDate.getHours();
-        let minutes = now.getMinutes() - startDate.getMinutes();
-        let seconds = now.getSeconds() - startDate.getSeconds();
-        
-        if (seconds < 0) {
-          minutes--;
-          seconds += 60;
-        }
-        
-        if (minutes < 0) {
-          hours--;
-          minutes += 60;
-        }
-        
-        if (hours < 0) {
-          days--;
-          hours += 24;
-        }
-        
-        // Convertir meses a días adicionales
-        const totalDays = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
-        const daysInYear = 365;
-        const remainingDaysAfterYears = totalDays - (years * daysInYear);
-        
-        setTimeData({
-          years,
-          days: remainingDaysAfterYears,
-          hours,
-          minutes,
-          seconds
-        });
+// ── DoodleTag ──────────────────────────────────────────────────────────────────
+const CAT_STYLE = {
+  Exterior:   { bg:'#F0FAE8', color:'#3A6A20', dot:'#5BAA6A' },
+  Interior:   { bg:'#F5EEFA', color:'#5A2070', dot:'#9B59C0' },
+  Cultural:   { bg:'#EBF3FC', color:'#1A3A7A', dot:'#5B8ECC' },
+  Gastro:     { bg:'#FFF0E8', color:'#7A3010', dot:'#E0723A' },
+  Deportes:   { bg:'#E8FAF2', color:'#1A5A3A', dot:'#3AAA72' },
+  Romántica:  { bg:'#FEECF0', color:'#7A1530', dot:'#C44455' },
+  Aventura:   { bg:'#F0FAE8', color:'#2A5A10', dot:'#5BAA6A' },
+  'Muy bajo': { bg:'#EEF8EE', color:'#2A6A2A', dot:'#5BAA6A' },
+  Bajo:       { bg:'#FEFBE8', color:'#6A5A10', dot:'#D4A520' },
+  Medio:      { bg:'#FEF5D8', color:'#8A6A10', dot:'#E8A020' },
+  Alto:       { bg:'#FEE8E8', color:'#8A2020', dot:'#C44455' },
+};
+function DoodleTag({ label }) {
+  const s = CAT_STYLE[label] || { bg:'#F0E8E0', color:'#7A5A55', dot:'#B09A90' };
+  return (
+    <span style={{ fontSize:10, fontFamily:"'Caveat',cursive", fontWeight:600, background:s.bg, color:s.color, borderRadius:20, padding:'2px 9px', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4 }}>
+      <span style={{ width:5, height:5, borderRadius:'50%', background:s.dot, display:'inline-block', flexShrink:0 }}/>
+      {label}
+    </span>
+  );
+}
+
+// ── helpers ────────────────────────────────────────────────────────────────────
+function loadDatesFromStorage() {
+  try { return JSON.parse(localStorage.getItem('coupleDates') || '[]'); } catch { return []; }
+}
+function saveDates(list) { localStorage.setItem('coupleDates', JSON.stringify(list)); }
+
+const ALL_FILTERS = ['Todas', 'Exterior', 'Interior', 'Cultural', 'Gastro', 'Deportes'];
+
+export default function HomePage({ navigateTo }) {
+  const [dates,        setDates]        = useState([]);
+  const [activeFilter, setActiveFilter] = useState('Todas');
+  const [search,       setSearch]       = useState('');
+
+  useEffect(() => { fetchDates(); }, []);
+
+  const fetchDates = async () => {
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      try {
+        const rows = await api.getCoupleDates();
+        const mapped = rows.map(mapCoupleDate);
+        setDates(mapped);
+        saveDates(mapped); // keep localStorage in sync for DateDetailPage
+        return;
+      } catch (e) {
+        // fall through to cached data
       }
-      if (user.boyfriendDate) {
-        setBoyfriendDate(user.boyfriendDate);
-      }
+    }
+    setDates(loadDatesFromStorage());
+  };
+
+  const toggleLike = async (id) => {
+    const target = dates.find(d => d.id === id);
+    if (!target) return;
+    const newLiked = !target.liked;
+    const next = dates.map(d => d.id === id ? { ...d, liked: newLiked } : d);
+    setDates(next);
+    saveDates(next);
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.updateCoupleDate(id, { liked: newLiked }).catch(() => {});
     }
   };
 
-  useEffect(() => {
-    const dates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-    const completed = dates.filter(d => d.status === 'completed').length;
-    setCompletedCount(completed);
-    
-    calculateDaysTogether();
-    
-    // Actualizar contador cada segundo
-    const interval = setInterval(calculateDaysTogether, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleRandomDate = () => {
-    const dates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-    const pending = dates.filter(d => d.status === 'pending');
-    
-    if (pending.length === 0) {
-      toast({
-        title: "¡Todas completadas! 🎉",
-        description: "Han completado todas las citas. ¡Qué amor tan bonito!",
-      });
-      return;
+  const skipDate = async (id) => {
+    const next = dates.map(d => d.id === id ? { ...d, status: 'skipped' } : d);
+    setDates(next);
+    saveDates(next);
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.updateCoupleDate(id, { status: 'skipped' }).catch(() => {});
     }
-
-    navigateTo('roulette');
   };
+
+  const userRaw = localStorage.getItem('loversappUser');
+  const user    = userRaw ? JSON.parse(userRaw) : null;
+  const couple  = (user?.name && user?.partner)
+    ? `${user.name} & ${user.partner}`.toUpperCase()
+    : 'ANDREA & MARCO';
+
+  const filtered = dates.filter(d => {
+    if (d.status === 'skipped') return false;
+    const cats = d.categories || (d.category ? [d.category] : []);
+    const matchFilter = activeFilter === 'Todas' || cats.includes(activeFilter);
+    const matchSearch = d.name?.toLowerCase().includes(search.toLowerCase());
+    return matchFilter && matchSearch;
+  });
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Decorative doodles */}
-      <div className="absolute top-8 left-8 text-red-500 opacity-20">
-        <Heart className="w-16 h-16" fill="currentColor" />
-      </div>
-      <div className="absolute bottom-12 right-12 text-yellow-400 opacity-20">
-        <Star className="w-20 h-20" fill="currentColor" />
-      </div>
-      <div className="absolute top-1/4 right-1/4 text-red-500 opacity-10">
-        <Heart className="w-12 h-12" fill="currentColor" />
-      </div>
-      <div className="absolute bottom-1/3 left-1/4 text-yellow-400 opacity-10">
-        <Star className="w-10 h-10" fill="currentColor" />
+    <div style={{ background:'#FDF6EC', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:430, margin:'0 auto', fontFamily:"'Lora',Georgia,serif", position:'relative', overflow:'hidden' }}>
+      <style>{`
+        .caveat { font-family: 'Caveat', cursive; }
+        .lora   { font-family: 'Lora', Georgia, serif; }
+        input:focus { outline: none; }
+        ::-webkit-scrollbar { display: none; }
+      `}</style>
+      <BgDoodles />
+
+      {/* ── HEADER ── */}
+      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1.5px solid #EDE0D0', background:'#FDF6EC', position:'sticky', top:0, zIndex:40 }}>
+        <button onClick={() => navigateTo('dashboard')}
+          style={{ width:38, height:38, borderRadius:'50%', background:'#fff', border:'1.5px solid #EDE0D0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <ChevronLeft size={16} color="#C44455" strokeWidth={2.5}/>
+        </button>
+        <div style={{ textAlign:'center' }}>
+          <div className="lora" style={{ fontSize:20, color:'#1C0E10', fontWeight:600, letterSpacing:1 }}>100 Citas</div>
+          <div className="caveat" style={{ fontSize:11, color:'#C44455', letterSpacing:2, marginTop:2 }}>✦ {couple} ✦</div>
+        </div>
+        <button style={{ width:38, height:38, borderRadius:'50%', background:'#fff', border:'1.5px solid #EDE0D0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <Search size={15} color="#C44455"/>
+        </button>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="max-w-2xl w-full text-center"
-      >
-        {/* Title */}
-        <motion.h1
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-6xl md:text-7xl font-serif text-black mb-4"
-          style={{ fontFamily: 'Georgia, serif' }}
-        >
-          100 citas de
-        </motion.h1>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-          className="flex items-center justify-center gap-3 mb-8"
-        >
-          <span className="text-4xl md:text-5xl font-serif text-black">Daniela</span>
-          <Heart className="w-8 h-8 text-red-500" fill="currentColor" />
-          <span className="text-4xl md:text-5xl font-serif text-black">Eduardo</span>
-        </motion.div>
+      {/* ── PERFIL CHIPS ── */}
+      <div style={{ padding:'12px 20px 0', display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative', zIndex:1 }}>
+        <div style={{ display:'flex', gap:6 }}>
+          <span className="caveat" style={{ fontSize:12, fontWeight:700, background:'#1C0E10', color:'#F0C4CC', borderRadius:20, padding:'4px 12px' }}>Híbrido ⚖️</span>
+          <span className="caveat" style={{ fontSize:12, fontWeight:700, background:'#FEF9E8', color:'#7A6A20', borderRadius:20, padding:'4px 12px', border:'1.5px solid #E8D890' }}>Presup. Medio</span>
+        </div>
+        <span className="caveat" style={{ fontSize:12, color:'#9A7A6A' }}>{filtered.length} citas</span>
+      </div>
 
-        {/* Progress Counter */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-          className="inline-block mb-12 px-8 py-4 border-4 border-black rounded-lg"
-        >
-          <div className="text-7xl font-bold text-black font-mono">
-            {completedCount}/100
+      {/* ── SEARCH BAR ── */}
+      <div style={{ padding:'10px 20px 4px', position:'relative', zIndex:1 }}>
+        <div style={{ background:'#fff', border:'1.5px solid #EDE0D0', borderRadius:16, padding:'9px 14px', display:'flex', alignItems:'center', gap:8 }}>
+          <Search size={14} color="#C8B8A8"/>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar cita..."
+            className="caveat"
+            style={{ border:'none', background:'transparent', outline:'none', fontSize:14, fontWeight:600, color:'#1C0E10', flex:1 }}
+          />
+        </div>
+      </div>
+
+      {/* ── FILTER CHIPS ── */}
+      <div style={{ padding:'10px 20px 12px', display:'flex', gap:7, overflowX:'auto', scrollbarWidth:'none', position:'relative', zIndex:1 }}>
+        {ALL_FILTERS.map(f => {
+          const active = activeFilter === f;
+          return (
+            <button key={f} onClick={() => setActiveFilter(f)} className="caveat"
+              style={{ background: active?'#1C0E10':'#fff', color: active?'#F0C4CC':'#7A5A55',
+                border: active?'1.5px solid #1C0E10':'1.5px solid #EDE0D0',
+                borderRadius:20, padding:'5px 16px', fontSize:13, fontWeight: active?700:600,
+                cursor:'pointer', whiteSpace:'nowrap' }}>
+              {f}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── CITA LIST ── */}
+      <div style={{ padding:'0 20px', display:'flex', flexDirection:'column', gap:8, flex:1, overflowY:'auto', position:'relative', zIndex:1 }}>
+        {filtered.length === 0 && (
+          <div style={{ textAlign:'center', padding:'48px 0' }}>
+            <div style={{ fontSize:36, marginBottom:10 }}>🔍</div>
+            <p className="lora" style={{ color:'#9A7A6A' }}>No encontramos citas</p>
           </div>
-          <div className="text-sm text-gray-600 mt-2 font-sans">citas completadas</div>
-        </motion.div>
-
-        {/* Days Together Counter */}
-        {relationshipStartDate && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
-            className="mb-12 px-6 py-8 border-4 border-red-500 rounded-2xl bg-gradient-to-br from-red-50 to-red-100 mx-auto w-full max-w-lg"
-          >
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <Heart className="w-7 h-7 text-red-500 fill-red-500" />
-              <span className="text-2xl font-bold text-red-600">Juntos</span>
-              <Heart className="w-7 h-7 text-red-500 fill-red-500" />
-            </div>
-            
-            {/* Time Counter Grid */}
-            <div className="grid grid-cols-5 gap-2 mb-6">
-              {/* Años */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 }}
-                className="bg-white border-2 border-red-500 rounded-lg p-3 text-center"
-              >
-                <div className="text-2xl font-bold text-red-600 font-mono">
-                  {timeData.years}
-                </div>
-                <div className="text-xs font-semibold text-gray-600 mt-1">Años</div>
-              </motion.div>
-
-              {/* Días */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.95 }}
-                className="bg-white border-2 border-red-500 rounded-lg p-3 text-center"
-              >
-                <div className="text-2xl font-bold text-red-600 font-mono">
-                  {timeData.days}
-                </div>
-                <div className="text-xs font-semibold text-gray-600 mt-1">Días</div>
-              </motion.div>
-
-              {/* Horas */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1 }}
-                className="bg-white border-2 border-red-500 rounded-lg p-3 text-center"
-              >
-                <div className="text-2xl font-bold text-red-600 font-mono">
-                  {String(timeData.hours).padStart(2, '0')}
-                </div>
-                <div className="text-xs font-semibold text-gray-600 mt-1">Horas</div>
-              </motion.div>
-
-              {/* Minutos */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.05 }}
-                className="bg-white border-2 border-red-500 rounded-lg p-3 text-center"
-              >
-                <div className="text-2xl font-bold text-red-600 font-mono">
-                  {String(timeData.minutes).padStart(2, '0')}
-                </div>
-                <div className="text-xs font-semibold text-gray-600 mt-1">Min</div>
-              </motion.div>
-
-              {/* Segundos */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.1 }}
-                className="bg-white border-2 border-red-500 rounded-lg p-3 text-center"
-              >
-                <div className="text-2xl font-bold text-red-600 font-mono">
-                  {String(timeData.seconds).padStart(2, '0')}
-                </div>
-                <div className="text-xs font-semibold text-gray-600 mt-1">Seg</div>
-              </motion.div>
-            </div>
-
-            {/* Fecha inicio */}
-            <div className="text-center text-sm text-gray-600 border-t border-red-200 pt-4">
-              <p className="font-semibold">Desde: {new Date(relationshipStartDate).toLocaleDateString('es-ES')}</p>
-              {boyfriendDate && (
-                <p className="mt-2 text-red-600 font-semibold">
-                  💑 Novios desde: {new Date(boyfriendDate).toLocaleDateString('es-ES')}
-                </p>
-              )}
-            </div>
-          </motion.div>
         )}
 
-        {/* Navigation Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.5 }}
-          className="flex flex-col gap-4 max-w-md mx-auto"
-        >
-          <Button
-            onClick={() => navigateTo('dates')}
-            className="h-14 text-lg bg-black text-white hover:bg-gray-800 transition-all duration-300 border-2 border-black group"
-          >
-            <Book className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-            Ver todas las citas
-          </Button>
+        {filtered.map((date, i) => {
+          const isFav = !!date.liked;
+          const cats  = date.categories || (date.category ? [date.category] : []);
+          const num   = String(date.priority ?? i + 1).padStart(2, '0');
+          return (
+            <div key={date.id}
+              onClick={() => navigateTo('detail', date.id)}
+              style={{ background:'#fff', border:'1.5px solid #EDE0D0',
+                borderLeft: isFav ? '3.5px solid #C44455' : '3.5px solid #EDE0D0',
+                borderRadius:18, padding:'12px 14px',
+                display:'flex', alignItems:'center', gap:12, cursor:'pointer', transition:'transform 0.12s' }}>
 
-          <Button
-            onClick={() => navigateTo('roulette')}
-            variant="outline"
-            className="h-14 text-lg bg-white text-black border-2 border-red-500 hover:bg-red-50 transition-all duration-300 group"
-          >
-            <Shuffle className="w-5 h-5 mr-2 group-hover:rotate-180 transition-transform duration-500" />
-            Ruleta de citas
-          </Button>
+              {/* Number badge */}
+              <div style={{ minWidth:30, height:30, borderRadius:10,
+                background: isFav?'#FEE8EC':'#F5EEE8',
+                display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <span className="caveat" style={{ fontSize:13, fontWeight:700, color: isFav?'#C44455':'#9A7A6A' }}>{num}</span>
+              </div>
 
-          <Button
-            onClick={() => navigateTo('stats')}
-            variant="outline"
-            className="h-14 text-lg bg-white text-black border-2 border-yellow-500 hover:bg-yellow-50 transition-all duration-300 group"
-          >
-            <TrendingUp className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-            Ver estadísticas
-          </Button>
+              {/* Info */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div className="lora" style={{ fontSize:13, fontWeight:600, color:'#1C0E10', marginBottom:6, lineHeight:1.3 }}>
+                  {date.name}
+                </div>
+                <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                  {cats.map(c => <DoodleTag key={c} label={c}/>)}
+                  {date.budget && <DoodleTag label={date.budget}/>}
+                  {date.time && (
+                    <span className="caveat" style={{ fontSize:10, fontWeight:600, background:'#F5EEE8', color:'#8A7060', borderRadius:20, padding:'2px 9px' }}>{date.time}</span>
+                  )}
+                </div>
+              </div>
 
-          <Button
-            onClick={() => navigateTo('dashboard')}
-            className="h-14 text-lg bg-black text-white hover:shadow-lg transition-all duration-300 border-2 border-red-500 group"
-          >
-            ❤️ Ir a LoversApp
-          </Button>
-        </motion.div>
+              {/* Heart + Skip */}
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <button onClick={e => { e.stopPropagation(); toggleLike(date.id); }}
+                  style={{ background:'none', border:'none', cursor:'pointer', padding:4 }}>
+                  <Heart size={17} color="#C44455" fill={isFav?'#C44455':'none'} strokeWidth={1.5}/>
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); if (window.confirm('¿Ocultar esta cita de la lista?')) skipDate(date.id); }}
+                  title="Ocultar cita"
+                  style={{ background:'none', border:'none', cursor:'pointer', padding:4, opacity: 0.4 }}>
+                  <span style={{ fontSize: 14, color: '#9A7A6A' }}>✕</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
 
-        {/* Decorative line */}
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: '100%' }}
-          transition={{ delay: 1, duration: 0.8 }}
-          className="mt-12 h-0.5 bg-black opacity-20 mx-auto max-w-xs"
-        />
-      </motion.div>
+        {filtered.length < dates.length && (
+          <div style={{ textAlign:'center', padding:'8px 0 16px' }}>
+            <span className="caveat" style={{ fontSize:13, color:'#C44455' }}>
+              · · · {dates.length - filtered.length} citas más · · ·
+            </span>
+          </div>
+        )}
+        <div style={{ height:80 }}/>
+      </div>
     </div>
   );
-};
-
-export default HomePage;
+}

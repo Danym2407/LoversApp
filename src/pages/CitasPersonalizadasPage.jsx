@@ -1,376 +1,294 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Heart, Filter, Star, MapPin, DollarSign, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { citasDatabase, citasPorCategoria } from '@/data/citas';
+﻿import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ThumbsUp, ThumbsDown, Heart } from "lucide-react";
+import { citasDatabase, citasPorCategoria } from "@/data/citas";
+import { api } from "@/lib/api";
+
+const D = {
+  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
+  border: "#EDE0D0", muted: "#9A7A6A"
+};
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+const FILTERS = ["Todas", "Exterior", "Interior", "Cultural", "Gastronómica", "Deportes"];
+const ACCENT_COLORS = [D.coral, D.gold, D.blue, D.green];
 
 export default function CitasPersonalizadasPage({ navigateTo }) {
   const [citas, setCitas] = useState([]);
   const [filteredCitas, setFilteredCitas] = useState([]);
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState("Todas");
   const [personalityData, setPersonalityData] = useState(null);
   const [preferences, setPreferences] = useState({});
   const [stats, setStats] = useState({ likes: 0, dislikes: 0 });
   const [testCompleted, setTestCompleted] = useState(false);
 
   useEffect(() => {
-    // Obtener datos del test de personalidad
-    const userData = JSON.parse(localStorage.getItem('loversappUser') || '{}');
+    const userData = JSON.parse(localStorage.getItem("loversappUser") || "{}");
     if (userData.personalityTest?.completed) {
       setTestCompleted(true);
       setPersonalityData(userData.personalityTest);
-      generatePersonalizedCitas(userData.personalityTest);
+      const generatedCitas = generatePersonalizedCitas(userData.personalityTest);
+      setCitas(generatedCitas);
+      setFilteredCitas(generatedCitas);
     }
-    
-    // Cargar preferencias guardadas
-    if (userData.citaPreferences) {
+    // Load preferences: API first, localStorage fallback
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.getPreferences()
+        .then(prefs => {
+          setPreferences(prefs);
+          const likes = Object.values(prefs).filter(p => p === 'like').length;
+          const dislikes = Object.values(prefs).filter(p => p === 'dislike').length;
+          setStats({ likes, dislikes });
+        })
+        .catch(() => {
+          if (userData.citaPreferences) {
+            setPreferences(userData.citaPreferences);
+            const likes = Object.values(userData.citaPreferences).filter(p => p === 'like').length;
+            const dislikes = Object.values(userData.citaPreferences).filter(p => p === 'dislike').length;
+            setStats({ likes, dislikes });
+          }
+        });
+    } else if (userData.citaPreferences) {
       setPreferences(userData.citaPreferences);
-      calculateStats(userData.citaPreferences);
+      const likes = Object.values(userData.citaPreferences).filter(p => p === 'like').length;
+      const dislikes = Object.values(userData.citaPreferences).filter(p => p === 'dislike').length;
+      setStats({ likes, dislikes });
     }
   }, []);
 
   const generatePersonalizedCitas = (testData) => {
-    const personality = testData.personality; // tranquilo, extremo, hibrido
-    const budgetLevel = testData.budgetLevel; // 1-5
-    
-    // Mapear budget a keys
-    const budgetKeys = {
-      1: 'very_low',
-      2: 'low',
-      3: 'medium',
-      4: 'high',
-      5: 'very_high'
+    const personalityMap = {
+      very_calm: "tranquilo", calm: "tranquilo", balanced: "hibrido",
+      adventurous: "hibrido", very_adventurous: "extremo"
     };
-    
-    const budgetKey = budgetKeys[budgetLevel];
+    const budgetMap = { very_low: 1, low: 2, medium: 3, high: 4, very_high: 5 };
+    const personality = personalityMap[testData.personalityType] || "hibrido";
+    const budgetKey = budgetMap[testData.budget] || 3;
     const key = `${personality}-${budgetKey}`;
-    
-    // Obtener citas específicas para esta combinación
-    let personalizedCitas = citasDatabase[key] || [];
-    
-    // Completar hasta 100 si faltan
-    if (personalizedCitas.length < 100) {
-      const remaining = 100 - personalizedCitas.length;
-      const additionalCitas = Object.values(citasPorCategoria)
-        .flat()
-        .slice(0, remaining);
-      personalizedCitas = [...personalizedCitas, ...additionalCitas];
+
+    let pool = [];
+    if (citasDatabase?.[key]) pool = [...citasDatabase[key]];
+    const catPool = Object.values(citasPorCategoria || {}).flat();
+    const seen = new Set(pool.map(c => c.id));
+    for (const c of catPool) {
+      if (!seen.has(c.id)) { pool.push(c); seen.add(c.id); }
     }
-    
-    // Shuffle para randomizar
-    personalizedCitas = personalizedCitas
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 100)
-      .map((cita, index) => ({ ...cita, id: index + 1 }));
-    
-    setCitas(personalizedCitas);
-    setFilteredCitas(personalizedCitas);
+    while (pool.length < 100) pool.push(...pool.slice(0, 100 - pool.length));
+    pool = pool.slice(0, 100);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.map((c, i) => ({ ...c, displayId: i + 1 }));
   };
 
-  const handleFilter = (filter) => {
-    setSelectedFilter(filter);
-    
-    if (filter === 'all') {
+  useEffect(() => {
+    if (selectedFilter === "Todas") {
       setFilteredCitas(citas);
     } else {
-      setFilteredCitas(citas.filter(cita => cita.category === filter));
+      setFilteredCitas(citas.filter(c =>
+        c.category?.toLowerCase().includes(selectedFilter.toLowerCase())
+      ));
     }
-  };
-
-  const calculateStats = (prefs) => {
-    const likes = Object.values(prefs).filter(p => p === 'like').length;
-    const dislikes = Object.values(prefs).filter(p => p === 'dislike').length;
-    setStats({ likes, dislikes });
-  };
+  }, [selectedFilter, citas]);
 
   const handleLikeCita = (citaId) => {
-    const newPreferences = { ...preferences };
-    
-    if (newPreferences[citaId] === 'like') {
-      delete newPreferences[citaId];
-    } else {
-      newPreferences[citaId] = 'like';
+    const userData = JSON.parse(localStorage.getItem("loversappUser") || "{}");
+    const prefs = { ...preferences };
+    const newVal = prefs[citaId] === "like" ? null : "like";
+    if (newVal) prefs[citaId] = newVal; else delete prefs[citaId];
+    userData.citaPreferences = prefs;
+    localStorage.setItem("loversappUser", JSON.stringify(userData));
+    setPreferences(prefs);
+    const likes = Object.values(prefs).filter(p => p === "like").length;
+    const dislikes = Object.values(prefs).filter(p => p === "dislike").length;
+    setStats({ likes, dislikes });
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.setPreference(citaId, newVal || 'none').catch(() => {});
     }
-    
-    setPreferences(newPreferences);
-    calculateStats(newPreferences);
-    
-    // Guardar en localStorage
-    const userData = JSON.parse(localStorage.getItem('loversappUser') || '{}');
-    userData.citaPreferences = newPreferences;
-    localStorage.setItem('loversappUser', JSON.stringify(userData));
   };
 
   const handleDislikeCita = (citaId) => {
-    const newPreferences = { ...preferences };
-    
-    if (newPreferences[citaId] === 'dislike') {
-      delete newPreferences[citaId];
-    } else {
-      newPreferences[citaId] = 'dislike';
+    const userData = JSON.parse(localStorage.getItem("loversappUser") || "{}");
+    const prefs = { ...preferences };
+    const newVal = prefs[citaId] === "dislike" ? null : "dislike";
+    if (newVal) prefs[citaId] = newVal; else delete prefs[citaId];
+    userData.citaPreferences = prefs;
+    localStorage.setItem("loversappUser", JSON.stringify(userData));
+    setPreferences(prefs);
+    const likes = Object.values(prefs).filter(p => p === "like").length;
+    const dislikes = Object.values(prefs).filter(p => p === "dislike").length;
+    setStats({ likes, dislikes });
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.setPreference(citaId, newVal || 'none').catch(() => {});
     }
-    
-    setPreferences(newPreferences);
-    calculateStats(newPreferences);
-    
-    // Guardar en localStorage
-    const userData = JSON.parse(localStorage.getItem('loversappUser') || '{}');
-    userData.citaPreferences = newPreferences;
-    localStorage.setItem('loversappUser', JSON.stringify(userData));
   };
 
-  const getBudgetLabel = (budget) => {
-    const labels = {
-      1: 'Muy Bajo',
-      2: 'Bajo',
-      3: 'Medio',
-      4: 'Alto',
-      5: 'Muy Alto'
-    };
-    return labels[budget] || 'Medio';
-  };
-
-  const getPersonalityEmoji = (personality) => {
-    const emojis = {
-      'tranquilo': '😌',
-      'extremo': '🔥',
-      'hibrido': '⚖️'
-    };
-    return emojis[personality] || '❤️';
-  };
-
-  const categories = ['all', 'outdoor', 'indoor', 'cultural', 'gastronomica', 'deportes'];
-  const categoryLabels = {
-    'all': 'Todas',
-    'outdoor': '🏕️ Exterior',
-    'indoor': '🏠 Interior',
-    'cultural': '🎭 Cultural',
-    'gastronomica': '🍽️ Gastronómica',
-    'deportes': '⚽ Deportes'
-  };
+  if (!testCompleted) {
+    return (
+      <div style={{ minHeight: "100vh", background: D.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <style>{STYLE}</style>
+        <div style={{
+          background: D.white, border: `1.5px solid ${D.border}`,
+          borderLeft: `5px solid ${D.coral}`, borderRadius: 24, padding: "40px 28px", textAlign: "center", maxWidth: 360
+        }}>
+          <div style={{ fontSize: 52, marginBottom: 14 }}>💕</div>
+          <h2 className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.wine, margin: "0 0 10px" }}>
+            Completa el Test Primero
+          </h2>
+          <p className="caveat" style={{ fontSize: 16, color: D.muted, margin: "0 0 22px", lineHeight: 1.5 }}>
+            Necesitamos conocerte mejor para personalizar tus 100 citas especiales
+          </p>
+          <button onClick={() => navigateTo("personality-test")} style={{
+            padding: "12px 28px", borderRadius: 20, border: "none",
+            background: D.coral, color: D.white, cursor: "pointer",
+            fontFamily: "Caveat, cursive", fontSize: 17, fontWeight: 700
+          }}>
+            Hacer el Test ♡
+          </button>
+          <div style={{ marginTop: 14 }}>
+            <button onClick={() => navigateTo("dashboard")} style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontFamily: "Caveat, cursive", fontSize: 15, color: D.muted
+            }}>← Volver al inicio</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      {/* Test Not Completed Warning */}
-      {!testCompleted && (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-red-50 to-pink-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center max-w-md"
-          >
-            <motion.div
-              initial={{ y: -20 }}
-              animate={{ y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-6"
-            >
-              <div className="text-6xl mb-4">📋</div>
-              <h1 className="text-3xl font-bold text-black mb-4">¡Completa el Test Primero! 💕</h1>
-              <p className="text-gray-700 mb-8">
-                Para recibir tus 100 citas personalizadas, primero necesitamos que completes el test de personalidad. ¡Solo son 5 minutos!
-              </p>
-            </motion.div>
+    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto" }}>
+      <style>{STYLE}</style>
 
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigateTo('personality-test')}
-              className="w-full px-6 py-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-bold text-lg mb-3"
-            >
-              Hacer Test de Personalidad Ahora
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigateTo('dashboard')}
-              className="w-full px-6 py-2 border-2 border-black text-black rounded-lg hover:bg-black hover:text-white transition font-semibold"
-            >
-              Volver al Dashboard
-            </motion.button>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Content - Only show if test completed */}
-      {testCompleted && (
-        <>
-          {/* Header */}
-          <div className="sticky top-0 z-10 bg-white border-b-2 border-red-500">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigateTo('dashboard')}
-            className="flex items-center gap-2 text-black hover:text-red-500 transition mb-4"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            Volver
+      {/* Header */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 10, background: D.cream,
+        borderBottom: `1.5px solid ${D.border}`, padding: "48px 20px 14px"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <button onClick={() => navigateTo("dashboard")} style={{
+            width: 36, height: 36, borderRadius: "50%", border: `1.5px solid ${D.border}`,
+            background: D.white, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", flexShrink: 0
+          }}>
+            <ChevronLeft size={18} color={D.coral} />
           </button>
-          <h1 className="text-3xl font-bold text-black mb-2 flex items-center gap-3">
-            <Heart className="w-8 h-8 text-red-500 fill-red-500" />
-            100 Citas Personalizadas
-          </h1>
-          {personalityData && (
-            <p className="text-gray-600">
-              {getPersonalityEmoji(personalityData.personality)} {personalityData.personality.toUpperCase()} • 💰 Presupuesto: {getBudgetLabel(personalityData.budgetLevel)}
+          <div style={{ flex: 1 }}>
+            <h1 className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.wine, margin: 0 }}>
+              Mis Citas
+            </h1>
+            <p className="caveat" style={{ fontSize: 15, color: D.muted, margin: 0 }}>
+              {filteredCitas.length} citas personalizadas ♡
             </p>
-          )}
+          </div>
+        </div>
+
+        {/* Filter chips */}
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          {FILTERS.map(f => (
+            <button key={f} onClick={() => setSelectedFilter(f)} style={{
+              padding: "5px 14px", borderRadius: 20, border: `1.5px solid ${selectedFilter === f ? D.coral : D.border}`,
+              background: selectedFilter === f ? D.coral : D.white,
+              color: selectedFilter === f ? D.white : D.muted,
+              cursor: "pointer", fontFamily: "Caveat, cursive", fontSize: 14,
+              fontWeight: selectedFilter === f ? 700 : 400, whiteSpace: "nowrap", flexShrink: 0
+            }}>
+              {f}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-2 overflow-x-auto pb-4 mb-8">
-          {categories.map((category) => (
-            <motion.button
-              key={category}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleFilter(category)}
-              className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition ${
-                selectedFilter === category
-                  ? 'bg-red-500 text-white border-2 border-red-500'
-                  : 'border-2 border-gray-300 text-black hover:border-red-500'
-              }`}
-            >
-              {categoryLabels[category]}
-            </motion.button>
-          ))}
-        </div>
-
-        {/* Citas Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCitas.map((cita, index) => (
-            <motion.div
-              key={cita.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-gradient-to-br from-white to-red-50 border-2 border-red-200 rounded-lg p-6 hover:shadow-lg transition hover:border-red-500 group cursor-pointer"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-black group-hover:text-red-500 transition">
-                    {cita.id}. {cita.title}
-                  </h3>
+      <div style={{ padding: "16px 20px", position: "relative", zIndex: 1 }}>
+        {/* Citas list */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+          {filteredCitas.map((cita, i) => {
+            const pref = preferences[cita.id];
+            return (
+              <motion.div
+                key={cita.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.02, 0.4) }}
+                style={{
+                  background: D.white, border: `1.5px solid ${D.border}`,
+                  borderLeft: `4px solid ${ACCENT_COLORS[i % 4]}`,
+                  borderRadius: 16, padding: "14px 16px"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div style={{ flex: 1, marginRight: 10 }}>
+                    <p className="caveat" style={{ fontSize: 13, color: D.muted, margin: "0 0 3px" }}>
+                      #{String(cita.displayId || i + 1).padStart(2, "0")}
+                    </p>
+                    <h3 className="lora" style={{ fontSize: 16, fontWeight: 700, color: D.wine, margin: "0 0 6px" }}>
+                      {cita.title}
+                    </h3>
+                    <p style={{ fontFamily: "Lora, serif", fontSize: 13, color: D.muted, lineHeight: 1.5, margin: "0 0 8px",
+                      overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" }}>
+                      {cita.description}
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {cita.category && (
+                        <span className="caveat" style={{
+                          fontSize: 12, padding: "2px 9px", borderRadius: 20,
+                          background: D.cream, border: `1px solid ${D.border}`, color: D.muted
+                        }}>{cita.category}</span>
+                      )}
+                      {cita.budget && (
+                        <span className="caveat" style={{
+                          fontSize: 12, padding: "2px 9px", borderRadius: 20,
+                          background: "#FFF7E6", border: `1px solid ${D.gold}`, color: D.gold
+                        }}>{cita.budget}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => handleLikeCita(cita.id)} style={{
+                      width: 34, height: 34, borderRadius: "50%", cursor: "pointer",
+                      border: `1.5px solid ${pref === "like" ? D.coral : D.border}`,
+                      background: pref === "like" ? D.coral : D.white,
+                      display: "flex", alignItems: "center", justifyContent: "center"
+                    }}>
+                      <ThumbsUp size={14} color={pref === "like" ? D.white : D.muted} />
+                    </button>
+                    <button onClick={() => handleDislikeCita(cita.id)} style={{
+                      width: 34, height: 34, borderRadius: "50%", cursor: "pointer",
+                      border: `1.5px solid ${pref === "dislike" ? D.muted : D.border}`,
+                      background: pref === "dislike" ? D.muted : D.white,
+                      display: "flex", alignItems: "center", justifyContent: "center"
+                    }}>
+                      <ThumbsDown size={14} color={pref === "dislike" ? D.white : D.muted} />
+                    </button>
+                  </div>
                 </div>
-                <Star className="w-5 h-5 text-red-500 group-hover:fill-red-500 transition" />
-              </div>
-
-              {/* Description */}
-              <p className="text-gray-700 text-sm mb-4">{cita.description}</p>
-
-              {/* Metadata */}
-              <div className="flex flex-wrap gap-2">
-                {cita.budget && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
-                    <DollarSign className="w-3 h-3" />
-                    {getBudgetLabel(cita.budget)}
-                  </span>
-                )}
-                {cita.category && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-                    <MapPin className="w-3 h-3" />
-                    {cita.category}
-                  </span>
-                )}
-              </div>
-
-              {/* Personality Tag */}
-              <div className="mt-4 pt-4 border-t border-red-200">
-                <p className="text-xs font-bold text-gray-600 mb-3 text-center">
-                  Ideal para: {getPersonalityEmoji(cita.personality)} {cita.personality}
-                </p>
-                
-                {/* Like/Dislike Buttons */}
-                <div className="flex gap-2 justify-center">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleLikeCita(cita.id)}
-                    className={`flex items-center gap-1 px-3 py-1 rounded-lg transition ${
-                      preferences[cita.id] === 'like'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-green-100'
-                    }`}
-                  >
-                    <ThumbsUp className="w-4 h-4" />
-                    Me gusta
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleDislikeCita(cita.id)}
-                    className={`flex items-center gap-1 px-3 py-1 rounded-lg transition ${
-                      preferences[cita.id] === 'dislike'
-                        ? 'bg-red-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-red-100'
-                    }`}
-                  >
-                    <ThumbsDown className="w-4 h-4" />
-                    No gusta
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
 
         {/* Stats */}
-        <div className="mt-12 p-6 bg-gradient-to-r from-red-50 to-red-100 border-4 border-red-500 rounded-lg">
-          <h2 className="text-2xl font-bold text-black mb-4">
-            Tus Citas Personalizadas
-          </h2>
-          
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-4 border-2 border-gray-200">
-              <p className="text-sm text-gray-600 mb-1">Total</p>
-              <p className="text-2xl font-bold text-black">{citas.length}</p>
-              <p className="text-xs text-gray-600">citas</p>
+        <div style={{
+          background: D.wine, borderRadius: 20, padding: "20px 18px",
+          display: "flex", justifyContent: "space-around", textAlign: "center"
+        }}>
+          {[
+            { label: "Total", value: citas.length, color: D.blush },
+            { label: "Me gustan", value: stats.likes, color: D.gold },
+            { label: "No me gustan", value: stats.dislikes, color: D.muted }
+          ].map((s, i) => (
+            <div key={i}>
+              <div className="caveat" style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
+              <div className="caveat" style={{ fontSize: 13, color: "rgba(253,246,236,0.6)" }}>{s.label}</div>
             </div>
-            <div className="bg-white rounded-lg p-4 border-2 border-green-300">
-              <p className="text-sm text-gray-600 mb-1">Me gusta</p>
-              <p className="text-2xl font-bold text-green-500">👍 {stats.likes}</p>
-              <p className="text-xs text-gray-600">seleccionadas</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 border-2 border-red-300">
-              <p className="text-sm text-gray-600 mb-1">No gusta</p>
-              <p className="text-2xl font-bold text-red-500">👎 {stats.dislikes}</p>
-              <p className="text-xs text-gray-600">seleccionadas</p>
-            </div>
-          </div>
-
-          <p className="text-gray-700 mb-4 text-sm">
-            Mostrando {filteredCitas.length} de {citas.length} citas
-            {personalityData?.citasTimeline && (
-              <span className="block mt-2 font-semibold">
-                ⏱️ Meta: Completar en {
-                  {
-                    'one_month': '1 mes',
-                    'three_months': '3 meses',
-                    'six_months': '6 meses',
-                    'one_year': '1 año',
-                    'two_years': '2+ años',
-                    'no_deadline': 'sin fecha límite'
-                  }[personalityData.citasTimeline] || 'su tiempo'
-                }
-              </span>
-            )}
-          </p>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigateTo('dashboard')}
-            className="px-8 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-bold w-full"
-          >
-            Volver al Dashboard
-          </motion.button>
+          ))}
         </div>
       </div>
-        </>
-      )}
     </div>
   );
 }

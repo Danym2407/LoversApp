@@ -1,283 +1,188 @@
-import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Plus, MapPin, Calendar, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+﻿import React, { useEffect, useState } from 'react';
+import { ChevronLeft, Plus, MapPin, Calendar, Trash2, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
-import {
-  upsertCalendarEvent,
-  upsertTimelineEvent,
-  removeCalendarEventBySource,
-  removeTimelineEventBySource
-} from '@/lib/eventSync';
+import { upsertCalendarEvent, upsertTimelineEvent, removeCalendarEventBySource, removeTimelineEventBySource } from '@/lib/eventSync';
+
+const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+const CATS = ['Comida','Películas','Parque','Playa','Viaje','Compras','Otro'];
+const CAT_EMOJIS = { Comida:'🍽️', Películas:'🎬', Parque:'🌳', Playa:'🏖️', Viaje:'✈️', Compras:'🛍️', Otro:'📍' };
 
 export default function RegistryPage({ navigateTo }) {
   const defaultLocations = [
-    { id: 1, name: 'Restaurante Downtown', date: '2025-12-20', category: 'Comida', rating: 5 },
-    { id: 2, name: 'Cine Auditorio', date: '2025-12-15', category: 'Películas', rating: 4 }
+    { id:1, name:'Restaurante Downtown', date:'2025-12-20', category:'Comida', rating:5 },
+    { id:2, name:'Cine Auditorio', date:'2025-12-15', category:'Películas', rating:4 }
   ];
 
   const [locations, setLocations] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    date: '',
-    category: 'Comida',
-    rating: 4
-  });
+  const [showSheet, setShowSheet] = useState(false);
+  const [formData, setFormData] = useState({ name:'', date:'', category:'Comida', rating:4 });
   const { toast } = useToast();
 
-  const categories = ['Comida', 'Películas', 'Parque', 'Playa', 'Viaje', 'Compras', 'Otro'];
-
-  const syncLocationsToEvents = (items) => {
-    items.forEach((location) => {
-      if (!location?.id) return;
-      upsertCalendarEvent({
-        title: `Salida: ${location.name}`,
-        description: location.category ? `Categoría: ${location.category}` : 'Salida registrada',
-        dateStr: location.date,
-        sourceType: 'registry',
-        sourceId: location.id
-      });
-      upsertTimelineEvent({
-        title: location.name,
-        description: location.category ? `Salida · ${location.category}` : 'Salida registrada',
-        dateStr: location.date,
-        image: '📍',
-        sourceType: 'registry',
-        sourceId: location.id
-      });
+  const syncAll = (items) => {
+    items.forEach(loc => {
+      if (!loc?.id) return;
+      upsertCalendarEvent({ title:`Salida: ${loc.name}`, description:loc.category?`Categoría: ${loc.category}`:'Salida registrada', dateStr:loc.date, sourceType:'registry', sourceId:loc.id });
+      upsertTimelineEvent({ title:loc.name, description:loc.category?`Salida · ${loc.category}`:'Salida registrada', dateStr:loc.date, image:'📍', sourceType:'registry', sourceId:loc.id });
     });
   };
 
   useEffect(() => {
     const saved = localStorage.getItem('registryLocations');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setLocations(parsed);
-      syncLocationsToEvents(parsed);
-    } else {
-      setLocations(defaultLocations);
-      localStorage.setItem('registryLocations', JSON.stringify(defaultLocations));
-      syncLocationsToEvents(defaultLocations);
-    }
+    if (saved) { const p = JSON.parse(saved); setLocations(p); syncAll(p); }
+    else { setLocations(defaultLocations); localStorage.setItem('registryLocations', JSON.stringify(defaultLocations)); syncAll(defaultLocations); }
   }, []);
 
-  const handleSaveLocation = (e) => {
+  const handleSave = (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.date) {
-      toast({
-        title: 'Faltan datos',
-        description: 'Agrega nombre y fecha para la salida.'
-      });
-      return;
-    }
-
-    const newLocation = {
-      id: Date.now(),
-      name: formData.name.trim(),
-      date: formData.date,
-      category: formData.category,
-      rating: Number(formData.rating) || 0
-    };
-
-    const updated = [newLocation, ...locations];
-    setLocations(updated);
-    localStorage.setItem('registryLocations', JSON.stringify(updated));
-
-    upsertCalendarEvent({
-      title: `Salida: ${newLocation.name}`,
-      description: newLocation.category ? `Categoría: ${newLocation.category}` : 'Salida registrada',
-      dateStr: newLocation.date,
-      sourceType: 'registry',
-      sourceId: newLocation.id
-    });
-    upsertTimelineEvent({
-      title: newLocation.name,
-      description: newLocation.category ? `Salida · ${newLocation.category}` : 'Salida registrada',
-      dateStr: newLocation.date,
-      image: '📍',
-      sourceType: 'registry',
-      sourceId: newLocation.id
-    });
-
-    setShowModal(false);
-    setFormData({ name: '', date: '', category: 'Comida', rating: 4 });
-    toast({
-      title: 'Salida registrada',
-      description: 'Se agregó al calendario y a la línea del tiempo.'
-    });
+    if (!formData.name.trim()||!formData.date) { toast({title:'Faltan datos',description:'Agrega nombre y fecha.'}); return; }
+    const newLoc = { id:Date.now(), name:formData.name.trim(), date:formData.date, category:formData.category, rating:Number(formData.rating)||0 };
+    const updated = [newLoc, ...locations];
+    setLocations(updated); localStorage.setItem('registryLocations', JSON.stringify(updated));
+    upsertCalendarEvent({ title:`Salida: ${newLoc.name}`, description:newLoc.category?`Categoría: ${newLoc.category}`:'', dateStr:newLoc.date, sourceType:'registry', sourceId:newLoc.id });
+    upsertTimelineEvent({ title:newLoc.name, description:newLoc.category?`Salida · ${newLoc.category}`:'', dateStr:newLoc.date, image:'📍', sourceType:'registry', sourceId:newLoc.id });
+    setShowSheet(false); setFormData({name:'',date:'',category:'Comida',rating:4});
+    toast({title:'Salida registrada',description:'Añadida al calendario y línea del tiempo.'});
   };
 
-  const handleDeleteLocation = (id) => {
-    const updated = locations.filter((location) => location.id !== id);
-    setLocations(updated);
-    localStorage.setItem('registryLocations', JSON.stringify(updated));
-    removeCalendarEventBySource('registry', id);
-    removeTimelineEventBySource('registry', id);
+  const handleDelete = (id) => {
+    const updated = locations.filter(l => l.id!==id);
+    setLocations(updated); localStorage.setItem('registryLocations', JSON.stringify(updated));
+    removeCalendarEventBySource('registry', id); removeTimelineEventBySource('registry', id);
   };
+
+  const catCounts = CATS.reduce((acc, c) => { acc[c] = locations.filter(l => l.category===c).length; return acc; }, {});
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b-2 border-black">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex items-center gap-4">
-          <button
-            onClick={() => navigateTo('dashboard')}
-            className="p-2 hover:bg-gray-200 rounded-lg transition"
-          >
-            <ChevronLeft className="w-6 h-6 text-black" />
-          </button>
-          <h1 className="text-3xl font-bold text-black">Registro de Salidas</h1>
+    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', paddingBottom:88 }}>
+      <style>{STYLE}</style>
+
+      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', background:D.cream, borderBottom:`1.5px solid ${D.border}`, position:'sticky', top:0, zIndex:40 }}>
+        <button onClick={() => navigateTo('dashboard')}
+          style={{ width:38, height:38, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5}/>
+        </button>
+        <div style={{ textAlign:'center' }}>
+          <div className="lora" style={{ fontSize:20, fontWeight:600, color:D.wine }}>Registro de Salidas</div>
+          <div className="caveat" style={{ fontSize:11, color:D.muted }}>{locations.length} salidas guardadas ✦</div>
         </div>
+        <button onClick={() => setShowSheet(true)}
+          style={{ width:38, height:38, borderRadius:'50%', background:D.coral, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <Plus size={18} color={D.white} strokeWidth={2.5}/>
+        </button>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Add Button */}
-        <button
-          onClick={() => setShowModal(true)}
-          className="mb-8 w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-xl hover:shadow-lg transition font-semibold text-lg"
-        >
-          <Plus className="w-6 h-6" />
-          Agregar Salida
-        </button>
-
-        {/* Locations Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {locations.map((location, index) => (
-            <motion.div
-              key={location.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl shadow-lg p-6 border-2 border-black hover:shadow-xl transition group"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-black">{location.name}</h3>
-                  <span className="inline-block mt-2 px-3 py-1 bg-yellow-100 text-black rounded-full text-sm font-semibold border border-yellow-600">
-                    {location.category}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleDeleteLocation(location.id)}
-                  className="p-2 opacity-0 group-hover:opacity-100 transition bg-red-100 text-red-600 rounded-lg border border-red-500"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-black font-semibold">
-                  <Calendar className="w-5 h-5 text-red-500" />
-                  <span>{new Date(location.date).toLocaleDateString('es-ES')}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <span key={i} className={i < location.rating ? 'text-yellow-600 text-xl' : 'text-gray-400 text-xl'}>
-                        ★
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+      <div style={{ padding:'18px' }}>
+        {/* Category summary */}
+        <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4, marginBottom:14 }}>
+          {CATS.filter(c => catCounts[c]>0).map(c => (
+            <div key={c} style={{ flexShrink:0, padding:'6px 14px', background:D.white, border:`1.5px solid ${D.border}`, borderRadius:20, display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:14 }}>{CAT_EMOJIS[c]}</span>
+              <span className="caveat" style={{ fontSize:12, fontWeight:700, color:D.wine }}>{c}</span>
+              <span className="caveat" style={{ fontSize:11, color:D.muted }}>x{catCounts[c]}</span>
+            </div>
           ))}
         </div>
 
-        {/* Category Stats */}
-        <div className="mt-12 bg-white rounded-2xl shadow-lg p-8 border-2 border-black">
-          <h2 className="text-2xl font-bold text-black mb-6">Resumen por Categoría</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {categories.map(cat => (
-              <div key={cat} className="bg-white rounded-xl p-4 text-center border-2 border-yellow-500">
-                <p className="font-semibold text-black">{cat}</p>
-                <p className="text-2xl font-bold text-yellow-600">0</p>
+        {/* Locations */}
+        {locations.map((loc, i) => (
+          <motion.div key={loc.id} initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.04 }}
+            style={{ background:D.white, border:`1.5px solid ${D.border}`, borderLeft:`4px solid ${D.gold}`, borderRadius:18, padding:'14px 16px', marginBottom:12, position:'relative' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+              <div>
+                <div className="lora" style={{ fontSize:15, fontWeight:600, color:D.wine }}>{loc.name}</div>
+                <span style={{ padding:'3px 10px', background:`${D.gold}18`, border:`1px solid ${D.gold}44`, borderRadius:20 }}>
+                  <span className="caveat" style={{ fontSize:11, fontWeight:700, color:D.gold }}>{CAT_EMOJIS[loc.category]||'📍'} {loc.category}</span>
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl border-2 border-black max-w-lg w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-black">Registrar salida</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
-              >
-                ✕
+              <button onClick={() => handleDelete(loc.id)}
+                style={{ width:30, height:30, borderRadius:'50%', background:`${D.coral}15`, border:`1px solid ${D.coral}44`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                <Trash2 size={13} color={D.coral}/>
               </button>
             </div>
-
-            <form onSubmit={handleSaveLocation} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-black mb-2">Lugar</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-black rounded-lg"
-                  placeholder="Ej: Restaurante favorito"
-                />
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <Calendar size={12} color={D.muted}/>
+                <span className="caveat" style={{ fontSize:12, color:D.muted }}>
+                  {new Date(loc.date+'T00:00:00').toLocaleDateString('es-ES')}
+                </span>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-black mb-2">Fecha</label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-black rounded-lg"
-                />
+              <div style={{ display:'flex', gap:2 }}>
+                {[...Array(5)].map((_,j) => (
+                  <span key={j} style={{ fontSize:12, color: j<loc.rating ? D.gold : D.border }}>★</span>
+                ))}
               </div>
+            </div>
+          </motion.div>
+        ))}
 
-              <div>
-                <label className="block text-sm font-semibold text-black mb-2">Categoría</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-black rounded-lg"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-black mb-2">Calificación</label>
-                <select
-                  value={formData.rating}
-                  onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-black rounded-lg"
-                >
-                  {[5, 4, 3, 2, 1].map((rate) => (
-                    <option key={rate} value={rate}>{rate} ⭐</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition font-semibold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition font-semibold"
-                >
-                  Guardar
-                </button>
-              </div>
-            </form>
+        {locations.length === 0 && (
+          <div style={{ textAlign:'center', paddingTop:60 }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>📍</div>
+            <div className="lora" style={{ fontSize:18, color:D.wine, marginBottom:6 }}>Sin salidas registradas</div>
+            <div className="caveat" style={{ color:D.muted, fontSize:14 }}>Registra tu primera salida juntos 💕</div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Sheet */}
+      <AnimatePresence>
+        {showSheet && (
+          <>
+            <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+              onClick={() => setShowSheet(false)}
+              style={{ position:'fixed', inset:0, background:'rgba(28,14,16,0.6)', zIndex:50 }}/>
+            <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:28, stiffness:340 }}
+              style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:D.white, borderRadius:'24px 24px 0 0', padding:'24px 20px 40px', zIndex:51 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+                <div className="lora" style={{ fontSize:18, fontWeight:600, color:D.wine }}>Registrar salida</div>
+                <button onClick={() => setShowSheet(false)}
+                  style={{ width:32, height:32, borderRadius:'50%', background:D.cream, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                  <X size={14} color={D.wine}/>
+                </button>
+              </div>
+              <form onSubmit={handleSave} style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {[
+                  {label:'Lugar', key:'name', type:'text', placeholder:'Ej: Restaurante favorito'},
+                  {label:'Fecha', key:'date', type:'date'},
+                ].map(f => (
+                  <div key={f.key}>
+                    <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>{f.label}</div>
+                    <input type={f.type} value={formData[f.key]} placeholder={f.placeholder}
+                      onChange={e => setFormData({...formData,[f.key]:e.target.value})}
+                      style={{ width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.cream, fontSize:14, color:D.wine, boxSizing:'border-box' }}/>
+                  </div>
+                ))}
+                <div>
+                  <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>Categoría</div>
+                  <select value={formData.category} onChange={e => setFormData({...formData,category:e.target.value})}
+                    style={{ width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.cream, fontSize:14, color:D.wine }}>
+                    {CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>Calificación</div>
+                  <select value={formData.rating} onChange={e => setFormData({...formData,rating:e.target.value})}
+                    style={{ width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.cream, fontSize:14, color:D.wine }}>
+                    {[5,4,3,2,1].map(r => <option key={r} value={r}>{r} ⭐</option>)}
+                  </select>
+                </div>
+                <div style={{ display:'flex', gap:10, marginTop:4 }}>
+                  <button type="button" onClick={() => setShowSheet(false)}
+                    style={{ flex:1, padding:'12px', borderRadius:14, background:D.cream, border:`1.5px solid ${D.border}`, cursor:'pointer' }}>
+                    <span className="caveat" style={{ fontSize:14, fontWeight:700, color:D.wine }}>Cancelar</span>
+                  </button>
+                  <button type="submit"
+                    style={{ flex:1, padding:'12px', borderRadius:14, background:D.coral, border:'none', cursor:'pointer' }}>
+                    <span className="caveat" style={{ fontSize:14, fontWeight:700, color:D.white }}>Guardar</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

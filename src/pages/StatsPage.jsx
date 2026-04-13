@@ -1,312 +1,144 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, Star, Calendar, MapPin, TrendingUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronLeft, Heart, Star, MapPin, TrendingUp } from 'lucide-react';
 
-const StatsPage = ({ navigateTo }) => {
+const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+function RatingRow({ label, value, color, Icon }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <span className="caveat" style={{ fontSize: 13, color: D.muted }}>{label}</span>
+      <div style={{ display: 'flex', gap: 3 }}>
+        {[...Array(5)].map((_, i) => <Icon key={i} size={13} color={color} fill={i < Math.round(value) ? color : 'none'} strokeWidth={1.5} />)}
+      </div>
+    </div>
+  );
+}
+
+export default function StatsPage({ navigateTo }) {
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    calculateStats();
-  }, []);
-
-  const calculateStats = () => {
     const dates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
     const completed = dates.filter(d => d.status === 'completed');
+    if (completed.length === 0) { setStats({ completedCount: 0, total: dates.length }); return; }
 
-    if (completed.length === 0) {
-      setStats({ completed: [], total: dates.length, completedCount: 0 });
-      return;
-    }
+    const avgDH = completed.reduce((s, d) => s + (d.danielaRating?.hearts || 0), 0) / completed.length;
+    const avgDS = completed.reduce((s, d) => s + (d.danielaRating?.stars || 0), 0) / completed.length;
+    const avgEH = completed.reduce((s, d) => s + (d.eduardoRating?.hearts || 0), 0) / completed.length;
+    const avgES = completed.reduce((s, d) => s + (d.eduardoRating?.stars || 0), 0) / completed.length;
 
-    // Calculate averages
-    const avgDanielaHearts = completed.reduce((sum, d) => sum + d.danielaRating.hearts, 0) / completed.length;
-    const avgDanielaStars = completed.reduce((sum, d) => sum + d.danielaRating.stars, 0) / completed.length;
-    const avgEduardoHearts = completed.reduce((sum, d) => sum + d.eduardoRating.hearts, 0) / completed.length;
-    const avgEduardoStars = completed.reduce((sum, d) => sum + d.eduardoRating.stars, 0) / completed.length;
-
-    // Find top rated date
-    const topDate = completed.reduce((top, current) => {
-      const currentAvg = (current.danielaRating.hearts + current.danielaRating.stars + 
-                         current.eduardoRating.hearts + current.eduardoRating.stars) / 4;
-      const topAvg = (top.danielaRating.hearts + top.danielaRating.stars + 
-                     top.eduardoRating.hearts + top.eduardoRating.stars) / 4;
-      return currentAvg > topAvg ? current : top;
+    const topDate = completed.reduce((top, cur) => {
+      const ca = ((cur.danielaRating?.hearts || 0) + (cur.danielaRating?.stars || 0) + (cur.eduardoRating?.hearts || 0) + (cur.eduardoRating?.stars || 0)) / 4;
+      const ta = ((top.danielaRating?.hearts || 0) + (top.danielaRating?.stars || 0) + (top.eduardoRating?.hearts || 0) + (top.eduardoRating?.stars || 0)) / 4;
+      return ca > ta ? cur : top;
     });
 
-    // Count locations
-    const locationCounts = {};
-    completed.forEach(d => {
-      if (d.location) {
-        locationCounts[d.location] = (locationCounts[d.location] || 0) + 1;
-      }
-    });
-    const topLocation = Object.entries(locationCounts).sort((a, b) => b[1] - a[1])[0];
+    const locs = {};
+    completed.forEach(d => { if (d.location) locs[d.location] = (locs[d.location] || 0) + 1; });
+    const topLoc = Object.entries(locs).sort((a, b) => b[1] - a[1])[0];
 
-    // Collect words
-    const allWords = [
-      ...completed.map(d => d.danielaOneWord).filter(Boolean),
-      ...completed.map(d => d.eduardoOneWord).filter(Boolean)
-    ];
+    const words = [...completed.map(d => d.danielaOneWord).filter(Boolean), ...completed.map(d => d.eduardoOneWord).filter(Boolean)];
 
-    setStats({
-      completed,
-      total: dates.length,
-      completedCount: completed.length,
-      avgDanielaHearts,
-      avgDanielaStars,
-      avgEduardoHearts,
-      avgEduardoStars,
-      topDate,
-      topLocation,
-      allWords
-    });
-  };
+    setStats({ completed, completedCount: completed.length, total: dates.length, avgDH, avgDS, avgEH, avgES, topDate, topLoc, words });
+  }, []);
 
   if (!stats) return null;
 
-  if (stats.completedCount === 0) {
-    return (
-      <div className="min-h-screen bg-white">
-        <div className="border-b-2 border-black bg-white sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto px-6 py-6">
-            <Button
-              onClick={() => navigateTo('home')}
-              variant="ghost"
-              className="mb-4 text-black hover:bg-gray-100"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
-            <h1 className="text-4xl md:text-5xl font-serif text-black">Nuestras Estadísticas</h1>
-          </div>
-        </div>
-        <div className="max-w-4xl mx-auto px-6 py-12 text-center">
-          <p className="text-xl text-gray-600 font-sans">
-            Aún no hay citas completadas para mostrar estadísticas. ¡Empiecen su aventura! 💕
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="border-b-2 border-black bg-white sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <Button
-            onClick={() => navigateTo('home')}
-            variant="ghost"
-            className="mb-4 text-black hover:bg-gray-100"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
-          </Button>
-          <h1 className="text-4xl md:text-5xl font-serif text-black mb-2">Nuestro Año en Citas</h1>
-          <p className="text-gray-600 font-sans">Estilo Spotify Wrapped 💕</p>
+    <div style={{ background: D.cream, minHeight: '100vh', maxWidth: 430, margin: '0 auto', paddingBottom: 88 }}>
+      <style>{STYLE}</style>
+
+      <div style={{ padding: '48px 20px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: D.cream, borderBottom: `1.5px solid ${D.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
+        <button onClick={() => navigateTo('home')}
+          style={{ width: 38, height: 38, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5} />
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="lora" style={{ fontSize: 20, fontWeight: 600, color: D.wine }}>Nuestro Año en Citas</div>
+          <div className="caveat" style={{ fontSize: 11, color: D.muted }}>Estilo Wrapped 💕</div>
         </div>
+        <div style={{ width: 38 }} />
       </div>
 
-      {/* Stats Cards */}
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
-        {/* Hero Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="border-4 border-black rounded-lg p-8 bg-gradient-to-br from-red-50 to-yellow-50"
-        >
-          <div className="text-center">
-            <p className="text-lg font-sans text-gray-700 mb-2">Han completado</p>
-            <p className="text-7xl font-bold text-black font-mono mb-2">{stats.completedCount}</p>
-            <p className="text-2xl font-serif text-gray-700">citas increíbles juntos</p>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Heart className="w-6 h-6 text-red-500 fill-red-500" />
-              <Heart className="w-6 h-6 text-red-500 fill-red-500" />
-              <Heart className="w-6 h-6 text-red-500 fill-red-500" />
-            </div>
+      <div style={{ padding: '20px 18px' }}>
+        {stats.completedCount === 0 ? (
+          <div style={{ textAlign: 'center', paddingTop: 60 }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>📊</div>
+            <div className="lora" style={{ fontSize: 18, color: D.wine, marginBottom: 8 }}>Aún sin citas completadas</div>
+            <div className="caveat" style={{ color: D.muted, fontSize: 15 }}>¡Completen su primera cita para ver estadísticas! 💕</div>
           </div>
-        </motion.div>
+        ) : (
+          <>
+            {/* Hero */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              style={{ background: D.wine, borderRadius: 24, padding: '28px', textAlign: 'center', marginBottom: 16 }}>
+              <div className="caveat" style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 4 }}>Han completado</div>
+              <div className="lora" style={{ fontSize: 64, fontWeight: 700, color: D.white, lineHeight: 1 }}>{stats.completedCount}</div>
+              <div className="lora" style={{ fontSize: 18, color: 'rgba(255,255,255,0.8)', marginBottom: 12 }}>citas increíbles juntos</div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+                {[...Array(3)].map((_, i) => <Heart key={i} size={20} color={D.coral} fill={D.coral} />)}
+              </div>
+            </motion.div>
 
-        {/* Average Ratings */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="border-2 border-black rounded-lg p-6"
-          >
-            <h3 className="text-2xl font-serif text-black mb-4">Daniela</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-sans text-gray-600">Promedio emocional</span>
-                <div className="flex gap-1">
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <Heart
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.round(stats.avgDanielaHearts)
-                          ? 'text-red-500 fill-red-500'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-sans text-gray-600">Promedio diversión</span>
-                <div className="flex gap-1">
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.round(stats.avgDanielaStars)
-                          ? 'text-yellow-400 fill-yellow-400'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
+            {/* Daniela & Eduardo ratings */}
+            {[{ name: 'Daniela', h: stats.avgDH, s: stats.avgDS }, { name: 'Eduardo', h: stats.avgEH, s: stats.avgES }].map((p, i) => (
+              <motion.div key={p.name} initial={{ opacity: 0, x: i === 0 ? -16 : 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 + i * 0.1 }}
+                style={{ background: D.white, borderRadius: 18, border: `1.5px solid ${D.border}`, borderLeft: `4px solid ${i === 0 ? D.coral : D.blue}`, padding: '14px 16px', marginBottom: 12 }}>
+                <div className="lora" style={{ fontSize: 15, fontWeight: 600, color: D.wine, marginBottom: 10 }}>{p.name}</div>
+                <RatingRow label="Promedio emocional" value={p.h} color={D.coral} Icon={Heart} />
+                <RatingRow label="Promedio diversión" value={p.s} color={D.gold} Icon={Star} />
+              </motion.div>
+            ))}
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="border-2 border-black rounded-lg p-6"
-          >
-            <h3 className="text-2xl font-serif text-black mb-4">Eduardo</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-sans text-gray-600">Promedio emocional</span>
-                <div className="flex gap-1">
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <Heart
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.round(stats.avgEduardoHearts)
-                          ? 'text-red-500 fill-red-500'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
+            {/* Top date */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+              style={{ background: D.white, borderRadius: 18, border: `1.5px solid ${D.border}`, borderLeft: `4px solid ${D.gold}`, padding: '14px 16px', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <TrendingUp size={16} color={D.gold} />
+                <div className="lora" style={{ fontSize: 15, fontWeight: 600, color: D.wine }}>Mejor cita calificada</div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-sans text-gray-600">Promedio diversión</span>
-                <div className="flex gap-1">
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.round(stats.avgEduardoStars)
-                          ? 'text-yellow-400 fill-yellow-400'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
+              <div className="caveat" style={{ fontSize: 26, fontWeight: 700, color: D.wine }}>Cita #{stats.topDate.id}</div>
+              <div className="lora" style={{ fontSize: 14, color: D.muted, marginBottom: 6 }}>{stats.topDate.name}</div>
+              {stats.topDate.location && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <MapPin size={12} color={D.muted} />
+                  <span className="caveat" style={{ fontSize: 12, color: D.muted }}>{stats.topDate.location}</span>
                 </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
+              )}
+            </motion.div>
 
-        {/* Top Date */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="border-2 border-black rounded-lg p-6 bg-gradient-to-br from-yellow-50 to-white"
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-6 h-6 text-black" />
-            <h3 className="text-2xl font-serif text-black">Su cita mejor calificada</h3>
-          </div>
-          <div className="pl-8">
-            <p className="text-3xl font-bold text-black font-mono mb-2">Cita #{stats.topDate.id}</p>
-            <p className="text-xl font-serif text-gray-700 mb-2">{stats.topDate.name}</p>
-            {stats.topDate.location && (
-              <div className="flex items-center gap-2 text-gray-600 mb-3">
-                <MapPin className="w-4 h-4" />
-                <span className="font-sans">{stats.topDate.location}</span>
-              </div>
+            {/* Top location */}
+            {stats.topLoc && (
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
+                style={{ background: D.white, borderRadius: 18, border: `1.5px solid ${D.border}`, borderLeft: `4px solid ${D.green}`, padding: '14px 16px', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <MapPin size={16} color={D.green} />
+                  <div className="lora" style={{ fontSize: 15, fontWeight: 600, color: D.wine }}>Lugar favorito</div>
+                </div>
+                <div className="caveat" style={{ fontSize: 22, fontWeight: 700, color: D.wine }}>{stats.topLoc[0]}</div>
+                <div className="caveat" style={{ fontSize: 13, color: D.muted }}>{stats.topLoc[1]} {stats.topLoc[1] === 1 ? 'cita' : 'citas'} aquí</div>
+              </motion.div>
             )}
-            <div className="flex gap-4 items-center">
-              <div className="flex gap-1">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <Heart
-                    key={i}
-                    className={`w-5 h-5 ${
-                      i < Math.round((stats.topDate.danielaRating.hearts + stats.topDate.eduardoRating.hearts) / 2)
-                        ? 'text-red-500 fill-red-500'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-1">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <Star
-                    key={i}
-                    className={`w-5 h-5 ${
-                      i < Math.round((stats.topDate.danielaRating.stars + stats.topDate.eduardoRating.stars) / 2)
-                        ? 'text-yellow-400 fill-yellow-400'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
 
-        {/* Top Location */}
-        {stats.topLocation && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="border-2 border-black rounded-lg p-6"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="w-6 h-6 text-black" />
-              <h3 className="text-2xl font-serif text-black">Su lugar favorito</h3>
-            </div>
-            <div className="pl-8">
-              <p className="text-3xl font-bold text-black mb-2">{stats.topLocation[0]}</p>
-              <p className="text-gray-600 font-sans">
-                {stats.topLocation[1]} {stats.topLocation[1] === 1 ? 'cita' : 'citas'} aquí
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Words Cloud */}
-        {stats.allWords.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="border-2 border-black rounded-lg p-6"
-          >
-            <h3 className="text-2xl font-serif text-black mb-4">Sus citas en palabras</h3>
-            <div className="flex flex-wrap gap-2">
-              {stats.allWords.map((word, index) => (
-                <span
-                  key={index}
-                  className="px-4 py-2 bg-black text-white font-sans rounded-full text-sm"
-                >
-                  {word}
-                </span>
-              ))}
-            </div>
-          </motion.div>
+            {/* Words cloud */}
+            {stats.words.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+                style={{ background: D.white, borderRadius: 18, border: `1.5px solid ${D.border}`, borderLeft: `4px solid ${D.blue}`, padding: '14px 16px' }}>
+                <div className="lora" style={{ fontSize: 15, fontWeight: 600, color: D.wine, marginBottom: 10 }}>Sus citas en palabras</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {stats.words.map((w, i) => (
+                    <span key={i} style={{ padding: '4px 12px', background: D.wine, borderRadius: 20 }}>
+                      <span className="caveat" style={{ fontSize: 12, fontWeight: 700, color: D.white }}>{w}</span>
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </>
         )}
       </div>
     </div>
   );
-};
-
-export default StatsPage;
+}

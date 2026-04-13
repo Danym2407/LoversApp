@@ -74,3 +74,26 @@ module.exports = {
 	},
 	plugins: [require('tailwindcss-animate')],
 };
+
+export default {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#FF4D6D',
+        primaryLight: '#FF8FA3',
+        bg: '#FFF6F9',
+        surface: '#FFFFFF',
+        borderSoft: '#FFD6E0',
+        textMain: '#2B2B2B',
+        muted: '#7A7A7A',
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        doodle: ['Patrick Hand', 'cursive'],
+      },
+      boxShadow: {
+        soft: '0 6px 20px rgba(255, 77, 109, 0.08)',
+      }
+    }
+  }
+}

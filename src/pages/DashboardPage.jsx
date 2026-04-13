@@ -1,369 +1,466 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, Calendar, Ticket, Gamepad2, Flame, Mail, Clock, Image, Bell, Hourglass, User as UserIcon, Users } from 'lucide-react';
-import { motion } from 'framer-motion';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, MoreVertical, ChevronRight, LogOut, Settings, Heart,
+         Zap, Mail, Calendar, Activity, BookOpen, Bell, Timer, BarChart2, Shuffle,
+         ThumbsUp, Star } from 'lucide-react';
+import { initialDates } from '@/data/dates';
+import { api } from '@/lib/api';
+
+// ── Paleta doodle ─────────────────────────────────────────────────────────────
+const D = {
+  cream:  '#FDF6EC', //white
+  wine:   '#1C0E10',
+  coral:  '#C44455',
+  gold:   '#D4A520',
+  blue:   '#5B8ECC',
+  green:  '#5BAA6A',
+  blush:  '#F0C4CC',
+  white:  '#FFFFFF',
+  border: '#EDE0D0',
+  muted:  '#9A7A6A',
+};
+
+const STYLE = `
+  .caveat { font-family: 'Caveat', cursive; }
+  .lora   { font-family: 'Lora', Georgia, serif; }
+  .ql-card {
+    background: #fff;
+    border-radius: 20px;
+    border: 1.5px solid #EDE0D0;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .ql-card:active { transform: scale(0.97); }
+  .doodle-underline { position: relative; display: inline-block; }
+  .doodle-underline::after {
+    content: ''; position: absolute;
+    bottom: -3px; left: -2px;
+    width: calc(100% + 4px); height: 3px;
+    background: #D4A520; border-radius: 2px; transform: rotate(-0.7deg);
+  }
+`;
+
+const DAYS   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MONTHS = ['enero','febrero','marzo','abril','mayo','junio',
+                'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+function todayString() {
+  const d = new Date();
+  return `${DAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
+}
+function daysDiff(iso) {
+  if (!iso) return null;
+  const n = Math.floor((Date.now() - new Date(iso)) / 86400000);
+  return n > 0 ? n : null;
+}
+function getDates() {
+  try { return JSON.parse(localStorage.getItem('coupleDates') || '[]'); } catch { return []; }
+}
+
+// ── BG Doodle SVG ─────────────────────────────────────────────────────────────
+function BgDoodles() {
+  return (
+    <svg style={{ position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.28 }} viewBox="0 0 390 820" fill="none">
+      <text x="340" y="78"  fontSize="14" fill="#D4A520" fontFamily="serif">✦</text>
+      <text x="26"  y="118" fontSize="10" fill="#C44455" fontFamily="serif">✦</text>
+      <text x="358" y="198" fontSize="9"  fill="#5B8ECC" fontFamily="serif">★</text>
+      <text x="16"  y="318" fontSize="11" fill="#D4A520" fontFamily="serif">✦</text>
+      <text x="352" y="418" fontSize="8"  fill="#C44455" fontFamily="serif">✦</text>
+      <text x="20"  y="498" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
+      <ellipse cx="354" cy="113" rx="22" ry="20" stroke="#5B8ECC" strokeWidth="2" strokeDasharray="4 3" fill="none" transform="rotate(-10 354 113)"/>
+      <circle cx="34" cy="198" r="10" fill="none" stroke="#D4A520" strokeWidth="1.5"/>
+      <ellipse cx="34" cy="198" rx="16" ry="5" fill="none" stroke="#D4A520" strokeWidth="1.5" transform="rotate(-25 34 198)"/>
+      <path d="M338 288 Q358 283 366 296" stroke="#C44455" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <path d="M363 293 L366 296 L360 298" stroke="#C44455" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M18 438 L24 426 L30 438 L24 436 Z" fill="none" stroke="#5B8ECC" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M20 438 L18 444 M28 438 L30 444" stroke="#5B8ECC" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// ── Date card (swipeable) ─────────────────────────────────────────────────────
+function DateCard({ date, onNext, onDetail }) {
+  const handleDrag = (_, info) => { if (Math.abs(info.offset.x) > 55) onNext(); };
+  return (
+    <motion.div
+      key={date.id}
+      initial={{ opacity:0, x:32 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-32 }}
+      transition={{ type:'spring', stiffness:320, damping:26 }}
+      drag="x" dragConstraints={{ left:0, right:0 }} dragElastic={0.22} onDragEnd={handleDrag}
+      style={{ background:D.wine, borderRadius:22, padding:'22px 22px 18px', cursor:'grab', userSelect:'none', position:'relative', overflow:'hidden' }}
+    >
+      {/* faint heart watermark */}
+      <svg style={{ position:'absolute', right:10, top:4, opacity:0.07 }} width="80" height="70" viewBox="0 0 80 70">
+        <text x="0" y="64" fontSize="70" fill="#F0C4CC">♡</text>
+      </svg>
+
+      <p className="caveat" style={{ color:D.gold, fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:12 }}>
+        ✦ Cita sugerida para hoy ✦
+      </p>
+      <h2 className="lora" style={{ color:D.white, fontSize:22, fontWeight:600, lineHeight:1.25, marginBottom:10 }}>
+        {date.name}
+      </h2>
+      <div style={{ display:'flex', gap:8, marginBottom:18, flexWrap:'wrap' }}>
+        {[date.status === 'completed' ? '✅ Hecha' : '📌 Pendiente', `#${date.priority}`].map((t,i) => (
+          <span key={i} className="caveat" style={{ background:'rgba(255,255,255,0.12)', color:D.blush, borderRadius:100, padding:'3px 12px', fontSize:12, fontWeight:600 }}>{t}</span>
+        ))}
+      </div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <button onClick={onDetail} className="caveat" style={{ background:D.coral, color:D.white, borderRadius:12, padding:'9px 20px', fontWeight:700, fontSize:14, border:'none', cursor:'pointer' }}>
+          Ver detalles
+        </button>
+        <p className="caveat" style={{ color:'rgba(255,255,255,0.28)', fontSize:11 }}>← desliza →</p>
+      </div>
+    </motion.div>
+  );
+}
+
+const QUICK_CARDS = [
+  {
+    id:'challenges', Icon:Zap,
+    iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
+    badge:'Activos', title:'Retos', sub:'Desafíos de pareja',
+    deco:'bar', barPct:30, trackBg:'#F0D0D5', barBg:'#C44455',
+  },
+  {
+    id:'letters', Icon:Mail,
+    iconBg:'#D4A520', cardBorder:'#D4C090', cardBg:'#FDFAF0',
+    badge:'Mensajes', title:'Cartas', sub:'Escribirse con amor',
+    deco:'dots', dots:['#C44455','#D4A520','#C8B8A8','#5B8ECC'],
+  },
+  {
+    id:'calendar', Icon:Calendar,
+    iconBg:'#5B8ECC', cardBorder:'#C0D5E8', cardBg:'#F5FAFF',
+    badge:'Próximos', title:'Calendario', sub:'Eventos y citas',
+    deco:'bar', barPct:55, trackBg:'#D0E5F5', barBg:'#5B8ECC',
+  },
+  {
+    id:'timeline', Icon:Activity,
+    iconBg:'#5BAA6A', cardBorder:'#C0DEC8', cardBg:'#F5FBF6',
+    badge:'Recuerdos', title:'Línea del tiempo', sub:'Tu historia juntos',
+    deco:'dots', dots:['#5BAA6A','#D4A520','#C44455','#5B8ECC','#5BAA6A'],
+  },
+  {
+    id:'registry', Icon:BookOpen,
+    iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
+    badge:'Historial', title:'Registro', sub:'Citas anotadas',
+    deco:'bar', barPct:20, trackBg:'#F0D0D5', barBg:'#C44455',
+  },
+  {
+    id:'important-dates', Icon:Bell,
+    iconBg:'#D4A520', cardBorder:'#D4C090', cardBg:'#FDFAF0',
+    badge:'Próximas', title:'Fechas especiales', sub:'Aniversarios y más',
+    deco:'dots', dots:['#D4A520','#C44455','#D4A520','#C8B8A8'],
+  },
+  {
+    id:'countdown', Icon:Timer,
+    iconBg:'#5B8ECC', cardBorder:'#C0D5E8', cardBg:'#F5FAFF',
+    badge:'En curso', title:'Countdown', sub:'Cuenta regresiva',
+    deco:'bar', barPct:70, trackBg:'#D0E5F5', barBg:'#5B8ECC',
+  },
+  {
+    id:'stats', Icon:BarChart2,
+    iconBg:'#5BAA6A', cardBorder:'#C0DEC8', cardBg:'#F5FBF6',
+    badge:'Análisis', title:'Estadísticas', sub:'Tu viaje en números',
+    deco:'bar', barPct:45, trackBg:'#C8E8D0', barBg:'#5BAA6A',
+  },
+  {
+    id:'roulette', Icon:Shuffle,
+    iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
+    badge:'¡Suerte!', title:'Ruleta', sub:'Elige una cita al azar',
+    deco:'dots', dots:['#C44455','#D4A520','#5B8ECC','#5BAA6A','#C44455'],
+  },
+  {
+    id:'citas-aleatorias', Icon:ThumbsUp,
+    iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
+    badge:'Descubrir', title:'Citas Aleatorias', sub:'Me gusta / No me gusta',
+    deco:'dots', dots:['#C44455','#F0C4CC','#C44455','#F0C4CC','#C44455'],
+  },
+  {
+    id:'citas-personalizadas', Icon:Star,
+    iconBg:'#D4A520', cardBorder:'#D4C090', cardBg:'#FDFAF0',
+    badge:'Para ti', title:'Mis Citas', sub:'Personalizadas para ti ♡',
+    deco:'bar', barPct:65, trackBg:'#FFF0B0', barBg:'#D4A520',
+  },
+];
 
 export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAuthenticated }) {
-  const [user, setUser] = useState(null);
-  const [timeData, setTimeData] = useState({ years: 0, days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [relationshipStartDate, setRelationshipStartDate] = useState(null);
-  const [hasCompletedTest, setHasCompletedTest] = useState(false);
-  const [dismissTestBanner, setDismissTestBanner] = useState(false);
+  const [user, setUser]                     = useState(null);
+  const [days, setDays]                     = useState(null);
+  const [dates, setDates]                   = useState([]);
+  const [dateIdx, setDateIdx]               = useState(0);
+  const [menuOpen, setMenuOpen]             = useState(false);
+  const [partnerGreeting, setPartnerGreeting] = useState(null);
+  const [unreadLetters, setUnreadLetters]   = useState([]);
+  const menuRef                             = useRef(null);
 
-  const calculateDaysTogether = () => {
-    const userData = localStorage.getItem('loversappUser');
-    if (userData) {
-      const userData_obj = JSON.parse(userData);
-      if (userData_obj.relationshipStartDate) {
-        setRelationshipStartDate(userData_obj.relationshipStartDate);
-        const startDate = new Date(userData_obj.relationshipStartDate);
-        const now = new Date();
-        
-        // Calcular la diferencia
-        let years = now.getFullYear() - startDate.getFullYear();
-        let months = now.getMonth() - startDate.getMonth();
-        let days = now.getDate() - startDate.getDate();
-        
-        // Ajustar si es necesario
-        if (days < 0) {
-          months--;
-          const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-          days += prevMonth.getDate();
-        }
-        
-        if (months < 0) {
-          years--;
-          months += 12;
-        }
-        
-        // Calcular horas, minutos, segundos
-        let hours = now.getHours() - startDate.getHours();
-        let minutes = now.getMinutes() - startDate.getMinutes();
-        let seconds = now.getSeconds() - startDate.getSeconds();
-        
-        if (seconds < 0) {
-          minutes--;
-          seconds += 60;
-        }
-        
-        if (minutes < 0) {
-          hours--;
-          minutes += 60;
-        }
-        
-        if (hours < 0) {
-          days--;
-          hours += 24;
-        }
-        
-        // Convertir meses a días adicionales
-        const totalDays = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
-        const daysInYear = 365;
-        const remainingDaysAfterYears = totalDays - (years * daysInYear);
-        
-        setTimeData({
-          years,
-          days: remainingDaysAfterYears,
-          hours,
-          minutes,
-          seconds
-        });
-      }
-    }
-  };
+  // Show partner's greeting if available, else own greeting, else default
+  const greeting    = partnerGreeting?.message ?? user?.greetingMessage ?? user?.greeting_message ?? 'Buenos días, mi amor';
+  const subGreeting = partnerGreeting?.subtext  ?? user?.greetingSubtext  ?? user?.greeting_subtext  ?? 'Hoy les toca una cita especial ✦';
+  const couple      = (user?.name && user?.partner)
+    ? `${user.name} & ${user.partner}`.toUpperCase()
+    : 'LOVERS APP';
 
   useEffect(() => {
-    const userData = localStorage.getItem('loversappUser');
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setHasCompletedTest(!!parsedUser.personalityTest?.completed);
+    const raw = localStorage.getItem('loversappUser');
+    if (raw) {
+      const u = JSON.parse(raw);
+      setUser(u);
+      setDays(daysDiff(u.relationshipStartDate || u.relationship_start_date));
     }
+    const all = getDates();
+    const pending = all.filter(d => d.status === 'pending');
+    setDates(pending.length ? pending : all.length ? all : []);
 
-    calculateDaysTogether();
-    
-    // Actualizar contador cada segundo
-    const interval = setInterval(calculateDaysTogether, 1000);
-    return () => clearInterval(interval);
+    // Load partner's greeting from API (what your partner wrote for you)
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.getMe().then(me => {
+        if (me.coupled_user_id) {
+          // partner_greeting is a separate endpoint we check
+          api.getPartnerGreeting().then(pg => {
+            if (pg?.greeting_message) {
+              setPartnerGreeting({ message: pg.greeting_message, subtext: pg.greeting_subtext });
+            }
+          }).catch(() => {});
+        }
+        // Also refresh local user with latest server data
+        const cached = JSON.parse(localStorage.getItem('loversappUser') || '{}');
+        const merged = { ...cached, ...me, partner: me.partner_name || cached.partner, partnerCode: me.partner_code || cached.partnerCode };
+        localStorage.setItem('loversappUser', JSON.stringify(merged));
+        setUser(merged);
+        setDays(daysDiff(me.relationship_start_date || cached.relationshipStartDate));
+        // Load unread received letters
+        api.getReceivedLetters().then(msgs => {
+          const unread = msgs.filter(m => !m.read_at);
+          if (unread.length) setUnreadLetters(unread);
+        }).catch(() => {});
+      }).catch(() => {});
+    }
   }, []);
 
-  const getGreeting = () => {
-    if (user?.name && user?.partner) {
-      return `${user.name} & ${user.partner}`;
-    }
-    return 'LoversApp 💕';
+  useEffect(() => {
+    const h = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const cur       = dates[dateIdx] ?? null;
+  const DOTS      = Math.min(5, dates.length);
+  const nextDate  = () => setDateIdx(p => (p + 1) % Math.max(dates.length, 1));
+  const surprise  = () => {
+    if (dates.length <= 1) return;
+    let n; do { n = Math.floor(Math.random() * dates.length); } while (n === dateIdx);
+    setDateIdx(n);
   };
-  const categories = [
-    {
-      id: 'home',
-      title: '100 Citas',
-      description: 'Nuestras citas favoritas',
-      icon: Heart,
-      color: 'border-red-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-red-500'
-    },
-    {
-      id: 'calendar',
-      title: 'Calendario',
-      description: 'Vista de todos los meses',
-      icon: Calendar,
-      color: 'border-yellow-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-yellow-600'
-    },
-    {
-      id: 'registry',
-      title: 'Registro de Salidas',
-      description: 'Dónde hemos estado',
-      icon: Ticket,
-      color: 'border-red-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-red-500'
-    },
-    {
-      id: 'games',
-      title: 'Jueguito',
-      description: 'Juega con tu pareja',
-      icon: Gamepad2,
-      color: 'border-yellow-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-yellow-600'
-    },
-    {
-      id: 'challenges',
-      title: 'Retos Diarios',
-      description: 'Beso, cumplido, sorpresa',
-      icon: Flame,
-      color: 'border-red-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-red-500'
-    },
-    {
-      id: 'letters',
-      title: 'Cartas Digitales',
-      description: 'Mensajes especiales',
-      icon: Mail,
-      color: 'border-red-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-red-500'
-    },
-    {
-      id: 'timeline',
-      title: 'Línea del Tiempo',
-      description: 'Nuestra historia juntos',
-      icon: Clock,
-      color: 'border-yellow-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-yellow-600'
-    },
-    {
-      id: 'moments',
-      title: 'Momentos Favoritos',
-      description: 'Recuerdos con nota y fecha',
-      icon: Image,
-      color: 'border-red-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-red-500'
-    },
-    {
-      id: 'important-dates',
-      title: 'Fechas Importantes',
-      description: 'Aniversarios y especiales',
-      icon: Bell,
-      color: 'border-yellow-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-yellow-600'
-    },
-    {
-      id: 'countdown',
-      title: 'Countdown',
-      description: 'Citas y viajes próximos',
-      icon: Hourglass,
-      color: 'border-red-500',
-      bgColor: 'bg-white',
-      textColor: 'text-black',
-      accentColor: 'text-red-500'
-    },
-    {
-      id: 'citas-aleatorias',
-      title: '🎲 Citas Aleatorias',
-      description: 'Descubre citas mexicanas',
-      icon: Heart,
-      color: 'border-pink-500',
-      bgColor: 'bg-gradient-to-br from-pink-50 to-blue-50',
-      textColor: 'text-black',
-      accentColor: 'text-pink-600'
-    }
-  ];
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b-2 border-black">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between mb-4">
-            {/* User Profile Icon - Left */}
-            {isAuthenticated && user && (
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                onClick={() => navigateTo('profile')}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg transition group"
-                title="Mi Perfil"
-              >
-                <UserIcon className="w-6 h-6 text-black group-hover:text-red-500 transition" />
-                <span className="font-semibold text-black group-hover:text-red-500 transition text-sm">
-                  {user.name}
-                </span>
-              </motion.button>
-            )}
-            {!isAuthenticated && (
-              <div></div>
-            )}
-            
-            {/* Right Side Buttons */}
-            <div className="flex items-center gap-3">
-              {!isAuthenticated ? (
-                <>
-                  {/* Login Button (Black) */}
-                  <motion.button
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    onClick={() => onOpenLogin('login')}
-                    className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition text-sm font-bold"
-                  >
-                    Iniciar Sesión
-                  </motion.button>
-                  
-                  {/* Register Button (Red) */}
-                  <motion.button
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 }}
-                    onClick={() => onOpenLogin('register')}
-                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm font-bold"
-                  >
+    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', position:'relative', overflow:'hidden', paddingBottom:80, fontFamily:"'Lora', Georgia, serif" }}>
+      <style>{STYLE}</style>
+      <BgDoodles />
+
+      {/* ── HEADER ─────────────────────────────────────────────────────── */}
+      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:`1.5px solid ${D.border}`, background:D.cream, position:'sticky', top:0, zIndex:40 }}>
+        {/* Avatar / profile */}
+        <button onClick={() => isAuthenticated ? navigateTo('profile') : onOpenLogin?.('login')}
+          style={{ width:38, height:38, borderRadius:'50%', background:D.wine, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+          <User size={15} color={D.white} />
+        </button>
+
+        {/* Couple name */}
+        <div style={{ textAlign:'center' }}>
+          <div className="lora" style={{ fontSize:20, color:D.wine, fontWeight:600, letterSpacing:1 }}>LoversApp</div>
+          <div className="caveat" style={{ fontSize:11, color:D.coral, letterSpacing:2, marginTop:1 }}>✦ {couple} ✦</div>
+        </div>
+
+        {/* 3-dot menu */}
+        <div style={{ position:'relative' }} ref={menuRef}>
+          <button onClick={() => setMenuOpen(o => !o)}
+            style={{ width:38, height:38, borderRadius:'50%', background: menuOpen ? '#F5EEE8' : 'transparent', border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            <MoreVertical size={16} color={D.wine} />
+          </button>
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.div initial={{ opacity:0, y:-8, scale:0.95 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0, y:-8, scale:0.95 }} transition={{ duration:0.14 }}
+                style={{ position:'absolute', right:0, top:'108%', background:D.white, borderRadius:16, border:`1.5px solid ${D.border}`, boxShadow:'0 8px 28px rgba(0,0,0,0.11)', minWidth:178, overflow:'hidden', zIndex:50 }}>
+                {isAuthenticated ? (<>
+                  <button onClick={() => { setMenuOpen(false); navigateTo('profile'); }}
+                    className="caveat" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:D.wine }}>
+                    <Settings size={14} /> Ajustes
+                  </button>
+                  <div style={{ height:1, background:D.border }} />
+                  <button onClick={() => { setMenuOpen(false); onLogout?.(); }}
+                    className="caveat" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:'#B02020' }}>
+                    <LogOut size={14} /> Cerrar sesión
+                  </button>
+                </>) : (<>
+                  <button onClick={() => { setMenuOpen(false); onOpenLogin?.('login'); }}
+                    className="caveat" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:D.wine }}>
+                    Iniciar sesión
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); onOpenLogin?.('register'); }}
+                    className="caveat" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:D.wine }}>
                     Registrarse
-                  </motion.button>
-                </>
-              ) : (
-                /* Logout Button (only if authenticated) */
-                <motion.button
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  onClick={onLogout}
-                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition text-sm font-semibold"
-                >
-                  Salir
-                </motion.button>
-              )}
-            </div>
-          </div>
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-black">
-              LoversApp
-              <span className="text-red-500 ml-2">💕</span>
-            </h1>
-            <p className="text-black mt-2 font-semibold">Nuestra app de pareja</p>
-            
-            {/* Days Together Counter */}
-            {relationshipStartDate && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="mt-4 inline-block px-6 py-2 border-2 border-red-500 rounded-full bg-red-50"
-              >
-                <p className="text-sm font-bold text-red-600">
-                  Días Juntos: <span className="text-lg font-mono">{timeData.years}a {timeData.days}d {String(timeData.hours).padStart(2, '0')}:{String(timeData.minutes).padStart(2, '0')}:{String(timeData.seconds).padStart(2, '0')}</span>
-                </p>
+                  </button>
+                </>)}
               </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        {/* Test Completion Banner */}
-        {isAuthenticated && !hasCompletedTest && !dismissTestBanner && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="mb-8 bg-gradient-to-r from-purple-100 via-red-100 to-pink-100 border-3 border-red-500 rounded-2xl p-6 flex items-center justify-between"
-          >
-            <div>
-              <h3 className="text-xl font-bold text-black mb-2">
-                ¿Aún no han hecho el Test de Personalidad? 🔥
-              </h3>
-              <p className="text-gray-700">
-                Responde 16 preguntas en 5 minutos para recibir <span className="font-bold text-red-600">100 citas personalizadas</span> diseñadas especialmente para ustedes.
-              </p>
-            </div>
-            <div className="flex gap-3 ml-6">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigateTo('personality-test')}
-                className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-bold whitespace-nowrap"
-              >
-                Hacer Test Ahora
+      {/* ── CONTENT ────────────────────────────────────────────────────── */}
+      <div style={{ padding:'24px 20px 12px', position:'relative', zIndex:1 }}>
+
+        {/* Greeting */}
+        <motion.div initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.38 }} style={{ marginBottom:26 }}>
+          <p className="caveat" style={{ color:D.gold, fontSize:12, fontWeight:700, letterSpacing:'0.13em', textTransform:'uppercase', marginBottom:4 }}>
+            {todayString()}
+          </p>
+          <h1 className="lora" style={{ fontSize:26, fontWeight:600, color:D.wine, lineHeight:1.25, marginBottom:6 }}>
+            {greeting}
+          </h1>
+          {days !== null && (
+            <p className="caveat" style={{ color:D.muted, fontSize:15, fontWeight:600 }}>
+              Llevan{' '}
+              <span style={{ fontWeight:700, color:D.coral }}>
+                <span style={{ position:'relative', display:'inline-block' }}>
+                  {days} días
+                  <span style={{ position:'absolute', bottom:-2, left:-2, width:'calc(100% + 4px)', height:3, background:D.coral, borderRadius:2, transform:'rotate(-0.7deg)' }} />
+                </span>
+              </span>
+              {' '}juntos. {subGreeting}
+            </p>
+          )}
+
+          {/* CTA buttons */}
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:18 }}>
+            <div style={{ display:'flex', gap:10 }}>
+              <motion.button whileTap={{ scale:0.96 }} onClick={() => navigateTo('home')}
+                className="caveat" style={{ flex:1, padding:'13px 0', background:D.wine, color:D.white, borderRadius:16, fontWeight:700, fontSize:16, border:'none', cursor:'pointer' }}>
+                Ver Citas
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setDismissTestBanner(true)}
-                className="px-4 py-3 border-2 border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition font-bold"
-              >
-                Más tarde
+              <motion.button whileTap={{ scale:0.96 }} onClick={surprise}
+                className="caveat" style={{ flex:1, padding:'13px 0', background:'transparent', border:`2px solid ${D.wine}`, color:D.wine, borderRadius:16, fontWeight:700, fontSize:16, cursor:'pointer' }}>
+                Sorpresa ✦
               </motion.button>
             </div>
+            {!isAuthenticated && (
+              <motion.button whileTap={{ scale:0.96 }} onClick={() => onOpenLogin?.('login')}
+                className="caveat" style={{ width:'100%', padding:'13px 0', background:D.coral, color:D.white, borderRadius:16, fontWeight:700, fontSize:16, border:'none', cursor:'pointer' }}>
+                Iniciar Sesión / Registrarse ♡
+              </motion.button>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Stats strip */}
+        {days !== null && (
+          <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }}
+            style={{ background:D.wine, borderRadius:20, padding:'16px 20px', display:'flex', justifyContent:'space-around', alignItems:'center', marginBottom:22, overflow:'hidden', position:'relative' }}>
+            <svg style={{ position:'absolute', right:8, top:4, opacity:0.07 }} width="70" height="60" viewBox="0 0 70 60">
+              <text x="0" y="50" fontSize="60" fill="#F0C4CC">♡</text>
+            </svg>
+            {[
+              { val: days,                                          sub: 'días juntos',  color: D.blush },
+              { val: getDates().filter(d=>d.status==='completed').length, sub: 'citas hechas', color: D.blush },
+              { val: `✦ ${getDates().filter(d=>d.status==='pending').length}`, sub: 'por vivir', color: D.gold },
+            ].reduce((acc, item, i) => {
+              if (i > 0) acc.push(<div key={`div-${i}`} style={{ width:0.5, height:38, background:'rgba(240,196,204,0.18)' }} />);
+              acc.push(
+                <div key={i} style={{ textAlign:'center', flex:1 }}>
+                  <div className="caveat" style={{ fontSize:26, fontWeight:700, color:item.color, lineHeight:1 }}>{item.val}</div>
+                  <div className="caveat" style={{ fontSize:11, color:'rgba(240,196,204,0.55)', marginTop:3, letterSpacing:0.5 }}>{item.sub}</div>
+                </div>
+              );
+              return acc;
+            }, [])}
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {categories.map((category, index) => {
-            const Icon = category.icon;
-            return (
-              <motion.button
-                key={category.id}
-                onClick={() => navigateTo(category.id)}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.3 }}
-                whileHover={{ scale: 1.05, y: -5 }}
-                whileTap={{ scale: 0.95 }}
-                className="group relative"
-              >
-                {/* Card Background */}
-                <div className={`${category.bgColor} rounded-2xl p-6 h-40 border-3 ${category.color} transition-all duration-300 shadow-lg hover:shadow-2xl hover:border-black`}>
-                  {/* Content */}
-                  <div className="relative h-full flex flex-col items-center justify-center text-center">
-                    <div className={`mb-3 p-3 rounded-full bg-black ${category.accentColor}`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className={`font-bold ${category.textColor} text-sm md:text-base leading-tight`}>
-                      {category.title}
-                    </h3>
-                    <p className="text-gray-600 text-xs mt-1 line-clamp-2">
-                      {category.description}
-                    </p>
+        {/* Unread letters card */}
+        {unreadLetters.length > 0 && (
+          <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} transition={{delay:0.08}}
+            onClick={() => navigateTo('letters')}
+            style={{background:'#FEE8EC',border:`1.5px solid #F0C4CC`,borderLeft:`4px solid ${D.coral}`,
+              borderRadius:20,padding:'16px 18px',marginBottom:22,cursor:'pointer',display:'flex',alignItems:'center',gap:14}}>
+            <motion.div animate={{rotate:[0,-10,10,-10,10,0]}} transition={{delay:0.6,duration:0.7}}>
+              <span style={{fontSize:32}}>💌</span>
+            </motion.div>
+            <div style={{flex:1}}>
+              <p className="lora" style={{fontSize:15,fontWeight:700,color:D.wine,margin:'0 0 3px'}}>
+                {unreadLetters.length === 1 ? '¡Tienes una carta!' : `¡Tienes ${unreadLetters.length} cartas!`}
+              </p>
+              <p className="caveat" style={{fontSize:13,color:'#9A7A6A',margin:0}}>
+                De: {unreadLetters[0].sender_name || 'Tu pareja'} · toca para abrirla ✦
+              </p>
+            </div>
+            <ChevronRight size={18} color={D.coral}/>
+          </motion.div>
+        )}
+
+        {/* Swipeable date card */}
+        {cur && (
+          <motion.section initial={{ opacity:0, y:18 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.14 }} style={{ marginBottom:22 }}>
+            <AnimatePresence mode="wait">
+              <DateCard key={cur.id} date={cur} onNext={nextDate} onDetail={() => navigateTo('detail', cur.id)} />
+            </AnimatePresence>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:12, padding:'0 4px' }}>
+              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                {Array.from({ length:DOTS }, (_,i) => (
+                  <button key={i} onClick={() => setDateIdx(i)}
+                    style={{ width: i===dateIdx%DOTS ? 20 : 8, height:8, borderRadius:4, background: i===dateIdx%DOTS ? D.coral : D.blush, transition:'width 0.28s ease', border:'none', padding:0, cursor:'pointer' }} />
+                ))}
+              </div>
+              <button onClick={nextDate} className="caveat"
+                style={{ display:'flex', alignItems:'center', gap:3, color:D.coral, fontSize:14, fontWeight:700, background:'none', border:'none', cursor:'pointer' }}>
+                o ver otra <ChevronRight size={15} />
+              </button>
+            </div>
+          </motion.section>
+        )}
+
+        {/* Quick links */}
+        <motion.section initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.22 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+            <span className="caveat doodle-underline" style={{ fontSize:15, fontWeight:700, color:D.wine }}>Accesos rápidos</span>
+            <div style={{ flex:1, height:1.5, background:`repeating-linear-gradient(90deg,${D.border} 0,${D.border} 6px,transparent 6px,transparent 12px)` }}/>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            {QUICK_CARDS.map(({ id, Icon, iconBg, cardBorder, cardBg, badge, title, sub, deco, barPct, trackBg, barBg, dots }) => (
+              <div key={id} className="ql-card"
+                style={{ borderColor:cardBorder, background:cardBg }}
+                onClick={() => navigateTo(id)}>
+                {/* Icon + badge row */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
+                  <div style={{ width:36, height:36, background:iconBg, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <Icon size={18} color="#fff" strokeWidth={2} />
                   </div>
+                  <span className="caveat" style={{ fontSize:11, background:`${iconBg}22`, color:iconBg, borderRadius:20, padding:'3px 10px', fontWeight:700 }}>
+                    {badge}
+                  </span>
                 </div>
-              </motion.button>
-            );
-          })}
-        </div>
+                {/* Title + subtitle */}
+                <div className="lora" style={{ fontSize:13, fontWeight:600, color:D.wine, marginBottom:2, lineHeight:1.25 }}>{title}</div>
+                <div className="caveat" style={{ fontSize:12, color:D.muted }}>{sub}</div>
+                {/* Bottom decoration */}
+                <div style={{ marginTop:10 }}>
+                  {deco === 'bar' ? (
+                    <div style={{ height:5, background:trackBg, borderRadius:10, overflow:'hidden' }}>
+                      <div style={{ width:`${barPct}%`, height:'100%', background:barBg, borderRadius:10 }}/>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', gap:4 }}>
+                      {dots.map((c,i) => <div key={i} style={{ width:8, height:8, borderRadius:'50%', background:c }}/>)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
       </div>
     </div>
   );

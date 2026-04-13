@@ -1,23 +1,20 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, Star, GripVertical } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronLeft, GripVertical, Heart, Star } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
-const DatesListPage = ({ navigateTo }) => {
+const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+export default function DatesListPage({ navigateTo }) {
   const [dates, setDates] = useState([]);
   const [draggedItem, setDraggedItem] = useState(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    loadDates();
+    const stored = JSON.parse(localStorage.getItem('coupleDates') || '[]');
+    setDates(stored.filter(d => d.status !== 'skipped').sort((a, b) => a.priority - b.priority));
   }, []);
-
-  const loadDates = () => {
-    const storedDates = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-    const sortedDates = storedDates.sort((a, b) => a.priority - b.priority);
-    setDates(sortedDates);
-  };
 
   const handleDragStart = (e, index) => {
     setDraggedItem(index);
@@ -27,145 +24,124 @@ const DatesListPage = ({ navigateTo }) => {
   const handleDragOver = (e, index) => {
     e.preventDefault();
     if (draggedItem === null || draggedItem === index) return;
-
-    const newDates = [...dates];
-    const draggedDate = newDates[draggedItem];
-    newDates.splice(draggedItem, 1);
-    newDates.splice(index, 0, draggedDate);
-
-    // Update priorities
-    newDates.forEach((date, idx) => {
-      date.priority = idx + 1;
-    });
-
-    setDates(newDates);
+    const nd = [...dates];
+    const dragged = nd[draggedItem];
+    nd.splice(draggedItem, 1);
+    nd.splice(index, 0, dragged);
+    nd.forEach((d, i) => { d.priority = i + 1; });
+    setDates(nd);
     setDraggedItem(index);
   };
 
   const handleDragEnd = () => {
     if (draggedItem !== null) {
       localStorage.setItem('coupleDates', JSON.stringify(dates));
-      toast({
-        title: "Orden actualizado",
-        description: "Las prioridades de las citas han sido guardadas.",
-      });
+      toast({ title: 'Orden actualizado', description: 'Prioridades guardadas.' });
     }
     setDraggedItem(null);
   };
 
-  const completedCount = dates.filter(d => d.status === 'completed').length;
+  const completed = dates.filter(d => d.status === 'completed').length;
+
+  const getAccent = (d) =>
+    d.status === 'completed' ? D.green :
+    d.plannedDate ? D.gold : D.blue;
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="border-b-4 border-black bg-white sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <Button
-            onClick={() => navigateTo('home')}
-            variant="ghost"
-            className="mb-4 text-black hover:bg-gray-100 border border-black"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
-          </Button>
-          <h1 className="text-4xl md:text-5xl font-serif text-black mb-2">Nuestras 100 Citas</h1>
-          <p className="text-gray-600 font-sans font-semibold">
-            {completedCount} completadas • {100 - completedCount} pendientes
-          </p>
+    <div style={{ background: D.cream, minHeight: '100vh', maxWidth: 430, margin: '0 auto', paddingBottom: 88 }}>
+      <style>{STYLE}</style>
+
+      <div style={{ padding: '48px 20px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: D.cream, borderBottom: `1.5px solid ${D.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
+        <button onClick={() => navigateTo('home')}
+          style={{ width: 38, height: 38, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5} />
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="lora" style={{ fontSize: 20, fontWeight: 600, color: D.wine }}>Nuestras 100 Citas</div>
+          <div className="caveat" style={{ fontSize: 11, color: D.muted }}>{completed} completadas · {100 - completed} pendientes ✦</div>
         </div>
+        <div style={{ width: 38 }} />
       </div>
 
-      {/* Dates Grid */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="mb-6 p-4 bg-yellow-50 border-2 border-black rounded-lg">
-          <p className="text-sm text-black font-semibold flex items-center gap-2">
-            <GripVertical className="w-4 h-4" />
-            Arrastra las citas para cambiar su prioridad
-          </p>
+      <div style={{ padding: '16px 18px 0' }}>
+        <div style={{ background: `${D.gold}22`, border: `1.5px solid ${D.gold}55`, borderRadius: 14, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <GripVertical size={14} color={D.gold} />
+          <span className="caveat" style={{ fontSize: 13, color: D.wine }}>Arrastra para cambiar prioridad</span>
         </div>
 
-        <div className="grid gap-4">
-          {dates.map((date, index) => (
+        {dates.map((date, index) => {
+          const accent = getAccent(date);
+          const avgHearts = date.status === 'completed'
+            ? Math.round((date.danielaRating?.hearts + date.eduardoRating?.hearts) / 2) : 0;
+          const avgStars = date.status === 'completed'
+            ? Math.round((date.danielaRating?.stars + date.eduardoRating?.stars) / 2) : 0;
+
+          return (
             <motion.div
               key={date.id}
               draggable
               onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.02 }}
-              className={`border-2 rounded-lg p-4 cursor-move hover:shadow-lg transition-all duration-300 ${
-                date.status === 'completed'
-                  ? 'bg-gray-50 border-gray-300'
-                  : date.plannedDate
-                  ? 'bg-yellow-50 border-yellow-500'
-                  : 'bg-white border-black'
-              } ${draggedItem === index ? 'opacity-50' : ''}`}
+              transition={{ delay: index * 0.015 }}
               onClick={() => navigateTo('detail', date.id)}
+              style={{
+                background: D.white,
+                border: `1.5px solid ${D.border}`,
+                borderLeft: `4px solid ${accent}`,
+                borderRadius: 16,
+                padding: '12px 14px',
+                marginBottom: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                cursor: 'grab',
+                opacity: draggedItem === index ? 0.5 : 1
+              }}
             >
-              <div className="flex items-center gap-4">
-                <GripVertical className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl font-bold text-black font-mono">#{date.id}</span>
-                    <span className="text-lg font-serif text-black">{date.name}</span>
-                  </div>
-                  
-                  {date.status === 'completed' && (
-                    <div className="flex items-center gap-4 text-sm text-gray-600 font-semibold">
-                      {date.date && <span className="font-sans">{date.date}</span>}
-                      {date.location && <span className="font-sans">• {date.location}</span>}
-                    </div>
-                  )}
-                </div>
+              <GripVertical size={16} color={D.muted} style={{ flexShrink: 0 }} />
 
-                <div className="flex flex-col items-end gap-1">
-                  {date.status === 'completed' ? (
-                    <>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <Heart
-                            key={i}
-                            className={`w-4 h-4 ${
-                              i < Math.round((date.danielaRating.hearts + date.eduardoRating.hearts) / 2)
-                                ? 'text-red-500 fill-red-500'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-4 h-4 ${
-                              i < Math.round((date.danielaRating.stars + date.eduardoRating.stars) / 2)
-                                ? 'text-yellow-500 fill-yellow-500'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  ) : date.plannedDate ? (
-                    <span className="px-3 py-1 bg-yellow-100 border-2 border-yellow-600 text-black text-xs font-sans rounded-full font-semibold">
-                      Planeada
+              <div style={{ minWidth: 36, height: 36, borderRadius: 10, background: `${accent}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span className="caveat" style={{ fontSize: 14, fontWeight: 700, color: accent }}>
+                  {String(date.id).padStart(2, '0')}
+                </span>
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="lora" style={{ fontSize: 14, fontWeight: 600, color: D.wine, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{date.name}</div>
+                {date.status === 'completed' && date.date && (
+                  <div className="caveat" style={{ fontSize: 11, color: D.muted }}>{date.date}</div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+                {date.status === 'completed' ? (
+                  <>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      {[...Array(5)].map((_, i) => (
+                        <Heart key={i} size={10} color={D.coral} fill={i < avgHearts ? D.coral : 'none'} />
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} size={10} color={D.gold} fill={i < avgStars ? D.gold : 'none'} />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <span style={{ padding: '2px 10px', background: `${accent}15`, border: `1px solid ${accent}44`, borderRadius: 20 }}>
+                    <span className="caveat" style={{ fontSize: 10, fontWeight: 700, color: accent }}>
+                      {date.plannedDate ? 'Planeada' : 'Pendiente'}
                     </span>
-                  ) : (
-                    <span className="px-3 py-1 bg-white border-2 border-black text-black text-xs font-sans rounded-full font-semibold">
-                      Pendiente
-                    </span>
-                  )}
-                </div>
+                  </span>
+                )}
               </div>
             </motion.div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );
-};
-
-export default DatesListPage;
+}

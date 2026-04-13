@@ -1,408 +1,363 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Heart, ThumbsDown, Zap, MapPin, DollarSign, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
-import { citasDatabase, citasPorCategoria } from '@/data/citas';
+﻿import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, Heart, ThumbsDown, ThumbsUp, RefreshCw } from "lucide-react";
+import { citasDatabase, citasPorCategoria } from "@/data/citas";
+import { api } from "@/lib/api";
 
-const CitasAleatoriasPage = ({ navigateTo }) => {
+// Flat lookup of all citas by id (computed once at module level)
+const ALL_CITAS_FLAT = (() => {
+  const merged = [
+    ...Object.values(citasDatabase || {}).flat(),
+    ...Object.values(citasPorCategoria || {}).flat()
+  ];
+  const seen = new Set();
+  return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+})();
+
+const D = {
+  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
+  border: "#EDE0D0", muted: "#9A7A6A"
+};
+const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+function BgDoodles() {
+  return (
+    <div style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+      <div style={{ position: "absolute", top: "12%", right: "6%", width: 80, height: 80, borderRadius: "50%", border: `2px dashed ${D.blush}`, opacity: 0.5 }} />
+      <div style={{ position: "absolute", bottom: "20%", left: "4%", width: 55, height: 55, borderRadius: "50%", background: D.gold, opacity: 0.12 }} />
+    </div>
+  );
+}
+
+export default function CitasAleatoriasPage({ navigateTo }) {
   const [currentCita, setCurrentCita] = useState(null);
   const [availableCitas, setAvailableCitas] = useState([]);
   const [rejectedCitas, setRejectedCitas] = useState([]);
-  const [personality, setPersonality] = useState('hibrido');
-  const [budget, setBudget] = useState('medium');
   const [stats, setStats] = useState({ like: 0, dislike: 0 });
-  const { toast } = useToast();
+  const [direction, setDirection] = useState(null);
+  const [matches, setMatches] = useState([]);
 
-  const budgetLevels = {
-    very_low: '💰 Muy Bajo (< $100 MXN)',
-    low: '💰💰 Bajo ($100-500 MXN)',
-    medium: '💰💰💰 Medio ($500-1500 MXN)',
-    high: '💰💰💰💰 Alto ($1500-5000 MXN)',
-    very_high: '💰💰💰💰💰 Muy Alto (> $5000 MXN)'
-  };
-
-  const personalities = {
-    tranquilo: '🧘 Tranquilo',
-    extremo: '⚡ Extremo',
-    hibrido: '🎭 Híbrido'
-  };
-
-  // Inicializar citas disponibles
   useEffect(() => {
     loadAvailableCitas();
   }, []);
 
-  // Cargar cita cuando cambia la selección o disponibles
-  useEffect(() => {
-    if (availableCitas.length > 0) {
-      const randomIndex = Math.floor(Math.random() * availableCitas.length);
-      setCurrentCita(availableCitas[randomIndex]);
-    } else if (availableCitas.length === 0 && rejectedCitas.length > 0) {
-      toast({
-        title: "¡Todas las citas se han mostrado!",
-        description: "Puedes reiniciar la selección para ver las citas rechazadas nuevamente.",
-      });
-    }
-  }, [availableCitas]);
+  const loadAvailableCitas = async () => {
+    const token = localStorage.getItem('loversappToken');
+    let rejectedIds = new Set();
+    let likedIds = new Set();
 
-  const loadAvailableCitas = () => {
-    // Obtener citas del localStorage si existen
-    const stored = localStorage.getItem('citasAleatorias');
-    if (stored) {
-      const { available, rejected } = JSON.parse(stored);
-      setAvailableCitas(available);
-      setRejectedCitas(rejected);
-      return;
+    if (token) {
+      try {
+        const swipes = await api.getCitaSwipes();
+        swipes.forEach(s => {
+          if (s.action === 'dislike') rejectedIds.add(s.cita_id);
+          else if (s.action === 'like') likedIds.add(s.cita_id);
+        });
+        setStats({ like: likedIds.size, dislike: rejectedIds.size });
+        // Load couple matches
+        api.getSwipeMatches().then(ids => setMatches(ids)).catch(() => {});
+      } catch {
+        // fall through to localStorage
+      }
     }
 
-    // Cargar todas las citas y mezclar
-    const allCitas = [
-      ...Object.values(citasDatabase).flat(),
-      ...Object.values(citasPorCategoria).flat()
-    ];
+    if (rejectedIds.size === 0 && likedIds.size === 0) {
+      rejectedIds = new Set(
+        JSON.parse(localStorage.getItem("citasAleatorias") || "[]")
+          .filter(c => c.rejected).map(c => c.id)
+      );
+      likedIds = new Set(
+        JSON.parse(localStorage.getItem("favoritesCitas") || "[]").map(c => c.id)
+      );
+      setStats({ like: likedIds.size, dislike: rejectedIds.size });
+    }
 
-    // Remover duplicados por ID
-    const uniqueCitas = Array.from(
-      new Map(allCitas.map(item => [item.id, item])).values()
-    );
+    // Build the pool from the citas database, excluding already swiped
+    const allFromDb = Object.values(citasDatabase || {}).flat();
+    const allFromCat = Object.values(citasPorCategoria || {}).flat();
+    const merged = [...allFromDb, ...allFromCat];
+    const seen = new Set();
+    let pool = merged.filter(c => {
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return !rejectedIds.has(c.id) && !likedIds.has(c.id);
+    });
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    setAvailableCitas(pool);
+    setCurrentCita(pool[0] || null);
+  };
 
-    // Mezclar aleatoriamente
-    const shuffled = uniqueCitas.sort(() => 0.5 - Math.random());
-    
-    setAvailableCitas(shuffled);
-    setRejectedCitas([]);
-    
-    // Guardar en localStorage
-    localStorage.setItem('citasAleatorias', JSON.stringify({
-      available: shuffled,
-      rejected: []
-    }));
+  const moveToNextCita = (current, pool) => {
+    const remaining = pool.filter(c => c.id !== current.id);
+    setAvailableCitas(remaining);
+    setCurrentCita(remaining[0] || null);
+    return remaining;
   };
 
   const handleLike = () => {
     if (!currentCita) return;
-
-    // Actualizar estadísticas
-    const newStats = { ...stats, like: stats.like + 1 };
-    setStats(newStats);
-
-    // Guardar cita en localStorage como favorita
-    const favorites = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
-    if (!favorites.find(c => c.id === currentCita.id)) {
-      favorites.push(currentCita);
-      localStorage.setItem('favoritesCitas', JSON.stringify(favorites));
+    setDirection("right");
+    // Persist to API (fire and forget)
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.swipeCita(currentCita.id, 'like').catch(() => {});
     }
-
-    // Mostrar siguiente cita
-    moveToNextCita();
-
-    toast({
-      title: "¡Me gusta! 💕",
-      description: `Agregada a favoritos: ${currentCita.title}`,
-    });
+    // Also keep localStorage updated for offline compat
+    const favs = JSON.parse(localStorage.getItem("favoritesCitas") || "[]");
+    if (!favs.find(f => f.id === currentCita.id)) {
+      localStorage.setItem("favoritesCitas", JSON.stringify([currentCita, ...favs]));
+    }
+    setStats(s => ({ ...s, like: s.like + 1 }));
+    setTimeout(() => { moveToNextCita(currentCita, availableCitas); setDirection(null); }, 300);
   };
 
   const handleDislike = () => {
     if (!currentCita) return;
-
-    // Actualizar estadísticas
-    const newStats = { ...stats, dislike: stats.dislike + 1 };
-    setStats(newStats);
-
-    // Agregar a rechazadas
-    const newRejected = [...rejectedCitas, currentCita];
-    setRejectedCitas(newRejected);
-
-    // Remover de disponibles
-    const newAvailable = availableCitas.filter(c => c.id !== currentCita.id);
-    setAvailableCitas(newAvailable);
-
-    // Guardar en localStorage
-    localStorage.setItem('citasAleatorias', JSON.stringify({
-      available: newAvailable,
-      rejected: newRejected
-    }));
-
-    // Animación de desaparición
-    toast({
-      title: "Descartada ❌",
-      description: `"${currentCita.title}" ha sido removida. Mostrando siguiente...`,
-    });
-  };
-
-  const moveToNextCita = () => {
-    if (availableCitas.length > 1) {
-      const newAvailable = availableCitas.filter(c => c.id !== currentCita.id);
-      setAvailableCitas(newAvailable);
-      
-      localStorage.setItem('citasAleatorias', JSON.stringify({
-        available: newAvailable,
-        rejected: rejectedCitas
-      }));
+    setDirection("left");
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.swipeCita(currentCita.id, 'dislike').catch(() => {});
     }
+    const stored = JSON.parse(localStorage.getItem("citasAleatorias") || "[]");
+    const updated = [...stored.filter(c => c.id !== currentCita.id), { ...currentCita, rejected: true }];
+    localStorage.setItem("citasAleatorias", JSON.stringify(updated));
+    setStats(s => ({ ...s, dislike: s.dislike + 1 }));
+    setTimeout(() => { moveToNextCita(currentCita, availableCitas); setDirection(null); }, 300);
   };
 
-  const handleReset = () => {
-    localStorage.removeItem('citasAleatorias');
-    localStorage.removeItem('favoritesCitas');
+  const handleReset = async () => {
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.resetSwipes().catch(() => {});
+    }
+    localStorage.removeItem("citasAleatorias");
+    localStorage.removeItem("favoritesCitas");
     setStats({ like: 0, dislike: 0 });
-    setRejectedCitas([]);
     loadAvailableCitas();
-
-    toast({
-      title: "Reinicio completado",
-      description: "Todas las citas están disponibles nuevamente.",
-    });
   };
 
-  const getBudgetColor = (budget) => {
-    const colors = {
-      'very_low': 'text-green-600 bg-green-50',
-      'low': 'text-blue-600 bg-blue-50',
-      'medium': 'text-amber-600 bg-amber-50',
-      'high': 'text-orange-600 bg-orange-50',
-      'very_high': 'text-red-600 bg-red-50'
-    };
-    return colors[budget] || colors.medium;
-  };
+  const favorites = JSON.parse(localStorage.getItem("favoritesCitas") || "[]").slice(0, 4);
 
-  const getCategoryEmoji = (category) => {
-    const emojis = {
-      outdoor: '🏞️',
-      indoor: '🏠',
-      cultural: '🎭',
-      gastronomica: '🍽️',
-      deportes: '⚽',
-      mixed: '🎉'
-    };
-    return emojis[category] || '📍';
-  };
+  const statCards = [
+    { label: "Me gusta", value: stats.like, color: D.coral },
+    { label: "No me gusta", value: stats.dislike, color: D.muted },
+    { label: "Disponibles", value: availableCitas.length, color: D.blue }
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50 p-6">
+    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto" }}>
+      <style>{STYLE}</style>
+      <BgDoodles />
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <Button 
-          variant="ghost"
-          size="sm"
-          onClick={() => navigateTo('dashboard')}
-          className="hover:bg-pink-100"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Volver
-        </Button>
-        
-        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-blue-600">
-          🎲 Citas Aleatorias México
-        </h1>
-
-        <Button 
-          variant="outline"
-          size="sm"
-          onClick={handleReset}
-          className="text-xs"
-        >
-          🔄 Reiniciar
-        </Button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg p-4 shadow-md border-l-4 border-pink-500"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Me Gusta</p>
-              <p className="text-3xl font-bold text-pink-600">{stats.like}</p>
-            </div>
-            <Heart className="w-8 h-8 text-pink-500 fill-pink-500" />
-          </div>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-lg p-4 shadow-md border-l-4 border-blue-500"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">No Me Gusta</p>
-              <p className="text-3xl font-bold text-blue-600">{stats.dislike}</p>
-            </div>
-            <ThumbsDown className="w-8 h-8 text-blue-500" />
-          </div>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-lg p-4 shadow-md border-l-4 border-amber-500"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Disponibles</p>
-              <p className="text-3xl font-bold text-amber-600">{availableCitas.length}</p>
-            </div>
-            <Zap className="w-8 h-8 text-amber-500" />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Main Cita Card */}
-      <AnimatePresence mode="wait">
-        {currentCita ? (
-          <motion.div
-            key={currentCita.id}
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl shadow-2xl p-8 mb-8 max-w-2xl mx-auto border border-pink-100"
-          >
-            {/* Categoría y Presupuesto */}
-            <div className="flex flex-wrap gap-3 mb-6">
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-100 to-pink-50 rounded-full text-pink-700 font-semibold">
-                {getCategoryEmoji(currentCita.category)} {currentCita.category.toUpperCase()}
-              </span>
-              <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold ${getBudgetColor(currentCita.budget)}`}>
-                <DollarSign className="w-4 h-4" />
-                {budgetLevels[currentCita.budget]}
-              </span>
-            </div>
-
-            {/* Título */}
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">
-              {currentCita.title}
-            </h2>
-
-            {/* Descripción */}
-            <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-              {currentCita.description}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 10, background: D.cream,
+        borderBottom: `1.5px solid ${D.border}`, padding: "48px 20px 14px"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => navigateTo("dashboard")} style={{
+            width: 36, height: 36, borderRadius: "50%", border: `1.5px solid ${D.border}`,
+            background: D.white, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", flexShrink: 0
+          }}>
+            <ChevronLeft size={18} color={D.coral} />
+          </button>
+          <div style={{ flex: 1 }}>
+            <h1 className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.wine, margin: 0 }}>
+              Citas Aleatorias
+            </h1>
+            <p className="caveat" style={{ fontSize: 15, color: D.muted, margin: 0 }}>
+              Desliza para descubrir ♡
             </p>
-
-            {/* Meta information */}
-            <div className="border-t border-gray-200 pt-6 grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-xs text-gray-500">Tipo</p>
-                  <p className="font-semibold text-gray-800">{personalities[currentCita.personality]}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-red-600" />
-                <div>
-                  <p className="text-xs text-gray-500">Ubicación</p>
-                  <p className="font-semibold text-gray-800">México</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-2xl mx-auto"
-          >
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">
-              ¡No hay más citas disponibles!
-            </h3>
-            <p className="text-gray-600 mb-6">
-              {rejectedCitas.length > 0 
-                ? `Has rechazado ${rejectedCitas.length} citas. ¿Quieres reiniciar?`
-                : 'Carga todas las citas para comenzar.'}
-            </p>
-            <Button 
-              onClick={handleReset}
-              className="bg-gradient-to-r from-pink-600 to-blue-600 hover:from-pink-700 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-lg"
-            >
-              🔄 Reiniciar
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Action Buttons */}
-      {currentCita && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex gap-6 justify-center mb-8 max-w-2xl mx-auto"
-        >
-          {/* Dislike Button */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleDislike}
-            className="relative group"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full opacity-0 group-hover:opacity-100 blur-xl transition-all duration-300 -z-10"></div>
-            <Button 
-              variant="outline"
-              className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-bold py-6 px-8 rounded-full text-lg w-20 h-20 flex items-center justify-center"
-            >
-              <ThumbsDown className="w-8 h-8" />
-            </Button>
-            <p className="text-center text-sm font-semibold text-blue-600 mt-2">No Me Gusta</p>
-          </motion.button>
-
-          {/* Like Button */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleLike}
-            className="relative group"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-red-500 rounded-full opacity-0 group-hover:opacity-100 blur-xl transition-all duration-300 -z-10"></div>
-            <Button 
-              className="bg-gradient-to-r from-pink-600 to-red-600 hover:from-pink-700 hover:to-red-700 text-white font-bold py-6 px-8 rounded-full text-lg w-20 h-20 flex items-center justify-center"
-            >
-              <Heart className="w-8 h-8 fill-white" />
-            </Button>
-            <p className="text-center text-sm font-semibold text-pink-600 mt-2">Me Gusta</p>
-          </motion.button>
-        </motion.div>
-      )}
-
-      {/* Favoritos Quick View */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mt-12 max-w-4xl mx-auto"
-      >
-        <h3 className="text-2xl font-bold text-gray-800 mb-6">❤️ Citas Favoritas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(() => {
-            const favorites = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
-            if (favorites.length === 0) {
-              return (
-                <div className="col-span-full text-center py-8 text-gray-500">
-                  Aún no has marcado ninguna cita como favorita
-                </div>
-              );
-            }
-            return favorites.slice(0, 4).map(cita => (
-              <motion.div
-                key={cita.id}
-                whileHover={{ y: -4 }}
-                className="bg-gradient-to-br from-pink-50 to-white rounded-lg p-4 border border-pink-200 shadow-sm hover:shadow-md transition-all"
-              >
-                <h4 className="font-bold text-gray-800 mb-2">{cita.title}</h4>
-                <p className="text-sm text-gray-600 line-clamp-2">{cita.description}</p>
-              </motion.div>
-            ));
-          })()}
+          </div>
+          <button onClick={handleReset} style={{
+            padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${D.border}`,
+            background: D.white, cursor: "pointer", display: "flex", alignItems: "center", gap: 6
+          }}>
+            <RefreshCw size={13} color={D.muted} />
+            <span className="caveat" style={{ fontSize: 14, color: D.muted }}>Reset</span>
+          </button>
         </div>
-      </motion.div>
+      </div>
+
+      <div style={{ padding: "18px 20px", position: "relative", zIndex: 1 }}>
+        {/* Stats strip */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          {statCards.map((s, i) => (
+            <div key={i} style={{
+              flex: 1, background: D.white, border: `1.5px solid ${D.border}`,
+              borderLeft: `4px solid ${s.color}`, borderRadius: 14, padding: "10px 10px",
+              textAlign: "center"
+            }}>
+              <div className="caveat" style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
+              <div className="caveat" style={{ fontSize: 12, color: D.muted }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Card */}
+        <AnimatePresence mode="wait">
+          {currentCita ? (
+            <motion.div
+              key={currentCita.id}
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: direction === "right" ? 80 : direction === "left" ? -80 : 0, scale: 0.95 }}
+              transition={{ duration: 0.28 }}
+              style={{
+                background: D.white, border: `1.5px solid ${D.border}`,
+                borderLeft: `5px solid ${D.coral}`, borderRadius: 20, padding: "24px 22px",
+                marginBottom: 22
+              }}
+            >
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                  {currentCita.category && (
+                    <span className="caveat" style={{
+                      fontSize: 13, padding: "3px 10px", borderRadius: 20,
+                      background: D.cream, border: `1px solid ${D.border}`, color: D.muted
+                    }}>{currentCita.category}</span>
+                  )}
+                  {currentCita.budget && (
+                    <span className="caveat" style={{
+                      fontSize: 13, padding: "3px 10px", borderRadius: 20,
+                      background: "#FFF7E6", border: `1px solid ${D.gold}`, color: D.gold
+                    }}>{currentCita.budget}</span>
+                  )}
+                  {currentCita.personality && (
+                    <span className="caveat" style={{
+                      fontSize: 13, padding: "3px 10px", borderRadius: 20,
+                      background: "#EBF3FF", border: `1px solid ${D.blue}`, color: D.blue
+                    }}>{currentCita.personality}</span>
+                  )}
+                </div>
+                <h2 className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.wine, margin: "0 0 10px" }}>
+                  {currentCita.title}
+                </h2>
+                <p style={{ fontFamily: "Lora, serif", fontSize: 15, color: D.muted, lineHeight: 1.6, margin: 0 }}>
+                  {currentCita.description}
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={{
+                background: D.white, border: `1.5px solid ${D.border}`,
+                borderRadius: 20, padding: "40px 22px", textAlign: "center", marginBottom: 22
+              }}
+            >
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+              <h2 className="lora" style={{ fontSize: 20, fontWeight: 700, color: D.wine, margin: "0 0 8px" }}>
+                ¡Completaste todas!
+              </h2>
+              <p className="caveat" style={{ fontSize: 16, color: D.muted, margin: "0 0 18px" }}>
+                No hay más citas disponibles
+              </p>
+              <button onClick={handleReset} style={{
+                padding: "10px 24px", borderRadius: 20, border: "none",
+                background: D.coral, color: D.white, cursor: "pointer",
+                fontFamily: "Caveat, cursive", fontSize: 16, fontWeight: 700
+              }}>
+                Empezar de nuevo
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Action buttons */}
+        {currentCita && (
+          <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 28 }}>
+            <motion.button
+              whileTap={{ scale: 0.93 }}
+              onClick={handleDislike}
+              style={{
+                width: 72, height: 72, borderRadius: "50%", border: `1.5px solid ${D.border}`,
+                background: D.white, display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", boxShadow: "0 2px 12px rgba(28,14,16,0.08)"
+              }}
+            >
+              <ThumbsDown size={28} color={D.muted} />
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.93 }}
+              onClick={handleLike}
+              style={{
+                width: 72, height: 72, borderRadius: "50%", border: "none",
+                background: D.wine, display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", boxShadow: "0 4px 16px rgba(28,14,16,0.2)"
+              }}
+            >
+              <Heart size={28} color={D.blush} fill={D.blush} />
+            </motion.button>
+          </div>
+        )}
+
+        {/* Favorites */}
+        {favorites.length > 0 && (
+          <div>
+            <h3 className="caveat" style={{ fontSize: 18, color: D.wine, margin: "0 0 12px", fontWeight: 700 }}>
+              Mis favoritas ♡
+            </h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {favorites.map((cita, i) => (
+                <div key={cita.id} style={{
+                  background: D.white, border: `1.5px solid ${D.border}`,
+                  borderLeft: `4px solid ${[D.coral, D.gold, D.blue, D.green][i % 4]}`,
+                  borderRadius: 14, padding: "12px 14px"
+                }}>
+                  <p className="lora" style={{ fontSize: 13, fontWeight: 700, color: D.wine, margin: "0 0 6px",
+                    overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    {cita.title}
+                  </p>
+                  {cita.category && (
+                    <span className="caveat" style={{ fontSize: 11, color: D.muted }}>{cita.category}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Couple Matches */}
+        {matches.length > 0 && (() => {
+          const matchedCitas = matches.map(id => ALL_CITAS_FLAT.find(c => c.id === id)).filter(Boolean);
+          if (!matchedCitas.length) return null;
+          return (
+            <div style={{ marginTop: 20 }}>
+              <h3 className="caveat" style={{ fontSize: 18, color: D.wine, margin: "0 0 12px", fontWeight: 700 }}>
+                💘 Matches con tu pareja
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {matchedCitas.slice(0, 8).map((cita) => (
+                  <div key={cita.id} style={{
+                    background: "#FEE8EC", border: `1.5px solid ${D.blush}`,
+                    borderLeft: `4px solid ${D.coral}`,
+                    borderRadius: 14, padding: "12px 14px",
+                    display: "flex", alignItems: "center", gap: 10
+                  }}>
+                    <span style={{ fontSize: 18 }}>💕</span>
+                    <div style={{ flex: 1 }}>
+                      <p className="lora" style={{ fontSize: 13, fontWeight: 700, color: D.wine, margin: "0 0 2px" }}>
+                        {cita.title}
+                      </p>
+                      {cita.category && (
+                        <span className="caveat" style={{ fontSize: 11, color: D.muted }}>{cita.category}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
-};
-
-export default CitasAleatoriasPage;
+}
