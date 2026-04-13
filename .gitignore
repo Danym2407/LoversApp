@@ -8,4 +8,5 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
+backend/.env
 coverage/

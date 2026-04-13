@@ -2,13 +2,15 @@ require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
+const path    = require('path');
 const rateLimit = require('express-rate-limit');
 
-const app  = express();
-const PORT = process.env.PORT || 4000;
+const app    = express();
+const PORT   = process.env.PORT || 3001;
+const isProd = process.env.NODE_ENV === 'production';
 
-// ── Security middleware ────────────────────────────────────────────────────────
-app.use(helmet());
+// ── Security middleware ────────────────────────────────────────────────
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
@@ -41,8 +43,15 @@ app.use('/api/admin',           require('./routes/admin'));
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
-// ── 404 ───────────────────────────────────────────────────────────────────────
-app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
+// ── Frontend estático (producción) ────────────────────────────────────────────
+if (isProd) {
+  const distPath = path.join(__dirname, '../dist');
+  app.use(express.static(distPath));
+  // SPA fallback — cualquier ruta no-API devuelve index.html
+  app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+} else {
+  app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
+}
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
