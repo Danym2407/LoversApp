@@ -83,6 +83,20 @@ router.post('/preferences', (req, res) => {
   res.status(201).json({ ok: true });
 });
 
+// GET /api/cita-swipes/partner — citas liked by coupled partner (but not necessarily by current user)
+router.get('/partner', (req, res) => {
+  const me = db.prepare('SELECT coupled_user_id FROM users WHERE id = ?').get(req.user.id);
+  if (!me?.coupled_user_id) return res.json([]);
+
+  const rows = db.prepare(`
+    SELECT cita_id FROM cita_swipes
+    WHERE user_id = ? AND action = 'like'
+    ORDER BY swiped_at DESC
+  `).all(me.coupled_user_id);
+
+  res.json(rows.map(r => r.cita_id));
+});
+
 // GET /api/cita-swipes/matches — citas liked by both current user and their coupled partner
 router.get('/matches', (req, res) => {
   const me = db.prepare('SELECT coupled_user_id FROM users WHERE id = ?').get(req.user.id);

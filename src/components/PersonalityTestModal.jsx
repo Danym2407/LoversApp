@@ -28,7 +28,7 @@ export default function PersonalityTestModal({ isOpen, onStart, onSkip }) {
                   <span className="text-2xl">📋</span>
                   <div>
                     <h3 className="font-bold text-black">15 Preguntas Personalizadas</h3>
-                    <p className="text-sm text-gray-600">Conoceremos vuestra personalidad y preferencias</p>
+                    <p className="text-sm text-gray-600">Conoceremos tu personalidad y preferencias</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -42,7 +42,7 @@ export default function PersonalityTestModal({ isOpen, onStart, onSkip }) {
                   <span className="text-2xl">✨</span>
                   <div>
                     <h3 className="font-bold text-black">Citas únicas</h3>
-                    <p className="text-sm text-gray-600">Diseñadas especialmente para ustedes</p>
+                    <p className="text-sm text-gray-600">Diseñadas especialmente para ti</p>
                   </div>
                 </div>
               </div>

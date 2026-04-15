@@ -51,7 +51,7 @@ export default function StatsPage({ navigateTo }) {
       <style>{STYLE}</style>
 
       <div style={{ padding: '48px 20px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: D.cream, borderBottom: `1.5px solid ${D.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
-        <button onClick={() => navigateTo('home')}
+        <button onClick={() => navigateTo('dates')}
           style={{ width: 38, height: 38, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <ChevronLeft size={16} color={D.coral} strokeWidth={2.5} />
         </button>

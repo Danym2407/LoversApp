@@ -6,14 +6,14 @@ const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', bl
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
 
 const PERSONALITY_MAP = {
-  tranquilo: { title:'Personalidad Tranquila', icon:'😌', desc:'Prefieren experiencias relajadas e íntimas sin prisa. Disfrutan momentos de calidad.', accent:D.blue },
-  extremo:   { title:'Personalidad Aventurera', icon:'🔥', desc:'Buscan emociones fuertes y nuevas experiencias. Les encanta explorar y vivir momentos intensos.', accent:D.coral },
-  hibrido:   { title:'Personalidad Equilibrada', icon:'⚖️', desc:'Disfrutan de una mezcla de aventura y tranquilidad. Varían entre actividades relajadas e intensas.', accent:D.gold },
+  tranquilo: { title:'Personalidad Tranquila', icon:'😌', desc:'Prefieres experiencias relajadas e íntimas sin prisa. Disfrutas momentos de calidad y conexión real.', accent:D.blue },
+  extremo:   { title:'Personalidad Aventurera', icon:'🔥', desc:'Buscas emociones fuertes y nuevas experiencias. Te encanta explorar y vivir momentos intensos.', accent:D.coral },
+  hibrido:   { title:'Personalidad Equilibrada', icon:'⚖️', desc:'Disfrutas de una mezcla de aventura y tranquilidad. Alternas entre actividades relajadas e intensas.', accent:D.gold },
 };
 const ACTIVITY_MAP   = { sedentary:'🛋️ Sedentario', light:'🚶 Ligero', moderate:'🚴 Moderado', intense:'💪 Intenso' };
 const FREQUENCY_MAP  = { weekly:'📅 Semanal', biweekly:'📆 Quincenal', monthly:'🗓️ Mensual', spontaneous:'⚡ Espontáneo' };
 const SURPRISE_MAP   = { no_surprises:'📋 Todo planeado', some_surprises:'🎁 Algunas sorpresas', often_surprises:'🎉 Sorpresas frecuentes', spontaneous:'🌀 Totalmente espontáneo' };
-const SOCIAL_MAP     = { intimate:'👫 Solo ustedes dos', with_friends:'👥 Con amigos', mixed:'🔄 Ambas opciones' };
+const SOCIAL_MAP     = { intimate:'👫 Solo para dos', with_friends:'👥 Con amigos', mixed:'🔄 Ambas opciones' };
 const TIMELINE_MAP   = { one_month:'⚡ 1 Mes', three_months:'🎯 3 Meses', six_months:'📅 6 Meses', one_year:'⏰ 1 Año', two_years:'🐢 2+ Años', no_deadline:'∞ Sin Deadline' };
 
 function Section({ title, icon, accent, children }) {
@@ -73,8 +73,7 @@ export default function PersonalityProfilePage({ navigateTo }) {
         {/* Ages */}
         <Section title="Edades" icon="❤️" accent={D.coral}>
           <div style={{display:'flex',gap:24}}>
-            <div><div className="caveat" style={{fontSize:12,color:D.muted}}>Tú</div><div className="caveat" style={{fontSize:20,fontWeight:700,color:D.wine}}>{profile.age} años</div></div>
-            <div><div className="caveat" style={{fontSize:12,color:D.muted}}>Tu pareja</div><div className="caveat" style={{fontSize:20,fontWeight:700,color:D.wine}}>{profile.partnerAge} años</div></div>
+            <div><div className="caveat" style={{fontSize:12,color:D.muted}}>Tu edad</div><div className="caveat" style={{fontSize:20,fontWeight:700,color:D.wine}}>{profile.age ? `${profile.age} años` : '–'}</div></div>
           </div>
         </Section>
 
@@ -129,7 +128,7 @@ export default function PersonalityProfilePage({ navigateTo }) {
         )}
 
         {/* CTA */}
-        <button onClick={() => navigateTo('citas-personalizadas')}
+        <button onClick={() => navigateTo('citas-aleatorias')}
           style={{width:'100%',padding:'14px',borderRadius:16,background:D.coral,border:'none',cursor:'pointer',marginTop:4}}>
           <span className="caveat" style={{fontSize:16,fontWeight:700,color:D.white}}>Ver mis 100 Citas Personalizadas 💕</span>
         </button>

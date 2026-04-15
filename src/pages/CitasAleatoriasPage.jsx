@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Heart, ThumbsDown, ThumbsUp, RefreshCw } from "lucide-react";
+import { ChevronLeft, Heart, ThumbsDown, RefreshCw, Sparkles } from "lucide-react";
 import { citasDatabase, citasPorCategoria } from "@/data/citas";
 import { api } from "@/lib/api";
 
@@ -13,6 +13,58 @@ const ALL_CITAS_FLAT = (() => {
   const seen = new Set();
   return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
 })();
+
+const PERS_MAP = {
+  very_calm: 'tranquilo', calm: 'tranquilo',
+  balanced: 'hibrido',
+  adventurous: 'hibrido', very_adventurous: 'extremo'
+};
+const BUDGET_ORDER = ['very_low', 'low', 'medium', 'high', 'very_high'];
+const PERS_LABELS = { tranquilo: 'Tranquilo/a', hibrido: 'Híbrido/a', extremo: 'Aventurero/a' };
+const BUDGET_LABELS = { very_low: 'Muy bajo', low: 'Bajo', medium: 'Medio', high: 'Alto', very_high: 'Muy alto' };
+const ALL_PERSONALITIES = ['tranquilo', 'hibrido', 'extremo'];
+
+// Build a test-based ordered pool (most relevant first)
+function buildTestPool(rejectedIds, likedIds) {
+  const userData = JSON.parse(localStorage.getItem('loversappUser') || '{}');
+  const test = userData.personalityTest;
+  const seen = new Set();
+  const pool = [];
+
+  const addKey = (key) => {
+    (citasDatabase[key] || []).forEach(c => {
+      if (!seen.has(c.id)) { seen.add(c.id); pool.push(c); }
+    });
+  };
+
+  if (test?.completed) {
+    const personality = PERS_MAP[test.personalityType] || 'hibrido';
+    const budget = test.budget || 'medium';
+    const bIdx = BUDGET_ORDER.indexOf(budget);
+
+    // 1st priority: exact match
+    addKey(`${personality}-${budget}`);
+    // 2nd: adjacent budget same personality
+    if (bIdx > 0) addKey(`${personality}-${BUDGET_ORDER[bIdx - 1]}`);
+    if (bIdx < 4) addKey(`${personality}-${BUDGET_ORDER[bIdx + 1]}`);
+    // 3rd: remaining budgets same personality
+    BUDGET_ORDER.forEach(b => addKey(`${personality}-${b}`));
+    // 4th: other personalities, all budgets
+    ALL_PERSONALITIES.filter(p => p !== personality).forEach(p =>
+      BUDGET_ORDER.forEach(b => addKey(`${p}-${b}`))
+    );
+  } else {
+    // No test: load everything (show test prompt but still allow swiping)
+    ALL_PERSONALITIES.forEach(p => BUDGET_ORDER.forEach(b => addKey(`${p}-${b}`)));
+  }
+
+  // Append category-based citas (IDs 76-100)
+  Object.values(citasPorCategoria || {}).flat().forEach(c => {
+    if (!seen.has(c.id)) { seen.add(c.id); pool.push(c); }
+  });
+
+  return pool.filter(c => !rejectedIds.has(c.id) && !likedIds.has(c.id));
+}
 
 const D = {
   cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
@@ -33,14 +85,30 @@ function BgDoodles() {
 export default function CitasAleatoriasPage({ navigateTo }) {
   const [currentCita, setCurrentCita] = useState(null);
   const [availableCitas, setAvailableCitas] = useState([]);
-  const [rejectedCitas, setRejectedCitas] = useState([]);
   const [stats, setStats] = useState({ like: 0, dislike: 0 });
   const [direction, setDirection] = useState(null);
   const [matches, setMatches] = useState([]);
+  const [testInfo, setTestInfo] = useState(null);
+  const [favorites, setFavorites] = useState([]);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
+    // Load test info for display
+    const userData = JSON.parse(localStorage.getItem('loversappUser') || '{}');
+    const test = userData.personalityTest;
+    if (test?.completed) {
+      setTestInfo({
+        personality: PERS_MAP[test.personalityType] || 'hibrido',
+        budget: test.budget || 'medium'
+      });
+    }
+    // Load added-to-list IDs
     loadAvailableCitas();
   }, []);
+
+  const refreshFavorites = () => {
+    setFavorites(JSON.parse(localStorage.getItem("favoritesCitas") || "[]"));
+  };
 
   const loadAvailableCitas = async () => {
     const token = localStorage.getItem('loversappToken');
@@ -55,7 +123,6 @@ export default function CitasAleatoriasPage({ navigateTo }) {
           else if (s.action === 'like') likedIds.add(s.cita_id);
         });
         setStats({ like: likedIds.size, dislike: rejectedIds.size });
-        // Load couple matches
         api.getSwipeMatches().then(ids => setMatches(ids)).catch(() => {});
       } catch {
         // fall through to localStorage
@@ -73,25 +140,13 @@ export default function CitasAleatoriasPage({ navigateTo }) {
       setStats({ like: likedIds.size, dislike: rejectedIds.size });
     }
 
-    // Build the pool from the citas database, excluding already swiped
-    const allFromDb = Object.values(citasDatabase || {}).flat();
-    const allFromCat = Object.values(citasPorCategoria || {}).flat();
-    const merged = [...allFromDb, ...allFromCat];
-    const seen = new Set();
-    let pool = merged.filter(c => {
-      if (seen.has(c.id)) return false;
-      seen.add(c.id);
-      return !rejectedIds.has(c.id) && !likedIds.has(c.id);
-    });
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
+    const pool = buildTestPool(rejectedIds, likedIds);
     setAvailableCitas(pool);
     setCurrentCita(pool[0] || null);
+    refreshFavorites();
   };
 
-  const moveToNextCita = (current, pool) => {
+  const moveToNext = (current, pool) => {
     const remaining = pool.filter(c => c.id !== current.id);
     setAvailableCitas(remaining);
     setCurrentCita(remaining[0] || null);
@@ -101,52 +156,51 @@ export default function CitasAleatoriasPage({ navigateTo }) {
   const handleLike = () => {
     if (!currentCita) return;
     setDirection("right");
-    // Persist to API (fire and forget)
     const token = localStorage.getItem('loversappToken');
-    if (token) {
-      api.swipeCita(currentCita.id, 'like').catch(() => {});
-    }
-    // Also keep localStorage updated for offline compat
+    if (token) api.swipeCita(currentCita.id, 'like').catch(() => {});
     const favs = JSON.parse(localStorage.getItem("favoritesCitas") || "[]");
     if (!favs.find(f => f.id === currentCita.id)) {
-      localStorage.setItem("favoritesCitas", JSON.stringify([currentCita, ...favs]));
+      const updated = [currentCita, ...favs];
+      localStorage.setItem("favoritesCitas", JSON.stringify(updated));
+      setFavorites(updated);
     }
     setStats(s => ({ ...s, like: s.like + 1 }));
-    setTimeout(() => { moveToNextCita(currentCita, availableCitas); setDirection(null); }, 300);
+    setTimeout(() => { moveToNext(currentCita, availableCitas); setDirection(null); }, 300);
   };
 
   const handleDislike = () => {
     if (!currentCita) return;
     setDirection("left");
     const token = localStorage.getItem('loversappToken');
-    if (token) {
-      api.swipeCita(currentCita.id, 'dislike').catch(() => {});
-    }
+    if (token) api.swipeCita(currentCita.id, 'dislike').catch(() => {});
     const stored = JSON.parse(localStorage.getItem("citasAleatorias") || "[]");
-    const updated = [...stored.filter(c => c.id !== currentCita.id), { ...currentCita, rejected: true }];
-    localStorage.setItem("citasAleatorias", JSON.stringify(updated));
+    localStorage.setItem("citasAleatorias", JSON.stringify(
+      [...stored.filter(c => c.id !== currentCita.id), { ...currentCita, rejected: true }]
+    ));
     setStats(s => ({ ...s, dislike: s.dislike + 1 }));
-    setTimeout(() => { moveToNextCita(currentCita, availableCitas); setDirection(null); }, 300);
+    setTimeout(() => { moveToNext(currentCita, availableCitas); setDirection(null); }, 300);
   };
 
   const handleReset = async () => {
     const token = localStorage.getItem('loversappToken');
-    if (token) {
-      api.resetSwipes().catch(() => {});
-    }
+    if (token) api.resetSwipes().catch(() => {});
     localStorage.removeItem("citasAleatorias");
     localStorage.removeItem("favoritesCitas");
     setStats({ like: 0, dislike: 0 });
+    setFavorites([]);
     loadAvailableCitas();
   };
 
-  const favorites = JSON.parse(localStorage.getItem("favoritesCitas") || "[]").slice(0, 4);
-
   const statCards = [
-    { label: "Me gusta", value: stats.like, color: D.coral },
-    { label: "No me gusta", value: stats.dislike, color: D.muted },
+    { label: "Me gustaron", value: stats.like, color: D.coral },
+    { label: "No me gustaron", value: stats.dislike, color: D.muted },
     { label: "Disponibles", value: availableCitas.length, color: D.blue }
   ];
+
+  // Partner matches (both liked)
+  const matchedCitas = matches
+    .map(id => ALL_CITAS_FLAT.find(c => c.id === id))
+    .filter(Boolean);
 
   return (
     <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto" }}>
@@ -168,13 +222,15 @@ export default function CitasAleatoriasPage({ navigateTo }) {
           </button>
           <div style={{ flex: 1 }}>
             <h1 className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.wine, margin: 0 }}>
-              Citas Aleatorias
+              Citas para ti ♡
             </h1>
             <p className="caveat" style={{ fontSize: 15, color: D.muted, margin: 0 }}>
-              Desliza para descubrir ♡
+              {testInfo
+                ? `${PERS_LABELS[testInfo.personality]} · Presupuesto ${BUDGET_LABELS[testInfo.budget]}`
+                : 'Desliza para descubrir'}
             </p>
           </div>
-          <button onClick={handleReset} style={{
+          <button onClick={() => setConfirmReset(true)} style={{
             padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${D.border}`,
             background: D.white, cursor: "pointer", display: "flex", alignItems: "center", gap: 6
           }}>
@@ -185,6 +241,40 @@ export default function CitasAleatoriasPage({ navigateTo }) {
       </div>
 
       <div style={{ padding: "18px 20px", position: "relative", zIndex: 1 }}>
+
+        {/* No-test banner */}
+        {!testInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: "#FFF7E6", border: `1.5px solid ${D.gold}`,
+              borderRadius: 16, padding: "16px 18px", marginBottom: 18,
+              display: "flex", alignItems: "center", gap: 12
+            }}
+          >
+            <Sparkles size={22} color={D.gold} />
+            <div style={{ flex: 1 }}>
+              <p className="lora" style={{ fontSize: 14, fontWeight: 700, color: D.wine, margin: "0 0 3px" }}>
+                Mejora tus recomendaciones
+              </p>
+              <p className="caveat" style={{ fontSize: 13, color: D.muted, margin: 0 }}>
+                Completa el test de personalidad para ver citas hechas para ti
+              </p>
+            </div>
+            <button
+              onClick={() => navigateTo("personality-test")}
+              style={{
+                flexShrink: 0, padding: "7px 14px", borderRadius: 20, border: "none",
+                background: D.gold, color: D.white, cursor: "pointer",
+                fontFamily: "Caveat, cursive", fontSize: 14, fontWeight: 700
+              }}
+            >
+              Ir al test
+            </button>
+          </motion.div>
+        )}
+
         {/* Stats strip */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
           {statCards.map((s, i) => (
@@ -199,7 +289,7 @@ export default function CitasAleatoriasPage({ navigateTo }) {
           ))}
         </div>
 
-        {/* Card */}
+        {/* Swipe Card */}
         <AnimatePresence mode="wait">
           {currentCita ? (
             <motion.div
@@ -255,12 +345,12 @@ export default function CitasAleatoriasPage({ navigateTo }) {
             >
               <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
               <h2 className="lora" style={{ fontSize: 20, fontWeight: 700, color: D.wine, margin: "0 0 8px" }}>
-                ¡Completaste todas!
+                ¡Las viste todas!
               </h2>
               <p className="caveat" style={{ fontSize: 16, color: D.muted, margin: "0 0 18px" }}>
                 No hay más citas disponibles
               </p>
-              <button onClick={handleReset} style={{
+              <button onClick={() => setConfirmReset(true)} style={{
                 padding: "10px 24px", borderRadius: 20, border: "none",
                 background: D.coral, color: D.white, cursor: "pointer",
                 fontFamily: "Caveat, cursive", fontSize: 16, fontWeight: 700
@@ -277,6 +367,7 @@ export default function CitasAleatoriasPage({ navigateTo }) {
             <motion.button
               whileTap={{ scale: 0.93 }}
               onClick={handleDislike}
+              title="No me gusta"
               style={{
                 width: 72, height: 72, borderRadius: "50%", border: `1.5px solid ${D.border}`,
                 background: D.white, display: "flex", alignItems: "center", justifyContent: "center",
@@ -288,6 +379,7 @@ export default function CitasAleatoriasPage({ navigateTo }) {
             <motion.button
               whileTap={{ scale: 0.93 }}
               onClick={handleLike}
+              title="Me gusta"
               style={{
                 width: 72, height: 72, borderRadius: "50%", border: "none",
                 background: D.wine, display: "flex", alignItems: "center", justifyContent: "center",
@@ -299,65 +391,119 @@ export default function CitasAleatoriasPage({ navigateTo }) {
           </div>
         )}
 
-        {/* Favorites */}
+        {/* ── Section 1: Citas que me gustaron a mí ── */}
         {favorites.length > 0 && (
-          <div>
-            <h3 className="caveat" style={{ fontSize: 18, color: D.wine, margin: "0 0 12px", fontWeight: 700 }}>
-              Mis favoritas ♡
+          <div style={{ marginTop: 8 }}>
+            <h3 className="caveat" style={{ fontSize: 19, color: D.wine, margin: "0 0 12px", fontWeight: 700 }}>
+              Citas que me gustaron a mí ♡
+              <span style={{ fontSize: 13, color: D.muted, fontWeight: 400, marginLeft: 6 }}>({favorites.length})</span>
             </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {favorites.map((cita, i) => (
                 <div key={cita.id} style={{
                   background: D.white, border: `1.5px solid ${D.border}`,
                   borderLeft: `4px solid ${[D.coral, D.gold, D.blue, D.green][i % 4]}`,
-                  borderRadius: 14, padding: "12px 14px"
+                  borderRadius: 14, padding: "12px 14px",
+                  display: "flex", alignItems: "center", gap: 10
                 }}>
-                  <p className="lora" style={{ fontSize: 13, fontWeight: 700, color: D.wine, margin: "0 0 6px",
-                    overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                    {cita.title}
-                  </p>
-                  {cita.category && (
-                    <span className="caveat" style={{ fontSize: 11, color: D.muted }}>{cita.category}</span>
-                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p className="lora" style={{
+                      fontSize: 13, fontWeight: 700, color: D.wine, margin: "0 0 4px",
+                      overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical"
+                    }}>
+                      {cita.title}
+                    </p>
+                    {cita.category && (
+                      <span className="caveat" style={{ fontSize: 11, color: D.muted }}>{cita.category}</span>
+                    )}
+                  </div>
+                  <span className="caveat" style={{
+                    flexShrink: 0, padding: "5px 12px", borderRadius: 20,
+                    background: "#EEF8EE", color: D.green,
+                    fontSize: 13, fontWeight: 700, whiteSpace: "nowrap"
+                  }}>✓ En lista</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Couple Matches */}
-        {matches.length > 0 && (() => {
-          const matchedCitas = matches.map(id => ALL_CITAS_FLAT.find(c => c.id === id)).filter(Boolean);
-          if (!matchedCitas.length) return null;
-          return (
-            <div style={{ marginTop: 20 }}>
-              <h3 className="caveat" style={{ fontSize: 18, color: D.wine, margin: "0 0 12px", fontWeight: 700 }}>
-                💘 Matches con tu pareja
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {matchedCitas.slice(0, 8).map((cita) => (
-                  <div key={cita.id} style={{
-                    background: "#FEE8EC", border: `1.5px solid ${D.blush}`,
-                    borderLeft: `4px solid ${D.coral}`,
-                    borderRadius: 14, padding: "12px 14px",
-                    display: "flex", alignItems: "center", gap: 10
-                  }}>
-                    <span style={{ fontSize: 18 }}>💕</span>
-                    <div style={{ flex: 1 }}>
-                      <p className="lora" style={{ fontSize: 13, fontWeight: 700, color: D.wine, margin: "0 0 2px" }}>
-                        {cita.title}
-                      </p>
-                      {cita.category && (
-                        <span className="caveat" style={{ fontSize: 11, color: D.muted }}>{cita.category}</span>
-                      )}
-                    </div>
+        {/* ── Section 2: Citas que le gustaron a mi pareja ── */}
+        {matchedCitas.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <h3 className="caveat" style={{ fontSize: 19, color: D.wine, margin: "0 0 12px", fontWeight: 700 }}>
+              Citas que le gustaron a mi pareja 💕
+              <span style={{ fontSize: 13, color: D.muted, fontWeight: 400, marginLeft: 6 }}>({matchedCitas.length})</span>
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {matchedCitas.map((cita) => (
+                <div key={cita.id} style={{
+                  background: "#FEF0F2", border: `1.5px solid ${D.blush}`,
+                  borderLeft: `4px solid ${D.coral}`,
+                  borderRadius: 14, padding: "12px 14px",
+                  display: "flex", alignItems: "center", gap: 10
+                }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>💕</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p className="lora" style={{
+                      fontSize: 13, fontWeight: 700, color: D.wine, margin: "0 0 2px",
+                      overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical"
+                    }}>
+                      {cita.title}
+                    </p>
+                    {cita.category && (
+                      <span className="caveat" style={{ fontSize: 11, color: D.muted }}>{cita.category}</span>
+                    )}
                   </div>
-                ))}
-              </div>
+                  <span className="caveat" style={{
+                    flexShrink: 0, padding: "5px 12px", borderRadius: 20,
+                    background: "#FEF0F2", border: `1.5px solid ${D.blush}`,
+                    color: D.coral, fontSize: 13, fontWeight: 700, whiteSpace: "nowrap"
+                  }}>❤️ Match</span>
+                </div>
+              ))}
             </div>
-          );
-        })()}
+          </div>
+        )}
+
       </div>
+
+      {/* ── CONFIRM RESET MODAL ── */}
+      <AnimatePresence>
+        {confirmReset && (
+          <motion.div key="confirm-reset-overlay"
+            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:200,
+              display:'flex', alignItems:'center', justifyContent:'center', padding:'0 30px' }}
+            onClick={() => setConfirmReset(false)}>
+            <motion.div
+              initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.9, opacity:0 }}
+              transition={{ type:'spring', damping:25, stiffness:300 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background:'#FDF6EC', borderRadius:24, padding:'32px 26px', width:'100%', maxWidth:360, textAlign:'center' }}>
+              <div style={{ fontSize:44, marginBottom:10 }}>⚠️</div>
+              <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:18, fontWeight:700, color:'#1C0E10', marginBottom:8 }}>
+                ¿Estás seguro/a?
+              </div>
+              <div style={{ fontFamily:"'Caveat',cursive", fontSize:14, color:'#9A7A6A', lineHeight:1.6, marginBottom:24 }}>
+                Se borrarán todos tus swipes y tus citas guardadas. Volverás a ver todas las citas desde cero.
+              </div>
+              <div style={{ display:'flex', gap:10 }}>
+                <button onClick={() => setConfirmReset(false)}
+                  style={{ flex:1, padding:'13px', borderRadius:14, background:'#EDE0D0', border:'none', cursor:'pointer',
+                    fontFamily:"'Caveat',cursive", fontSize:16, fontWeight:700, color:'#7A5A55' }}>
+                  Cancelar
+                </button>
+                <button onClick={() => { handleReset(); setConfirmReset(false); }}
+                  style={{ flex:1, padding:'13px', borderRadius:14, background:'#C44455', border:'none', cursor:'pointer',
+                    fontFamily:"'Caveat',cursive", fontSize:16, fontWeight:700, color:'#fff' }}>
+                  Sí, reiniciar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

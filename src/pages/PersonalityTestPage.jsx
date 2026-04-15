@@ -20,8 +20,7 @@ export default function PersonalityTestPage({ navigateTo }) {
 
   const questions = [
     { id: "birthDate", type: "date", question: "¿Cuál es tu fecha de nacimiento?", subtitle: "Esto nos ayuda a entender mejor tu etapa de vida", options: null },
-    { id: "partnerBirthDate", type: "date", question: "¿Cuál es la fecha de nacimiento de tu pareja?", subtitle: "Para tener una visión completa de ambos", options: null },
-    { id: "lifeStage", type: "single", question: "¿En qué etapa de vida están?", subtitle: "Selecciona la que mejor aplique", options: [
+    { id: "lifeStage", type: "single", question: "¿En qué etapa de vida estás?", subtitle: "Selecciona la que mejor aplique", options: [
       { id: "secondary", label: "🏫 Secundaria" }, { id: "high_school", label: "📚 Preparatoria" },
       { id: "university", label: "🎓 Universidad" }, { id: "professional", label: "💼 Profesionales" },
       { id: "established", label: "🏡 Establecidos" }
@@ -31,17 +30,12 @@ export default function PersonalityTestPage({ navigateTo }) {
       { id: "balanced", label: "⚖️ Balanceado/a" }, { id: "adventurous", label: "🎢 Aventurero/a" },
       { id: "very_adventurous", label: "🔥 Muy aventurero/a" }
     ]},
-    { id: "partnerPersonality", type: "single", question: "¿Cómo describirías la personalidad de tu pareja?", subtitle: "Su naturaleza predominante", options: [
-      { id: "very_calm", label: "😌 Muy tranquilo/a" }, { id: "calm", label: "😊 Tranquilo/a" },
-      { id: "balanced", label: "⚖️ Balanceado/a" }, { id: "adventurous", label: "🎢 Aventurero/a" },
-      { id: "very_adventurous", label: "🔥 Muy aventurero/a" }
-    ]},
-    { id: "budget", type: "single", question: "¿Cuál es vuestro presupuesto típico para citas?", subtitle: "Esto nos ayuda a sugerir opciones acordes", options: [
+    { id: "budget", type: "single", question: "¿Cuál es tu presupuesto típico para una cita?", subtitle: "Esto nos ayuda a sugerir opciones acordes", options: [
       { id: "very_low", label: "💰 Muy bajo (< $100 MXN)" }, { id: "low", label: "💵 Bajo ($100-300 MXN)" },
       { id: "medium", label: "💴 Medio ($300-800 MXN)" }, { id: "high", label: "💶 Alto ($800-2,500 MXN)" },
       { id: "very_high", label: "💎 Muy alto (> $2,500 MXN)" }
     ]},
-    { id: "hobbies", type: "multiple", question: "¿Cuáles son vuestros hobbies e intereses? (Selecciona varios)", subtitle: "Nos ayuda a personalizar las citas", options: [
+    { id: "hobbies", type: "multiple", question: "¿Cuáles son tus hobbies e intereses? (Selecciona varios)", subtitle: "Te ayuda a personalizar tus citas", options: [
       { id: "sports", label: "⚽ Deportes" }, { id: "arts", label: "🎨 Artes" }, { id: "music", label: "🎵 Música" },
       { id: "movies", label: "🎬 Películas/Series" }, { id: "outdoor", label: "🏕️ Actividades al aire libre" },
       { id: "food", label: "🍽️ Gastronomía" }, { id: "travel", label: "✈️ Viajes" },
@@ -49,56 +43,56 @@ export default function PersonalityTestPage({ navigateTo }) {
       { id: "cooking", label: "🍳 Cocinar" }, { id: "photography", label: "📷 Fotografía" },
       { id: "dancing", label: "💃 Bailar" }, { id: "pets", label: "🐾 Mascotas" }
     ]},
-    { id: "preferredEnvironment", type: "single", question: "¿Prefieren citas más en...", subtitle: "Tu zona de confort", options: [
+    { id: "preferredEnvironment", type: "single", question: "¿Prefieres citas más en...", subtitle: "Tu zona de confort", options: [
       { id: "indoor", label: "🏠 Interior (cafés, cines, restaurantes)" },
       { id: "outdoor", label: "🌳 Exterior (parques, plazas, naturaleza)" },
       { id: "mixed", label: "🔄 Ambas por igual" }
     ]},
-    { id: "dateFrequency", type: "single", question: "¿Con qué frecuencia prefieren salir?", subtitle: "Para ajustar el ritmo de citas", options: [
+    { id: "dateFrequency", type: "single", question: "¿Con qué frecuencia prefieres salir?", subtitle: "Para ajustar el ritmo de citas", options: [
       { id: "weekly", label: "📅 Una o más veces por semana" }, { id: "biweekly", label: "📆 Cada dos semanas" },
       { id: "monthly", label: "🗓️ Más o menos mensual" }, { id: "spontaneous", label: "⚡ Espontáneamente" }
     ]},
-    { id: "surpriseFactor", type: "single", question: "¿Qué tan importantes son las sorpresas?", subtitle: "Nivel de espontaneidad que disfrutan", options: [
+    { id: "surpriseFactor", type: "single", question: "¿Qué tan importantes son las sorpresas para ti?", subtitle: "Nivel de espontaneidad que disfrutas", options: [
       { id: "no_surprises", label: "📋 Prefiero planeado" }, { id: "some_surprises", label: "🎁 Algunas sorpresas" },
       { id: "often_surprises", label: "🎉 Sorpresas frecuentes" }, { id: "spontaneous", label: "🌀 Totalmente espontáneo" }
     ]},
-    { id: "physicalActivity", type: "single", question: "¿Qué nivel de actividad física prefieren?", subtitle: "Para equilibrar citas activas vs relajadas", options: [
+    { id: "physicalActivity", type: "single", question: "¿Qué nivel de actividad física prefieres?", subtitle: "Para equilibrar citas activas vs relajadas", options: [
       { id: "sedentary", label: "🛋️ Sedentario" }, { id: "light", label: "🚶 Ligero" },
       { id: "moderate", label: "🚴 Moderado" }, { id: "intense", label: "💪 Intenso" }
     ]},
-    { id: "socialSettings", type: "single", question: "¿Prefieren citas sociales o íntimas?", subtitle: "Con amigos o solo ustedes dos", options: [
-      { id: "intimate", label: "👫 Solo nosotros dos" }, { id: "with_friends", label: "👥 Con amigos" }, { id: "mixed", label: "🔄 Ambas" }
+    { id: "socialSettings", type: "single", question: "¿Prefieres citas sociales o íntimas?", subtitle: "Con amigos o solo para dos", options: [
+      { id: "intimate", label: "👫 Solo para dos" }, { id: "with_friends", label: "👥 Con amigos" }, { id: "mixed", label: "🔄 Ambas" }
     ]},
-    { id: "culturalInterests", type: "multiple", question: "¿Qué tipo de actividades culturales les llaman?", subtitle: "Selecciona varias opciones", options: [
+    { id: "culturalInterests", type: "multiple", question: "¿Qué tipo de actividades culturales te llaman?", subtitle: "Selecciona varias opciones", options: [
       { id: "museums", label: "🖼️ Museos" }, { id: "theater", label: "🎭 Teatro" },
       { id: "concerts", label: "🎤 Conciertos" }, { id: "exhibitions", label: "🎨 Exposiciones" },
       { id: "none", label: "❌ Ninguna en particular" }
     ]},
-    { id: "nightLife", type: "single", question: "¿Les interesa la vida nocturna?", subtitle: "Bares, discotecas, después de cena, etc.", options: [
-      { id: "not_interested", label: "😴 No nos interesa" }, { id: "occasional", label: "🌙 Ocasionalmente" },
+    { id: "nightLife", type: "single", question: "¿Te interesa la vida nocturna?", subtitle: "Bares, discotecas, salidas nocturnas, etc.", options: [
+      { id: "not_interested", label: "😴 No me interesa" }, { id: "occasional", label: "🌙 Ocasionalmente" },
       { id: "sometimes", label: "⭐ A veces" }, { id: "often", label: "🌃 Muy a menudo" }
     ]},
-    { id: "smokes", type: "single", question: "¿Alguno de ustedes fuma?", subtitle: "Nos ayuda a recomendar lugares con o sin zonas de fumadores", options: [
-      { id: "none", label: "🚭 Ninguno fuma" },
-      { id: "one",  label: "🚬 Solo uno de nosotros" },
-      { id: "both", label: "💨 Ambos fumamos" }
+    { id: "smokes", type: "single", question: "¿Fumas?", subtitle: "Nos ayuda a recomendar lugares con o sin zonas para fumadores", options: [
+      { id: "none", label: "🚭 No fumo" },
+      { id: "one",  label: "🚬 Sí fumo" },
+      { id: "both", label: "💨 Solo ocasionalmente" }
     ]},
-    { id: "drinks", type: "single", question: "¿Cómo se relacionan con el alcohol?", subtitle: "Ajustamos sugerencias a su estilo de vida", options: [
-      { id: "never",    label: "🧃 No tomamos alcohol" },
+    { id: "drinks", type: "single", question: "¿Cómo te relacionas con el alcohol?", subtitle: "Ajustamos sugerencias a tu estilo de vida", options: [
+      { id: "never",    label: "🧃 No tomo alcohol" },
       { id: "social",   label: "🥂 Solo en celebraciones" },
       { id: "moderate", label: "🍷 Moderado (fines de semana)" },
-      { id: "frequent", label: "🍻 Frecuentemente" }
+      { id: "frequent", label: "🍻 Con frecuencia" }
     ]},
-    { id: "seasonPreference", type: "single", question: "¿En qué estación se sienten mejor citas?", subtitle: "Para ajustar sugerencias", options: [
+    { id: "seasonPreference", type: "single", question: "¿En qué estación te sientes mejor para tener citas?", subtitle: "Para ajustar sugerencias", options: [
       { id: "spring", label: "🌸 Primavera" }, { id: "summer", label: "☀️ Verano" },
       { id: "fall", label: "🍂 Otoño" }, { id: "winter", label: "❄️ Invierno" }, { id: "any", label: "🔄 Cualquier época" }
     ]},
-    { id: "citasTimeline", type: "single", question: "¿En cuánto tiempo planean terminar las 100 citas?", subtitle: "Meta realista para disfrutar juntos", options: [
+    { id: "citasTimeline", type: "single", question: "¿En cuánto tiempo planeas terminar las 100 citas?", subtitle: "Meta realista para disfrutar la experiencia", options: [
       { id: "one_month", label: "⚡ 1 mes (intenso!)" }, { id: "three_months", label: "🎯 3 meses (rápido)" },
       { id: "six_months", label: "📅 6 meses (moderado)" }, { id: "one_year", label: "⏰ 1 año (tranquilo)" },
       { id: "two_years", label: "🐢 2+ años (sin prisa)" }, { id: "no_deadline", label: "∞ Sin fecha límite" }
     ]},
-    { id: "additionalComments", type: "text", question: "¿Algo más que debamos saber?", subtitle: "Preferencias especiales, fobias, alergias, etc. (opcional)", placeholder: "Cuéntanos más sobre ustedes..." }
+    { id: "additionalComments", type: "text", question: "¿Algo más que debamos saber?", subtitle: "Preferencias especiales, restricciones, etc. (opcional)", placeholder: "Cuéntanos más sobre ti..." }
   ];
 
   const calculatePersonality = (a) => {
@@ -106,8 +100,7 @@ export default function PersonalityTestPage({ navigateTo }) {
     const as = { sedentary:1, light:2, moderate:3, intense:4 };
     const ss = { no_surprises:1, some_surprises:2, often_surprises:4, spontaneous:5 };
     const ns = { not_interested:1, occasional:2, sometimes:3, often:5 };
-    const avg = ((ps[a.personalityType]||3)+(ps[a.partnerPersonality]||3))/2;
-    const score = (avg+(as[a.physicalActivity]||2)+(ss[a.surpriseFactor]||2)+(ns[a.nightLife]||1))/4;
+    const score = ((ps[a.personalityType]||3)+(as[a.physicalActivity]||2)+(ss[a.surpriseFactor]||2)+(ns[a.nightLife]||1))/4;
     if (score <= 2) return "tranquilo";
     if (score >= 3.8) return "extremo";
     return "hibrido";
@@ -130,7 +123,6 @@ export default function PersonalityTestPage({ navigateTo }) {
     const testResult = {
       completed: true, personality, budgetLevel,
       age: calculateAge(answers.birthDate),
-      partnerAge: calculateAge(answers.partnerBirthDate),
       ...answers,
       completedAt: new Date().toISOString()
     };
@@ -174,9 +166,7 @@ export default function PersonalityTestPage({ navigateTo }) {
     };
 
     const userName = userData.name?.trim() || "";
-    const partnerName = userData.partner?.trim() || "";
     upsertImportantDate({ sourceType:"user-birthday", title: userName?`Cumpleaños de ${userName}`:"Tu cumpleaños", dateStr:answers.birthDate, description:"Cumpleaños", type:"birthday", icon:"🎂", color:"from-blue-500 to-cyan-500" });
-    upsertImportantDate({ sourceType:"partner-birthday", title: partnerName?`Cumpleaños de ${partnerName}`:"Cumpleaños de tu pareja", dateStr:answers.partnerBirthDate, description:"Cumpleaños", type:"birthday", icon:"🎂", color:"from-blue-500 to-cyan-500" });
     setCompleted(true);
     toast({ title: "¡Test completado!", description: "Hemos personalizado tus 100 citas especiales" });
   };
@@ -235,7 +225,7 @@ export default function PersonalityTestPage({ navigateTo }) {
               ¡Perfecto! 💕
             </h1>
             <p style={{ fontFamily: "Lora, serif", fontSize: 16, color: D.muted, lineHeight: 1.7, margin: "0 0 20px" }}>
-              Hemos personalizado vuestras <strong style={{ color: D.coral }}>100 citas especiales</strong> según vuestra personalidad, edad, presupuesto y preferencias.
+              Hemos personalizado tus <strong style={{ color: D.coral }}>100 citas especiales</strong> según tu personalidad, edad, presupuesto y preferencias.
             </p>
           </motion.div>
 
@@ -265,7 +255,7 @@ export default function PersonalityTestPage({ navigateTo }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigateTo("citas-personalizadas")}
+            onClick={() => navigateTo("citas-aleatorias")}
             style={{
               width: "100%", padding: "14px 0", borderRadius: 16, border: "none",
               background: D.coral, color: D.white, cursor: "pointer",

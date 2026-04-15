@@ -55,6 +55,13 @@ function getEventPhotos(event) {
       if (match) return [...(match.danielaPhotos || []), ...(match.eduardoPhotos || [])];
     } catch {}
   }
+  if (event.sourceType === 'cita-review' && event.sourceId) {
+    try {
+      const reviews = JSON.parse(localStorage.getItem('completedCitasReviews') || '{}');
+      const review = reviews[event.sourceId];
+      if (review?.photos?.length) return review.photos;
+    } catch {}
+  }
   if (event.photo) return [event.photo];
   return [];
 }
@@ -341,12 +348,24 @@ export default function CalendarPage({ navigateTo }) {
               return (
                 <motion.div key={ev.id} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
                   style={{ background:D.white, borderRadius:18, border:`1.5px solid ${D.border}`, borderLeft:`4px solid ${D.coral}`, overflow:'hidden', cursor:'pointer' }}
-                  onClick={() => ev.photo || photos.length ? (setShowGallery(ev), setPhotoIndex(0)) : null}>
-                  {ev.photo && (
-                    <div style={{ height:90, overflow:'hidden' }}>
-                      <img src={ev.photo} alt={ev.title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                    </div>
-                  )}
+                  onClick={() => { const p = getEventPhotos(ev); if (p.length) { setShowGallery(ev); setPhotoIndex(0); } }}>
+                  {(() => {
+                    const evPhotos = getEventPhotos(ev);
+                    if (evPhotos.length === 0) return null;
+                    if (evPhotos.length === 1) return (
+                      <div style={{ height:90, overflow:'hidden' }}>
+                        <img src={evPhotos[0]} alt={ev.title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                      </div>
+                    );
+                    return (
+                      <div style={{ position:'relative', height:90, overflow:'hidden' }}>
+                        <img src={evPhotos[photoIndex] || evPhotos[0]} alt={ev.title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                        <div style={{ position:'absolute', bottom:6, right:8 }}>
+                          <span className="caveat" style={{ fontSize:11, background:'rgba(28,14,16,0.65)', color:'#fff', borderRadius:20, padding:'2px 8px' }}>📷 {evPhotos.length}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ padding:'12px 14px' }}>
                     <div className="caveat" style={{ fontSize:11, color:D.muted, marginBottom:3 }}>
                       {ev.date} de {MONTH_NAMES[parseInt(m)]} {y}

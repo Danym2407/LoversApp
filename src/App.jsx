@@ -19,7 +19,6 @@ import ImportantDatesPage from '@/pages/ImportantDatesPage';
 import CountdownPage from '@/pages/CountdownPage';
 import PersonalityTestPage from '@/pages/PersonalityTestPage';
 import PersonalityProfilePage from '@/pages/PersonalityProfilePage';
-import CitasPersonalizadasPage from '@/pages/CitasPersonalizadasPage';
 import CitasAleatoriasPage from '@/pages/CitasAleatoriasPage';
 import AdminPage from '@/pages/AdminPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
@@ -32,6 +31,7 @@ const NO_NAV_PAGES = new Set(['personality-test', 'personality-profile', 'admin'
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedDateId, setSelectedDateId] = useState(null);
+  const [backTo, setBackTo] = useState('dates');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginTab, setLoginTab] = useState('login');
@@ -49,11 +49,11 @@ function App() {
     }
   }, []);
 
-  const navigateTo = (page, dateId = null) => {
+  const navigateTo = (page, dateId = null, back = null) => {
     setCurrentPage(page);
-    if (dateId !== null) {
-      setSelectedDateId(dateId);
-    }
+    if (dateId !== null) setSelectedDateId(dateId);
+    if (back !== null) setBackTo(back);
+    else if (page === 'detail') setBackTo('dates');
   };
 
   const handleLogout = () => {
@@ -73,9 +73,9 @@ function App() {
       <div style={{ background: '#FEF8F0', minHeight: '100vh' }}>
         {currentPage === 'dashboard' && <DashboardPage navigateTo={navigateTo} onLogout={handleLogout} onOpenLogin={(tab = 'login') => { setLoginTab(tab); setShowLoginModal(true); }} isAuthenticated={isAuthenticated} />}
         {currentPage === 'profile' && <ProfilePage navigateTo={navigateTo} />}
-        {currentPage === 'home' && <HomePage navigateTo={navigateTo} />}
+        {currentPage === 'home' && <DatesListPage navigateTo={navigateTo} />}
         {currentPage === 'dates' && <DatesListPage navigateTo={navigateTo} />}
-        {currentPage === 'detail' && <DateDetailPage dateId={selectedDateId} navigateTo={navigateTo} />}
+        {currentPage === 'detail' && <DateDetailPage dateId={selectedDateId} navigateTo={navigateTo} backTo={backTo} />}
         {currentPage === 'stats' && <StatsPage navigateTo={navigateTo} />}
         {currentPage === 'roulette' && <RoulettePage navigateTo={navigateTo} />}
         {currentPage === 'calendar' && <CalendarPage navigateTo={navigateTo} />}
@@ -89,7 +89,6 @@ function App() {
         {currentPage === 'countdown' && <CountdownPage navigateTo={navigateTo} />}
         {currentPage === 'personality-test' && <PersonalityTestPage navigateTo={navigateTo} />}
         {currentPage === 'personality-profile' && <PersonalityProfilePage navigateTo={navigateTo} />}
-        {currentPage === 'citas-personalizadas' && <CitasPersonalizadasPage navigateTo={navigateTo} />}
         {currentPage === 'citas-aleatorias' && <CitasAleatoriasPage navigateTo={navigateTo} />}
         {currentPage === 'admin' && <AdminPage navigateTo={navigateTo} />}
         {currentPage === 'reset-password' && <ResetPasswordPage navigateTo={navigateTo} />}

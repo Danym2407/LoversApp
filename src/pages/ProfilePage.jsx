@@ -426,7 +426,7 @@ export default function ProfilePage({ navigateTo }) {
                   background: D.coral, color: D.white, cursor: "pointer",
                   fontFamily: "Caveat, cursive", fontSize: 14
                 }}>Ver perfil completo</button>
-                <button onClick={() => navigateTo("citas-personalizadas")} style={{
+                <button onClick={() => navigateTo("citas-aleatorias")} style={{
                   padding: "9px 0", borderRadius: 12, border: `1.5px solid ${D.border}`,
                   background: D.white, color: D.wine, cursor: "pointer",
                   fontFamily: "Caveat, cursive", fontSize: 14

@@ -4,7 +4,14 @@ import { User, MoreVertical, ChevronRight, LogOut, Settings, Heart,
          Zap, Mail, Calendar, Activity, BookOpen, Bell, Timer, BarChart2, Shuffle,
          ThumbsUp, Star } from 'lucide-react';
 import { initialDates } from '@/data/dates';
+import { citasDatabase, citasPorCategoria } from '@/data/citas';
 import { api } from '@/lib/api';
+
+const ALL_CITAS_FLAT = (() => {
+  const merged = [...Object.values(citasDatabase).flat(), ...Object.values(citasPorCategoria).flat()];
+  const seen = new Set();
+  return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+})();
 
 // ── Paleta doodle ─────────────────────────────────────────────────────────────
 const D = {
@@ -116,6 +123,49 @@ function DateCard({ date, onNext, onDetail }) {
   );
 }
 
+// ── Surprise card (inline, same dark style) ──────────────────────────────────
+function SurpriseCard({ cita, onAddToList, onDetail, onClose }) {
+  const name = cita.title || cita.name;
+  return (
+    <motion.div
+      initial={{ opacity:0, y:18 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-18 }}
+      transition={{ type:'spring', stiffness:300, damping:26 }}
+      style={{ background:D.wine, borderRadius:22, padding:'22px 22px 18px', position:'relative', overflow:'hidden' }}
+    >
+      <svg style={{ position:'absolute', right:10, top:4, opacity:0.07 }} width="80" height="70" viewBox="0 0 80 70">
+        <text x="0" y="64" fontSize="70" fill="#F0C4CC">♡</text>
+      </svg>
+      <button onClick={onClose} style={{ position:'absolute', top:12, right:12, background:'rgba(255,255,255,0.12)', border:'none', borderRadius:'50%', width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:D.blush, fontSize:17, lineHeight:1 }}>×</button>
+
+      <p className="caveat" style={{ color:D.gold, fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:12 }}>
+        ✨ Cita sorpresa ✨
+      </p>
+      <h2 className="lora" style={{ color:D.white, fontSize:22, fontWeight:600, lineHeight:1.25, marginBottom:10 }}>
+        {name}
+      </h2>
+      {(cita.description || cita.desc) && (
+        <p className="caveat" style={{ color:'rgba(240,196,204,0.82)', fontSize:13, lineHeight:1.6, marginBottom:14 }}>
+          {cita.description || cita.desc}
+        </p>
+      )}
+      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+        <button onClick={onDetail} className="caveat" style={{ background:D.coral, color:D.white, borderRadius:12, padding:'9px 18px', fontWeight:700, fontSize:14, border:'none', cursor:'pointer' }}>
+          Ver detalles
+        </button>
+        {cita.inMyList ? (
+          <span className="caveat" style={{ background:'rgba(91,170,106,0.22)', color:'#7DC98A', borderRadius:12, padding:'9px 14px', fontSize:13, fontWeight:700, border:'1.5px solid rgba(91,170,106,0.35)' }}>
+            ✓ En mi lista
+          </span>
+        ) : (
+          <button onClick={onAddToList} className="caveat" style={{ background:'rgba(255,255,255,0.13)', color:D.blush, borderRadius:12, padding:'9px 14px', fontWeight:700, fontSize:13, border:'1.5px solid rgba(240,196,204,0.28)', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+            <span style={{ fontSize:14 }}>♥</span> Agregar a mi lista
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 const QUICK_CARDS = [
   {
     id:'challenges', Icon:Zap,
@@ -174,14 +224,8 @@ const QUICK_CARDS = [
   {
     id:'citas-aleatorias', Icon:ThumbsUp,
     iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
-    badge:'Descubrir', title:'Citas Aleatorias', sub:'Me gusta / No me gusta',
+    badge:'Para ti', title:'Citas para ti', sub:'Basadas en tu personalidad ♡',
     deco:'dots', dots:['#C44455','#F0C4CC','#C44455','#F0C4CC','#C44455'],
-  },
-  {
-    id:'citas-personalizadas', Icon:Star,
-    iconBg:'#D4A520', cardBorder:'#D4C090', cardBg:'#FDFAF0',
-    badge:'Para ti', title:'Mis Citas', sub:'Personalizadas para ti ♡',
-    deco:'bar', barPct:65, trackBg:'#FFF0B0', barBg:'#D4A520',
   },
 ];
 
@@ -193,6 +237,10 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
   const [menuOpen, setMenuOpen]             = useState(false);
   const [partnerGreeting, setPartnerGreeting] = useState(null);
   const [unreadLetters, setUnreadLetters]   = useState([]);
+  const [citasHechas, setCitasHechas]       = useState(0);
+  const [citasPendientes, setCitasPendientes] = useState(0);
+  const [surpriseCita, setSurpriseCita]     = useState(null);
+  const [showSurpriseModal, setShowSurpriseModal] = useState(false);
   const menuRef                             = useRef(null);
 
   // Show partner's greeting if available, else own greeting, else default
@@ -212,6 +260,15 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
     const all = getDates();
     const pending = all.filter(d => d.status === 'pending');
     setDates(pending.length ? pending : all.length ? all : []);
+    // Citas 100 — completed count from completedCitas key
+    const completedIds = JSON.parse(localStorage.getItem('completedCitas') || '[]');
+    const manualDates  = JSON.parse(localStorage.getItem('manualDates')    || '[]');
+    const manualCompletedIds = manualDates.filter(d => d.status === 'completed').map(d => d.id);
+    const allCompletedIds = [...new Set([...completedIds, ...manualCompletedIds])];
+    setCitasHechas(allCompletedIds.length);
+    const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+    const totalCitas = favs.length + manualDates.length;
+    setCitasPendientes(Math.max(0, totalCitas - allCompletedIds.length));
 
     // Load partner's greeting from API (what your partner wrote for you)
     const token = localStorage.getItem('loversappToken');
@@ -250,9 +307,27 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
   const DOTS      = Math.min(5, dates.length);
   const nextDate  = () => setDateIdx(p => (p + 1) % Math.max(dates.length, 1));
   const surprise  = () => {
-    if (dates.length <= 1) return;
-    let n; do { n = Math.floor(Math.random() * dates.length); } while (n === dateIdx);
-    setDateIdx(n);
+    const completedIds = new Set(JSON.parse(localStorage.getItem('completedCitas') || '[]'));
+    const favs   = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+    const manual = JSON.parse(localStorage.getItem('manualDates') || '[]');
+    const allMineIds = new Set([...favs.map(f => f.id), ...manual.map(m => m.id)]);
+    const pool = ALL_CITAS_FLAT.filter(c => !completedIds.has(c.id));
+    if (!pool.length) return;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    setSurpriseCita({ ...pick, inMyList: allMineIds.has(pick.id) });
+    setShowSurpriseModal(true);
+  };
+
+  const addSurpriseToList = () => {
+    if (!surpriseCita) return;
+    const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+    if (!favs.find(f => f.id === surpriseCita.id)) {
+      localStorage.setItem('favoritesCitas', JSON.stringify([surpriseCita, ...favs]));
+    }
+    const token = localStorage.getItem('loversappToken');
+    if (token) api.swipeCita(surpriseCita.id, 'like').catch(() => {});
+    setSurpriseCita(prev => prev ? { ...prev, inMyList: true } : null);
+    setCitasPendientes(p => p + 1);
   };
 
   return (
@@ -337,7 +412,7 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
           {/* CTA buttons */}
           <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:18 }}>
             <div style={{ display:'flex', gap:10 }}>
-              <motion.button whileTap={{ scale:0.96 }} onClick={() => navigateTo('home')}
+              <motion.button whileTap={{ scale:0.96 }} onClick={() => navigateTo('dates')}
                 className="caveat" style={{ flex:1, padding:'13px 0', background:D.wine, color:D.white, borderRadius:16, fontWeight:700, fontSize:16, border:'none', cursor:'pointer' }}>
                 Ver Citas
               </motion.button>
@@ -363,9 +438,9 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
               <text x="0" y="50" fontSize="60" fill="#F0C4CC">♡</text>
             </svg>
             {[
-              { val: days,                                          sub: 'días juntos',  color: D.blush },
-              { val: getDates().filter(d=>d.status==='completed').length, sub: 'citas hechas', color: D.blush },
-              { val: `✦ ${getDates().filter(d=>d.status==='pending').length}`, sub: 'por vivir', color: D.gold },
+              { val: days,              sub: 'días juntos',  color: D.blush },
+              { val: citasHechas,       sub: 'citas hechas', color: D.green },
+              { val: `✦ ${citasPendientes}`, sub: 'por vivir', color: D.gold },
             ].reduce((acc, item, i) => {
               if (i > 0) acc.push(<div key={`div-${i}`} style={{ width:0.5, height:38, background:'rgba(240,196,204,0.18)' }} />);
               acc.push(
@@ -400,12 +475,22 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
           </motion.div>
         )}
 
-        {/* Swipeable date card */}
-        {cur && (
-          <motion.section initial={{ opacity:0, y:18 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.14 }} style={{ marginBottom:22 }}>
-            <AnimatePresence mode="wait">
+        {/* Swipeable date card OR surprise card */}
+        <motion.section initial={{ opacity:0, y:18 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.14 }} style={{ marginBottom:22 }}>
+          <AnimatePresence mode="wait">
+            {showSurpriseModal && surpriseCita ? (
+              <SurpriseCard
+                key="surprise"
+                cita={surpriseCita}
+                onAddToList={addSurpriseToList}
+                onDetail={() => navigateTo('detail', surpriseCita.id, 'dashboard')}
+                onClose={() => setShowSurpriseModal(false)}
+              />
+            ) : cur ? (
               <DateCard key={cur.id} date={cur} onNext={nextDate} onDetail={() => navigateTo('detail', cur.id)} />
-            </AnimatePresence>
+            ) : null}
+          </AnimatePresence>
+          {!showSurpriseModal && cur && (
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:12, padding:'0 4px' }}>
               <div style={{ display:'flex', gap:6, alignItems:'center' }}>
                 {Array.from({ length:DOTS }, (_,i) => (
@@ -418,8 +503,8 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
                 o ver otra <ChevronRight size={15} />
               </button>
             </div>
-          </motion.section>
-        )}
+          )}
+        </motion.section>
 
         {/* Quick links */}
         <motion.section initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.22 }}>
@@ -462,6 +547,8 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
         </motion.section>
 
       </div>
+
+
     </div>
   );
 }

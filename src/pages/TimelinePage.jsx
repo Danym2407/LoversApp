@@ -22,6 +22,13 @@ export default function TimelinePage({ navigateTo }) {
       const m = dates.find(d => Number(d.id)===Number(ev.sourceId));
       if (m) return [...(m.danielaPhotos||[]),...(m.eduardoPhotos||[])];
     }
+    if (ev.sourceType === 'cita-review' && ev.sourceId) {
+      try {
+        const reviews = JSON.parse(localStorage.getItem('completedCitasReviews')||'{}');
+        const review = reviews[ev.sourceId];
+        if (review?.photos?.length) return review.photos;
+      } catch {}
+    }
     if (ev.image && ev.image.startsWith('data:image')) return [ev.image];
     return [];
   };
@@ -32,6 +39,13 @@ export default function TimelinePage({ navigateTo }) {
       const dates = JSON.parse(localStorage.getItem('coupleDates')||'[]');
       const m = dates.find(d => Number(d.id)===Number(ev.sourceId));
       if (m) return (m.danielaPhotos||[])[0]||(m.eduardoPhotos||[])[0]||null;
+    }
+    if (ev.sourceType === 'cita-review' && ev.sourceId) {
+      try {
+        const reviews = JSON.parse(localStorage.getItem('completedCitasReviews')||'{}');
+        const review = reviews[ev.sourceId];
+        if (review?.photos?.[0]) return review.photos[0];
+      } catch {}
     }
     if (ev.image && ev.image.startsWith('data:image')) return ev.image;
     return null;

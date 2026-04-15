@@ -82,11 +82,12 @@ export const api = {
   getCoupleDatesStats: ()          => request('GET',   '/couple-dates/stats/summary'),
 
   // Cita swipes (aleatorias)
-  getCitaSwipes:  ()              => request('GET',    '/cita-swipes'),
-  swipeCita:      (cita_id, action) => request('POST', '/cita-swipes', { cita_id, action }),
-  resetSwipes:    ()              => request('DELETE', '/cita-swipes'),
-  getSwipeStats:  ()              => request('GET',    '/cita-swipes/stats'),
-  getSwipeMatches: ()             => request('GET',    '/cita-swipes/matches'),
+  getCitaSwipes:    ()              => request('GET',    '/cita-swipes'),
+  swipeCita:        (cita_id, action) => request('POST', '/cita-swipes', { cita_id, action }),
+  resetSwipes:      ()              => request('DELETE', '/cita-swipes'),
+  getSwipeStats:    ()              => request('GET',    '/cita-swipes/stats'),
+  getSwipeMatches:  ()             => request('GET',    '/cita-swipes/matches'),
+  getPartnerSwipes: ()             => request('GET',    '/cita-swipes/partner'),
 
   // Cita preferences (personalizadas)
   getPreferences: () =>

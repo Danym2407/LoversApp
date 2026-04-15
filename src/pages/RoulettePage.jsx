@@ -1,7 +1,15 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Heart, Star, RefreshCw, Calendar } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { citasDatabase, citasPorCategoria } from '@/data/citas';
+import { api } from '@/lib/api';
+
+const ALL_CITAS_FLAT = (() => {
+  const merged = [...Object.values(citasDatabase).flat(), ...Object.values(citasPorCategoria).flat()];
+  const seen = new Set();
+  return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+})();
 
 const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
@@ -20,15 +28,67 @@ function BgDoodles() {
 
 export default function RoulettePage({ navigateTo }) {
   const [pendingDates, setPendingDates] = useState([]);
+  const [sourceMode, setSourceMode] = useState('mi_lista');
   const [gameState, setGameState] = useState('idle'); // idle | spinning | envelope | card
   const [selectedDate, setSelectedDate] = useState(null);
+  const [prevDate, setPrevDate] = useState(null);
   const [rotation, setRotation] = useState(0);
+  const [isInMyList, setIsInMyList] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('coupleDates') || '[]');
-    setPendingDates(stored.filter(d => d.status !== 'completed'));
+  const checkInList = useCallback((id) => {
+    const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+    return favs.some(f => f.id === id);
   }, []);
+
+  const loadPool = useCallback(async (mode) => {
+    const completedIds = new Set(JSON.parse(localStorage.getItem('completedCitas') || '[]'));
+    const manual = JSON.parse(localStorage.getItem('manualDates') || '[]');
+    const manualCompleted = new Set(manual.filter(d => d.status === 'completed').map(d => d.id));
+    const allCompleted = new Set([...completedIds, ...manualCompleted]);
+
+    let pool = [];
+    if (mode === 'mi_lista') {
+      const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+      const seen = new Set();
+      pool = [
+        ...favs.map(f => ({ ...f, name: f.name || f.title })),
+        ...manual.map(m => ({ ...m, name: m.name || m.title }))
+      ].filter(d => { if (seen.has(d.id) || allCompleted.has(d.id)) return false; seen.add(d.id); return true; });
+    } else if (mode === 'match') {
+      try {
+        const matchIds = await api.getSwipeMatches();
+        pool = matchIds.map(id => ALL_CITAS_FLAT.find(c => c.id === id)).filter(Boolean).filter(c => !allCompleted.has(c.id));
+      } catch { pool = []; }
+    } else if (mode === 'pareja') {
+      try {
+        const partnerIds = await api.getPartnerSwipes();
+        pool = [...new Set(partnerIds)].map(id => ALL_CITAS_FLAT.find(c => c.id === id)).filter(Boolean).filter(c => !allCompleted.has(c.id));
+      } catch { pool = []; }
+    } else if (mode === 'nueva') {
+      pool = ALL_CITAS_FLAT.filter(c => !allCompleted.has(c.id));
+    }
+    setPendingDates(pool);
+  }, []);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('rouletteState');
+    if (saved) {
+      try {
+        const s = JSON.parse(saved);
+        sessionStorage.removeItem('rouletteState');
+        setGameState(s.gameState || 'idle');
+        setSelectedDate(s.selectedDate || null);
+        setSourceMode(s.sourceMode || 'mi_lista');
+        setRotation(s.rotation || 0);
+        setPrevDate(s.prevDate || null);
+        if (s.selectedDate) setIsInMyList(checkInList(s.selectedDate.id));
+        loadPool(s.sourceMode || 'mi_lista');
+        return;
+      } catch {}
+    }
+    loadPool('mi_lista');
+  }, [loadPool, checkInList]);
 
   const spinWheel = () => {
     if (pendingDates.length === 0) {
@@ -36,14 +96,45 @@ export default function RoulettePage({ navigateTo }) {
       return;
     }
     const idx = Math.floor(Math.random() * pendingDates.length);
-    setSelectedDate(pendingDates[idx]);
+    const picked = pendingDates[idx];
+    setPrevDate(selectedDate);
+    setSelectedDate(picked);
+    setIsInMyList(checkInList(picked.id));
     setGameState('spinning');
     const newRot = rotation + 360 * (5 + Math.random() * 5) + Math.random() * 360;
     setRotation(newRot);
     setTimeout(() => setGameState('envelope'), 3500);
   };
 
-  const reset = () => { setGameState('idle'); setSelectedDate(null); };
+  const reset = () => { setGameState('idle'); setSelectedDate(null); setIsInMyList(false); };
+
+  const addToMyList = () => {
+    if (!selectedDate) return;
+    const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+    if (!favs.find(f => f.id === selectedDate.id)) {
+      const citaToSave = { ...selectedDate, name: selectedDate.name || selectedDate.title };
+      localStorage.setItem('favoritesCitas', JSON.stringify([citaToSave, ...favs]));
+    }
+    const token = localStorage.getItem('loversappToken');
+    if (token) api.swipeCita(selectedDate.id, 'like').catch(() => {});
+    setIsInMyList(true);
+  };
+
+  const goToDetail = () => {
+    if (!selectedDate) return;
+    sessionStorage.setItem('rouletteState', JSON.stringify({ gameState: 'card', selectedDate, sourceMode, rotation, prevDate }));
+    navigateTo('detail', selectedDate.id, 'roulette');
+  };
+
+  const BUDGET_LABEL = { 1: '💰 Muy económico', 2: '💳 Económico', 3: '🎯 Moderado', 4: '✨ Premium', 5: '💎 Lujo', low: '💳 Económico', medium: '🎯 Moderado', high: '✨ Premium' };
+
+  const goBack = () => {
+    if (prevDate) {
+      setSelectedDate(prevDate);
+      setPrevDate(null);
+      setGameState('card');
+    }
+  };
 
   const SEGMENTS = 12;
 
@@ -54,13 +145,13 @@ export default function RoulettePage({ navigateTo }) {
 
       {/* Header */}
       <div style={{ padding: '48px 20px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: D.cream, borderBottom: `1.5px solid ${D.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
-        <button onClick={() => navigateTo('home')}
+        <button onClick={() => navigateTo('dates')}
           style={{ width: 38, height: 38, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <ChevronLeft size={16} color={D.coral} strokeWidth={2.5} />
         </button>
         <div style={{ textAlign: 'center' }}>
           <div className="lora" style={{ fontSize: 20, fontWeight: 600, color: D.wine }}>Ruleta de Citas</div>
-          <div className="caveat" style={{ fontSize: 11, color: D.muted }}>{pendingDates.length} citas pendientes ✦</div>
+          <div className="caveat" style={{ fontSize: 11, color: D.muted }}>{pendingDates.length} citas disponibles ✦</div>
         </div>
         <div style={{ width: 38 }} />
       </div>
@@ -73,7 +164,30 @@ export default function RoulettePage({ navigateTo }) {
             <motion.div key="wheel" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
 
-              <div className="lora" style={{ fontSize: 22, fontWeight: 600, color: D.wine, marginBottom: 28, textAlign: 'center' }}>¿Qué cita nos toca?</div>
+              <div className="lora" style={{ fontSize: 22, fontWeight: 600, color: D.wine, marginBottom: 20, textAlign: 'center' }}>¿Qué cita nos toca?</div>
+
+              {/* Source selector — only visible in idle */}
+              {gameState === 'idle' && (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {[
+                    { mode: 'mi_lista', label: '🫀 Mi lista' },
+                    { mode: 'match',    label: '❤️ Match' },
+                    { mode: 'pareja',   label: '💕 Mi pareja' },
+                    { mode: 'nueva',    label: '✨ Nueva cita' },
+                  ].map(({ mode, label }) => (
+                    <button key={mode} onClick={() => { setSourceMode(mode); loadPool(mode); }}
+                      className="caveat"
+                      style={{
+                        padding: '7px 15px', borderRadius: 20, cursor: 'pointer', fontSize: 14, fontWeight: 700, transition: 'all 0.18s',
+                        ...(sourceMode === mode
+                          ? { background: D.wine, color: D.white, border: `2px solid ${D.wine}` }
+                          : { background: D.cream, color: D.wine, border: `2px solid ${D.border}` })
+                      }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Pointer */}
               <div style={{ marginBottom: -6, zIndex: 2 }}>
@@ -168,28 +282,76 @@ export default function RoulettePage({ navigateTo }) {
 
                 <div style={{ marginBottom: 8 }}>
                   <span style={{ padding: '3px 14px', background: D.wine, borderRadius: 20 }}>
-                    <span className="caveat" style={{ fontSize: 12, fontWeight: 700, color: D.white }}>CITA #{selectedDate.id}</span>
+                    <span className="caveat" style={{ fontSize: 14, fontWeight: 700, color: D.white }}>CITA #{selectedDate.id}</span>
                   </span>
                 </div>
-                <div className="lora" style={{ fontSize: 26, fontWeight: 600, color: D.wine, marginBottom: 4, lineHeight: 1.3 }}>{selectedDate.name}</div>
+                <div className="lora" style={{ fontSize: 26, fontWeight: 600, color: D.wine, marginBottom: 4, lineHeight: 1.3 }}>{selectedDate.name || selectedDate.title}</div>
+
+                {/* Category + budget chips */}
+                {(selectedDate.category || selectedDate.budget) && (
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                    {selectedDate.category && (
+                      <span style={{ padding: '3px 12px', background: D.blush, borderRadius: 20 }}>
+                        <span className="caveat" style={{ fontSize: 12, color: D.wine, fontWeight: 700 }}>{selectedDate.category}</span>
+                      </span>
+                    )}
+                    {selectedDate.budget && (
+                      <span style={{ padding: '3px 12px', background: `${D.gold}33`, borderRadius: 20 }}>
+                        <span className="caveat" style={{ fontSize: 12, color: D.wine, fontWeight: 700 }}>{BUDGET_LABEL[selectedDate.budget] || selectedDate.budget}</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Description — shown for nueva cita */}
+                {sourceMode === 'nueva' && (selectedDate.description || selectedDate.desc) && (
+                  <div style={{ marginTop: 14, padding: '12px 14px', background: `${D.cream}`, borderRadius: 14, border: `1px solid ${D.border}`, textAlign: 'left' }}>
+                    <p className="lora" style={{ fontSize: 13, color: D.muted, fontStyle: 'italic', lineHeight: 1.65, margin: 0 }}>
+                      {selectedDate.description || selectedDate.desc}
+                    </p>
+                  </div>
+                )}
 
                 <div style={{ height: 1, background: D.border, margin: '16px 0' }} />
 
-                <button onClick={() => navigateTo('detail', selectedDate.id)}
-                  style={{ width: '100%', padding: '13px', borderRadius: 14, background: D.wine, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
-                  <Calendar size={16} color={D.white} />
-                  <span className="caveat" style={{ fontSize: 15, fontWeight: 700, color: D.white }}>Ver detalles de la cita</span>
+                {/* Add to list button — nueva mode */}
+                {sourceMode === 'nueva' && (
+                  isInMyList ? (
+                    <div style={{ padding: '11px', borderRadius: 14, background: `${D.green}22`, border: `1.5px solid ${D.green}55`, textAlign: 'center', marginBottom: 10 }}>
+                      <span className="caveat" style={{ fontSize: 15, color: D.green, fontWeight: 700 }}>✓ Agregada a tu lista</span>
+                    </div>
+                  ) : (
+                    <button onClick={addToMyList}
+                      style={{ width: '100%', padding: '14px', borderRadius: 14, background: D.coral, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+                      <Heart size={16} color={D.white} fill={D.white} />
+                      <span className="caveat" style={{ fontSize: 17, fontWeight: 700, color: D.white }}>Agregar a mi lista</span>
+                    </button>
+                  )
+                )}
+
+                <button onClick={goToDetail}
+                  style={{ width: '100%', padding: '14px', borderRadius: 14, background: D.wine, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+                  <Calendar size={18} color={D.white} />
+                  <span className="caveat" style={{ fontSize: 17, fontWeight: 700, color: D.white }}>Ver detalles de la cita</span>
                 </button>
 
                 <button onClick={reset}
-                  style={{ width: '100%', padding: '13px', borderRadius: 14, background: D.cream, border: `1.5px solid ${D.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  style={{ width: '100%', padding: '14px', borderRadius: 14, background: D.cream, border: `1.5px solid ${D.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: prevDate ? 10 : 0 }}>
                   <RefreshCw size={16} color={D.wine} />
-                  <span className="caveat" style={{ fontSize: 15, fontWeight: 700, color: D.wine }}>Girar otra vez</span>
+                  <span className="caveat" style={{ fontSize: 17, fontWeight: 700, color: D.wine }}>Girar otra vez</span>
                 </button>
+
+                {prevDate && (
+                  <button onClick={goBack}
+                    style={{ width: '100%', padding: '14px', borderRadius: 14, background: `${D.coral}15`, border: `1.5px solid ${D.coral}55`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <ChevronLeft size={16} color={D.coral} />
+                    <span className="caveat" style={{ fontSize: 17, fontWeight: 700, color: D.coral }}>Volver a la anterior ({prevDate.name || prevDate.title})</span>
+                  </button>
+                )}
               </div>
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}>
-                <span className="lora" style={{ fontSize: 14, color: D.muted, fontStyle: 'italic' }}>Esta será su próxima historia juntos 💌</span>
+                <span className="lora" style={{ fontSize: 15, color: D.muted, fontStyle: 'italic' }}>Esta será su próxima historia juntos 💌</span>
               </motion.div>
             </motion.div>
           )}
