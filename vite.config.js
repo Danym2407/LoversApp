@@ -1,6 +1,7 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { createLogger, defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 const isDev = process.env.NODE_ENV !== 'production';
 let inlineEditPlugin, editModeDevPlugin;
@@ -194,7 +195,27 @@ export default defineConfig({
 	plugins: [
 		...(isDev ? [inlineEditPlugin(), editModeDevPlugin()] : []),
 		react(),
-		addTransformIndexHtml
+		addTransformIndexHtml,
+		VitePWA({
+			registerType: 'autoUpdate',
+			manifest: {
+				name: 'LoversApp',
+				short_name: 'LoversApp',
+				description: '100 Citas para parejas',
+				theme_color: '#FF6B8A',
+				background_color: '#FFF5F7',
+				display: 'standalone',
+				start_url: '/',
+				icons: [
+					{ src: '/icono_192_192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+					{ src: '/icono_512_512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+					{ src: '/icono_512_512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+				]
+			},
+			workbox: {
+				globPatterns: ['**/*.{js,css,html,png,jpg,svg,webp}']
+			}
+		})
 	],
 	server: {
 		cors: true,
