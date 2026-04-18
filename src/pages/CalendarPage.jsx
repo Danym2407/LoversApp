@@ -7,16 +7,16 @@ import { api } from '@/lib/api';
 
 // ── palette ───────────────────────────────────────────────────────────────────
 const D = {
-  cream:  '#FDF6EC',
-  wine:   '#1C0E10',
-  coral:  '#C44455',
+  cream:  '#FFF5F7',
+  wine:   '#2D1B2E',
+  coral:  '#FF6B8A',
   gold:   '#D4A520',
   blue:   '#5B8ECC',
   green:  '#5BAA6A',
-  blush:  '#F0C4CC',
+  blush:  '#FFD0DC',
   white:  '#FFFFFF',
-  border: '#EDE0D0',
-  muted:  '#9A7A6A',
+  border: '#FFD0DC',
+  muted:  '#9B8B95',
 };
 
 const STYLE = `
@@ -34,14 +34,13 @@ const DAY_LABELS  = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
 // ── BgDoodles ─────────────────────────────────────────────────────────────────
 function BgDoodles() {
   return (
-    <svg style={{ position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.22 }} viewBox="0 0 390 820" fill="none">
-      <text x="355" y="90"  fontSize="12" fill="#D4A520" fontFamily="serif">✦</text>
-      <text x="20"  y="160" fontSize="9"  fill="#C44455" fontFamily="serif">✦</text>
+    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.25}} viewBox="0 0 390 820" fill="none">
+      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
+      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
       <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18"  y="500" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
+      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
       <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <circle cx="30" cy="260" r="8" fill="none" stroke="#D4A520" strokeWidth="1.5"/>
-      <ellipse cx="30" cy="260" rx="13" ry="4" fill="none" stroke="#D4A520" strokeWidth="1.5" transform="rotate(-25 30 260)"/>
+      <path d="M15 340 Q35 335 43 348" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -227,28 +226,39 @@ export default function CalendarPage({ navigateTo }) {
       <BgDoodles />
 
       {/* ── HEADER ────────────────────────────────────────────────────── */}
-      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:`1.5px solid ${D.border}`, background:D.cream, position:'sticky', top:0, zIndex:40 }}>
-        <button onClick={() => navigateTo('dashboard')}
-          style={{ width:38, height:38, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5}/>
-        </button>
-        <div style={{ textAlign:'center' }}>
-          <div className="lora" style={{ fontSize:20, fontWeight:600, color:D.wine, letterSpacing:1 }}>Calendario</div>
-          <div className="caveat" style={{ fontSize:11, color:D.muted, letterSpacing:1 }}>Eventos & momentos</div>
+      <div style={{ padding:'48px 20px 18px', background:D.cream, borderBottom:`1.5px solid ${D.border}` }}>
+        {/* Top row: back + add button */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <button onClick={() => window.history.back()}
+              style={{ width:32, height:32, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5}/>
+            </button>
+            <span className="caveat" style={{ fontSize:12, color:'#C4AAB0', fontWeight:600 }}>Inicio &gt; Calendario</span>
+          </div>
+          <button onClick={() => selectedDay && openAdd(selectedDay)}
+            style={{ width:32, height:32, borderRadius:'50%', background: selectedDay ? D.coral : D.border, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor: selectedDay ? 'pointer' : 'default', boxShadow: selectedDay ? '2px 2px 0 rgba(196,68,100,0.28)' : 'none', flexShrink:0 }}>
+            <Plus size={16} color="#fff" strokeWidth={2.5}/>
+          </button>
         </div>
-        <button onClick={() => selectedDay && openAdd(selectedDay)}
-          style={{ width:38, height:38, borderRadius:'50%', background:D.coral, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', opacity: selectedDay?1:0.4 }}>
-          <Plus size={17} color={D.white}/>
-        </button>
+        {/* Title */}
+        <div style={{ flex:1, minWidth:0 }}>
+          <h1 className="lora" style={{ fontSize:30, fontWeight:700, color:D.wine, margin:0, lineHeight:1.1, display:'flex', alignItems:'center', gap:8 }}>
+            Calendario
+            <img src="/images/calendario.png" alt="" style={{ width:28, height:28, objectFit:'contain' }}/>
+          </h1>
+          <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'65%', maxWidth:220, margin:'4px 0 8px' }}/>
+          <p className="caveat" style={{ fontSize:14, color:D.muted, margin:0 }}>Eventos & momentos 💕</p>
+        </div>
       </div>
 
       <div style={{ padding:'20px 20px 0', position:'relative', zIndex:1 }}>
 
         {/* ── MONTH NAV ─────────────────────────────────────────────── */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
           <button onClick={prevMonth}
             style={{ width:36, height:36, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-            <ChevronLeft size={16} color={D.wine}/>
+            <ChevronLeft size={16} color={D.coral}/>
           </button>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             <select value={month} onChange={e => setCurrentDate(new Date(year, parseInt(e.target.value), 1))}
@@ -262,22 +272,22 @@ export default function CalendarPage({ navigateTo }) {
           </div>
           <button onClick={nextMonth}
             style={{ width:36, height:36, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-            <ChevronRight size={16} color={D.wine}/>
+            <ChevronRight size={16} color={D.coral}/>
           </button>
         </div>
 
         {/* ── CALENDAR GRID ─────────────────────────────────────────── */}
-        <div style={{ background:D.white, borderRadius:20, border:`1.5px solid ${D.border}`, padding:'16px 12px', marginBottom:22 }}>
+        <div style={{ background:D.white, borderRadius:20, border:`1.5px solid ${D.border}`, padding:'10px 8px', marginBottom:22, width:'100%', boxSizing:'border-box' }}>
           {/* Day labels */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:8 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:4 }}>
             {DAY_LABELS.map(d => (
-              <div key={d} className="caveat" style={{ textAlign:'center', fontSize:12, fontWeight:700, color:D.muted, padding:'4px 0' }}>{d}</div>
+              <div key={d} className="caveat" style={{ textAlign:'center', fontSize:12, fontWeight:700, color:D.coral, padding:'3px 0' }}>{d}</div>
             ))}
           </div>
           {/* Day cells */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
             {days.map((day, idx) => {
-              if (!day) return <div key={idx}/>;
+              if (!day) return <div key={idx} style={{ height:48 }}/>;
               const dayEvs = eventsForDay(day);
               const hasEvs = dayEvs.length > 0;
               const isSelected = selectedDay === day;
@@ -289,17 +299,17 @@ export default function CalendarPage({ navigateTo }) {
                     if (hasEvs) setShowDaySheet(true);
                     else openAdd(day);
                   }}
-                  style={{ aspectRatio:'1', borderRadius:12, border:`1.5px solid ${isSelected ? D.coral : hasEvs ? D.coral+'88' : D.border}`,
-                    background: isSelected ? D.coral : hasEvs ? '#FEE8EC' : D.cream,
+                  style={{ height:48, borderRadius:8, border:`1.5px solid ${isSelected ? D.coral : hasEvs ? D.coral+'88' : D.border}`,
+                    background: isSelected ? D.coral : hasEvs ? '#FFF0F4' : D.cream,
                     display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                    cursor:'pointer', position:'relative', padding:0 }}>
-                  {hasBday && <span style={{ position:'absolute', top:1, right:2, fontSize:9 }}>🥳</span>}
-                  <span className="caveat" style={{ fontSize:14, fontWeight:700, color: isSelected?D.white : hasEvs?D.coral : D.wine, lineHeight:1 }}>{day}</span>
+                    cursor:'pointer', position:'relative', padding:0, minWidth:0 }}>
+                  {hasBday && <span style={{ position:'absolute', top:1, right:2, fontSize:7 }}>🥳</span>}
+                  <span className="caveat" style={{ fontSize:13, fontWeight:700, color: isSelected?D.white : hasEvs?D.coral : D.wine, lineHeight:1 }}>{day}</span>
                   {hasEvs && !isSelected && (
-                    <div style={{ width:5, height:5, borderRadius:'50%', background:D.coral, marginTop:2 }}/>
+                    <div style={{ width:3, height:3, borderRadius:'50%', background:D.coral, marginTop:2 }}/>
                   )}
                   {hasEvs && isSelected && (
-                    <span className="caveat" style={{ fontSize:9, color:'rgba(255,255,255,0.8)', lineHeight:1 }}>{dayEvs.length}</span>
+                    <span className="caveat" style={{ fontSize:8, color:'rgba(255,255,255,0.8)', lineHeight:1 }}>{dayEvs.length}</span>
                   )}
                 </motion.button>
               );
@@ -311,10 +321,10 @@ export default function CalendarPage({ navigateTo }) {
         <div>
           {/* List header + filters */}
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-            <span className="caveat" style={{ fontSize:15, fontWeight:700, color:D.wine, position:'relative', display:'inline-block' }}>
-              Todos los eventos
-              <span style={{ position:'absolute', bottom:-2, left:-2, width:'calc(100% + 4px)', height:3, background:D.gold, borderRadius:2, transform:'rotate(-0.7deg)' }}/>
-            </span>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <img src="/images/calendario.png" alt="" style={{ width:18, height:18, objectFit:'contain' }}/>
+              <span className="caveat" style={{ fontSize:16, fontWeight:700, color:D.wine }}>Todos los eventos</span>
+            </div>
             <div style={{ flex:1, height:1.5, background:`repeating-linear-gradient(90deg,${D.border} 0,${D.border} 6px,transparent 6px,transparent 12px)` }}/>
             <span className="caveat" style={{ fontSize:12, color:D.coral, fontWeight:700 }}>{listEvents.length} ✦</span>
           </div>

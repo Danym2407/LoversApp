@@ -1,11 +1,23 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { ChevronLeft, Plus, Bell, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
 import { upsertCalendarEvent, removeCalendarEventBySource } from '@/lib/eventSync';
 
-const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const D = { cream:'#FFF5F7', wine:'#2D1B2E', coral:'#FF6B8A', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#FFD0DC', white:'#FFFFFF', border:'#FFD0DC', muted:'#9B8B95' };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+function BgDoodles() {
+  return (
+    <svg style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
+      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
+      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
+      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
+      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
+      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
+      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 const TYPE_ICONS = { birthday:'🎂', anniversary:'💕', other:'📌' };
 const TYPE_ACCENTS = { birthday:D.blue, anniversary:D.coral, other:D.gold };
@@ -21,7 +33,6 @@ export default function ImportantDatesPage({ navigateTo }) {
   const [editingId, setEditingId] = useState(null);
   const [editingSourceType, setEditingSourceType] = useState(null);
   const [formData, setFormData] = useState({ title:'', date:'', description:'', type:'birthday' });
-  const { toast } = useToast();
 
   const parseDateParts = (s) => {
     if (!s) return null;
@@ -102,7 +113,6 @@ export default function ImportantDatesPage({ navigateTo }) {
     upsertCalendarEvent({ title:`${saved.type==='birthday'?'Cumpleaños':saved.type==='anniversary'?'Aniversario':'Fecha'}: ${saved.title}`, description:saved.description||'Fecha importante', dateStr:saved.date, sourceType:'important-date', sourceId:saved.id });
     setShowSheet(false); setEditingId(null); setEditingSourceType(null);
     setFormData({title:'',date:'',description:'',type:'birthday'});
-    toast({title: editingId?'Fecha actualizada':'Fecha guardada', description:'Añadida al calendario.'});
   };
 
   const handleEdit = (item) => {
@@ -120,29 +130,41 @@ export default function ImportantDatesPage({ navigateTo }) {
   const upcoming = dates.filter(d => { const dl=getDaysUntil(d.date,d.type); return dl!=null&&dl<=30&&dl>=0; });
 
   return (
-    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', paddingBottom:88 }}>
+    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', paddingBottom:88, position:'relative', overflow:'hidden' }}>
       <style>{STYLE}</style>
+      <BgDoodles />
 
-      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', background:D.cream, borderBottom:`1.5px solid ${D.border}`, position:'sticky', top:0, zIndex:40 }}>
-        <button onClick={() => navigateTo('dashboard')}
-          style={{ width:38, height:38, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5}/>
-        </button>
-        <div style={{ textAlign:'center' }}>
-          <div className="lora" style={{ fontSize:20, fontWeight:600, color:D.wine }}>Fechas Importantes</div>
-          <div className="caveat" style={{ fontSize:11, color:D.muted }}>{dates.length} fechas guardadas ✦</div>
+      {/* Header */}
+      <div style={{ padding:'48px 20px 18px', background:D.cream, borderBottom:`1.5px solid ${D.border}`, position:'relative', zIndex:10 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <button onClick={() => window.history.back()}
+              style={{ width:32, height:32, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5}/>
+            </button>
+            <span className="caveat" style={{ fontSize:12, color:'#C4AAB0', fontWeight:600 }}>Inicio &gt; Fechas Importantes</span>
+          </div>
+          <button onClick={() => setShowSheet(true)}
+            style={{ width:32, height:32, borderRadius:'50%', background:D.coral, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'3px 3px 0 rgba(196,68,100,0.28)', flexShrink:0 }}>
+            <Plus size={16} color={D.white} strokeWidth={2.5}/>
+          </button>
         </div>
-        <button onClick={() => setShowSheet(true)}
-          style={{ width:38, height:38, borderRadius:'50%', background:D.coral, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-          <Plus size={18} color={D.white} strokeWidth={2.5}/>
-        </button>
+        <h1 className="lora" style={{ fontSize:30, fontWeight:700, color:D.wine, margin:0, display:'flex', alignItems:'center', gap:8 }}>
+          Fechas Importantes
+          <img src="/images/fechas-especiales.png" alt="" style={{ width:28, height:28, objectFit:'contain' }}/>
+        </h1>
+        <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'65%', maxWidth:220, margin:'4px 0 8px' }}/>
+        <p className="caveat" style={{ fontSize:14, color:D.muted, margin:0 }}>{dates.length} fechas guardadas 💕</p>
       </div>
 
       <div style={{ padding:'18px' }}>
         {/* Upcoming strip */}
         {upcoming.length > 0 && (
           <div style={{ background:D.wine, borderRadius:18, padding:'14px 16px', marginBottom:16 }}>
-            <div className="caveat" style={{ fontSize:13, color:'rgba(255,255,255,0.6)', marginBottom:8 }}>🔔 Próximamente (30 días)</div>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+              <img src="/images/recordatorios.png" alt="" style={{ width:16, height:16, objectFit:'contain' }}/>
+              <span className="caveat" style={{ fontSize:13, color:'rgba(255,255,255,0.7)', fontWeight:700 }}>Próximamente (30 días)</span>
+            </div>
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               {upcoming.map(d => (
                 <div key={d.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -202,49 +224,60 @@ export default function ImportantDatesPage({ navigateTo }) {
           <>
             <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
               onClick={() => { setShowSheet(false); setEditingId(null); setFormData({title:'',date:'',description:'',type:'birthday'}); }}
-              style={{ position:'fixed', inset:0, background:'rgba(28,14,16,0.6)', zIndex:50 }}/>
-            <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:28, stiffness:340 }}
-              style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:D.white, borderRadius:'24px 24px 0 0', padding:'24px 20px 40px', zIndex:51 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-                <div className="lora" style={{ fontSize:18, fontWeight:600, color:D.wine }}>{editingId?'Editar fecha':'Nueva fecha importante'}</div>
-                <button onClick={() => { setShowSheet(false); setEditingId(null); }}
-                  style={{ width:32, height:32, borderRadius:'50%', background:D.cream, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-                  <X size={14} color={D.wine}/>
-                </button>
-              </div>
-              <form onSubmit={handleSave} style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                {[
-                  { label:'Tipo', key:'type', type:'select', options:[{v:'birthday',l:'Cumpleaños'},{v:'anniversary',l:'Aniversario'},{v:'other',l:'Otra fecha'}] },
-                  { label:'Título', key:'title', type:'text', placeholder:'Ej: Cumpleaños de Ana' },
-                  { label:'Fecha', key:'date', type:'date' },
-                  { label:'Descripción', key:'description', type:'text', placeholder:'Detalles opcionales' },
-                ].map(field => (
-                  <div key={field.key}>
-                    <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>{field.label}</div>
-                    {field.type==='select' ? (
-                      <select value={formData[field.key]} onChange={e => setFormData({...formData,[field.key]:e.target.value})}
-                        style={{ width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.cream, fontSize:14, color:D.wine }}>
-                        {field.options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-                      </select>
-                    ) : (
-                      <input type={field.type} value={formData[field.key]} placeholder={field.placeholder}
-                        onChange={e => setFormData({...formData,[field.key]:e.target.value})}
-                        style={{ width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.cream, fontSize:14, color:D.wine, boxSizing:'border-box' }}/>
-                    )}
+              style={{ position:'fixed', inset:0, background:'rgba(45,27,46,0.5)', zIndex:199 }}/>
+            <div style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:'0 20px', pointerEvents:'none' }}>
+              <motion.div initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0, scale:0.96 }} transition={{ duration:0.18 }}
+                onClick={e => e.stopPropagation()}
+                style={{ width:'100%', maxWidth:400, background:D.cream, borderRadius:24, overflow:'hidden', boxShadow:'0 8px 40px rgba(45,27,46,0.22)', pointerEvents:'all' }}>
+                <div style={{ padding:'20px 20px 16px', borderBottom:`1.5px solid ${D.border}` }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <img src="/images/fechas-especiales.png" alt="" style={{ width:22, height:22, objectFit:'contain' }}/>
+                      <h2 className="lora" style={{ fontSize:20, fontWeight:700, color:D.wine, margin:0 }}>{editingId?'Editar fecha':'Nueva fecha'}</h2>
+                    </div>
+                    <button onClick={() => { setShowSheet(false); setEditingId(null); }}
+                      style={{ width:32, height:32, borderRadius:'50%', background:'#FFF0F4', border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+                      <X size={14} color={D.coral} strokeWidth={2.5}/>
+                    </button>
                   </div>
-                ))}
-                <div style={{ display:'flex', gap:10, marginTop:4 }}>
-                  <button type="button" onClick={() => { setShowSheet(false); setEditingId(null); }}
-                    style={{ flex:1, padding:'12px', borderRadius:14, background:D.cream, border:`1.5px solid ${D.border}`, cursor:'pointer' }}>
-                    <span className="caveat" style={{ fontSize:14, fontWeight:700, color:D.wine }}>Cancelar</span>
-                  </button>
-                  <button type="submit"
-                    style={{ flex:1, padding:'12px', borderRadius:14, background:D.coral, border:'none', cursor:'pointer' }}>
-                    <span className="caveat" style={{ fontSize:14, fontWeight:700, color:D.white }}>Guardar</span>
-                  </button>
+                  <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'55%', maxWidth:180, margin:'6px 0 0' }}/>
                 </div>
-              </form>
-            </motion.div>
+                <div style={{ padding:'16px 20px 20px' }}>
+                  <form onSubmit={handleSave} style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    {[
+                      { label:'Tipo', key:'type', type:'select', options:[{v:'birthday',l:'Cumpleaños'},{v:'anniversary',l:'Aniversario'},{v:'other',l:'Otra fecha'}] },
+                      { label:'Título', key:'title', type:'text', placeholder:'Ej: Cumpleaños de Ana' },
+                      { label:'Fecha', key:'date', type:'date' },
+                      { label:'Descripción', key:'description', type:'text', placeholder:'Detalles opcionales' },
+                    ].map(field => (
+                      <div key={field.key}>
+                        <div className="caveat" style={{ fontSize:12, color:D.muted, marginBottom:4 }}>{field.label}</div>
+                        {field.type==='select' ? (
+                          <select value={formData[field.key]} onChange={e => setFormData({...formData,[field.key]:e.target.value})}
+                            style={{ width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.white, fontSize:14, color:D.wine }}>
+                            {field.options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+                          </select>
+                        ) : (
+                          <input type={field.type} value={formData[field.key]} placeholder={field.placeholder}
+                            onChange={e => setFormData({...formData,[field.key]:e.target.value})}
+                            style={{ width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${D.border}`, background:D.white, fontSize:14, color:D.wine, boxSizing:'border-box' }}/>
+                        )}
+                      </div>
+                    ))}
+                    <div style={{ display:'flex', gap:10, marginTop:4 }}>
+                      <button type="button" onClick={() => { setShowSheet(false); setEditingId(null); }}
+                        style={{ flex:1, padding:'12px', borderRadius:14, background:'#FFF0F4', border:`1.5px solid ${D.border}`, cursor:'pointer' }}>
+                        <span className="caveat" style={{ fontSize:14, fontWeight:700, color:D.coral }}>Cancelar</span>
+                      </button>
+                      <button type="submit"
+                        style={{ flex:1, padding:'12px', borderRadius:14, background:D.coral, border:'none', cursor:'pointer', boxShadow:'3px 3px 0 rgba(196,68,100,0.28)' }}>
+                        <span className="caveat" style={{ fontSize:14, fontWeight:700, color:D.white }}>Guardar ✦</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

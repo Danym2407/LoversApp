@@ -1,29 +1,167 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Patrick+Hand&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+/* ── Base scale ────────────────────────────────────────────────────────────── */
+html {
+  font-size: 18px; /* Scales all rem/em-based values (Tailwind, etc.) */
+}
 
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
 :root {
-  --cream:    #FEF8F0;
-  --wine:     #3D0B11;
-  --wine-mid: #e0929e;
-  --rose:     #C44B6C;
+  --cream:    #FDF6EC;
+  --white:    #FFFFFF;
+  --bg:       #FAFAFA;
+  --wine:     #1C0E10;
+  --coral:    #C44455;
   --gold:     #C4973E;
-  --blush:    #F5C6D3;
+  --green:    #5BAA6A;
+  --blue:     #5B8ECC;
+  --blush:    #F0C4CC;
+  --border:   #EDE0D0;
+  --text:     #1C0E10;
+  --muted:    #9A7A6A;
+
+  /* typography */
+  --font-ui:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Lora', Georgia, serif;
+  --font-doodle:  'Patrick Hand', cursive;
+
+  /* radii */
+  --r-sm:  10px;
+  --r-md:  16px;
+  --r-lg:  22px;
+  --r-xl:  28px;
 }
 
 body {
-  background: var(--cream);
-  color: #0A0A0A;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 1rem;    /* 18px */
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: 'Inter', sans-serif;
-
 }
+
+/* ── Typography helpers ─────────────────────────────────────────────────────── */
+.caveat {
+  font-family: var(--font-doodle) !important;
+  text-transform: none !important;
+  font-size: 1.1em;
+}
+.lora   { font-family: var(--font-heading) !important; }
+
+/* Ensure dashboard quick-link cards are readable */
+.ql-card {
+  background: #fff;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.ql-card:active { transform: scale(0.97); }
+
+/* ── Hand-drawn / doodle animations ───────────────────────────────────────── */
+
+@keyframes drawLine {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes sketchUnderline {
+  0%   { transform: scaleX(0) rotate(-2deg); opacity: 0; }
+  60%  { transform: scaleX(1.05) rotate(1deg); opacity: 1; }
+  100% { transform: scaleX(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes doodleWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(0.8deg); }
+  75%      { transform: rotate(-0.8deg); }
+}
+
+@keyframes doodlePop {
+  0%   { transform: scale(0.88); opacity: 0; }
+  60%  { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Greeting title with sketch underline */
+.hand-title {
+  font-family: 'Lora', Georgia, serif;
+  position: relative;
+  display: inline-block;
+  animation: doodlePop 0.55s ease both;
+}
+
+
+/* Date card with subtle offset double-border */
+.doodle-card {
+  position: relative;
+}
+.doodle-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid #FFB3C6;
+  border-radius: 24px;
+  transform: rotate(-0.6deg) translate(2px, 2px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Quick card pop animation */
+.quick-card-pop {
+  animation: doodlePop 0.45s ease both;
+}
+
+/* Doodle icon hover */
+.doodle-icon {
+  transition: transform 0.2s ease;
+}
+.doodle-icon:hover {
+  transform: scale(1.12) rotate(-4deg);
+}
+
+/* Doodle button */
+.doodle-btn-primary {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.doodle-btn-primary:hover {
+  transform: scale(1.03) rotate(-0.5deg);
+}
+.doodle-btn-primary:active {
+  transform: scale(0.95);
+}
+
+/* Date card responsive layout */
+.date-card-img {
+  min-width: 160px;
+  width: 42%;
+  flex-shrink: 0;
+  position: relative;
+  overflow: visible;
+  border-radius: 0 22px 22px 0;
+  background: linear-gradient(135deg, #FFE8ED 0%, #FFD0DC 100%);
+}
+.date-card-title {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #2D1B2E;
+  line-height: 1.25;
+  margin-bottom: 14px;
+}
+@media (min-width: 640px) {
+  .date-card-img  { width: 55%; min-width: 300px; overflow: visible; }
+  .doodle-card    { min-height: 300px !important; }
+  .date-card-title { font-size: 42px; }
+  .date-card-label { font-size: 16px !important; }
+}
+
 
 @layer base {
   * {
@@ -31,5 +169,50 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ── Quick cards responsive grids ─────────────────────────────────────────── */
+.quick-grid-main {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.quick-grid-secondary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+/* Tablet (640px+) */
+@media (min-width: 640px) {
+  .quick-grid-main      { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .quick-grid-secondary { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+}
+
+/* Desktop wide (1024px+) */
+@media (min-width: 1024px) {
+  .quick-grid-main      { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .quick-grid-secondary { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+}
+
+/* Large desktop (1400px+) */
+@media (min-width: 1400px) {
+  .quick-grid-secondary { grid-template-columns: repeat(6, 1fr); gap: 14px; }
+}
+
+/* ── Desktop full-width override ───────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .app-content > * {
+    max-width: none !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+    padding-bottom: 0 !important;
+  }
+  .mobile-only-header {
+    display: none !important;
   }
 }

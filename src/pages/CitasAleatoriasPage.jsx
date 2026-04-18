@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Heart, ThumbsDown, RefreshCw, Sparkles } from "lucide-react";
+import { ChevronLeft, Heart, ThumbsDown, RefreshCw, Sparkles, X } from "lucide-react";
 import { citasDatabase, citasPorCategoria } from "@/data/citas";
 import { api } from "@/lib/api";
 
@@ -67,18 +67,22 @@ function buildTestPool(rejectedIds, likedIds) {
 }
 
 const D = {
-  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
-  border: "#EDE0D0", muted: "#9A7A6A"
+  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
+  border: "#FFD0DC", muted: "#9B8B95"
 };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
 
 function BgDoodles() {
   return (
-    <div style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-      <div style={{ position: "absolute", top: "12%", right: "6%", width: 80, height: 80, borderRadius: "50%", border: `2px dashed ${D.blush}`, opacity: 0.5 }} />
-      <div style={{ position: "absolute", bottom: "20%", left: "4%", width: 55, height: 55, borderRadius: "50%", background: D.gold, opacity: 0.12 }} />
-    </div>
+    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
+      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
+      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
+      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
+      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
+      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
+      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    </svg>
   );
 }
 
@@ -203,41 +207,35 @@ export default function CitasAleatoriasPage({ navigateTo }) {
     .filter(Boolean);
 
   return (
-    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto", position: 'relative', overflow: 'hidden' }}>
       <style>{STYLE}</style>
       <BgDoodles />
 
       {/* Header */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 10, background: D.cream,
-        borderBottom: `1.5px solid ${D.border}`, padding: "48px 20px 14px"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => navigateTo("dashboard")} style={{
-            width: 36, height: 36, borderRadius: "50%", border: `1.5px solid ${D.border}`,
-            background: D.white, display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", flexShrink: 0
-          }}>
-            <ChevronLeft size={18} color={D.coral} />
-          </button>
-          <div style={{ flex: 1 }}>
-            <h1 className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.wine, margin: 0 }}>
-              Citas para ti ♡
-            </h1>
-            <p className="caveat" style={{ fontSize: 15, color: D.muted, margin: 0 }}>
-              {testInfo
-                ? `${PERS_LABELS[testInfo.personality]} · Presupuesto ${BUDGET_LABELS[testInfo.budget]}`
-                : 'Desliza para descubrir'}
-            </p>
+      <div style={{ padding: '48px 20px 18px', background: D.cream, borderBottom: `1.5px solid ${D.border}`, position: 'relative', zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => navigateTo('dashboard')}
+              style={{ width: 32, height: 32, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5} />
+            </button>
+            <span className="caveat" style={{ fontSize: 12, color: '#C4AAB0', fontWeight: 600 }}>Inicio &gt; Citas para ti</span>
           </div>
-          <button onClick={() => setConfirmReset(true)} style={{
-            padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${D.border}`,
-            background: D.white, cursor: "pointer", display: "flex", alignItems: "center", gap: 6
-          }}>
-            <RefreshCw size={13} color={D.muted} />
-            <span className="caveat" style={{ fontSize: 14, color: D.muted }}>Reset</span>
+          <button onClick={() => setConfirmReset(true)}
+            style={{ width: 32, height: 32, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <RefreshCw size={14} color={D.coral} strokeWidth={2.5} />
           </button>
         </div>
+        <h1 className="lora" style={{ fontSize: 30, fontWeight: 700, color: D.wine, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          Citas para ti
+          <img src="/images/desliza.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+        </h1>
+        <img src="/images/subrayado1.png" alt="" style={{ display: 'block', width: '65%', maxWidth: 220, margin: '4px 0 8px' }} />
+        <p className="caveat" style={{ fontSize: 14, color: D.muted, margin: 0 }}>
+          {testInfo
+            ? `${PERS_LABELS[testInfo.personality]} · Presupuesto ${BUDGET_LABELS[testInfo.budget]} 💕`
+            : 'Desliza para descubrir 💕'}
+        </p>
       </div>
 
       <div style={{ padding: "18px 20px", position: "relative", zIndex: 1 }}>
@@ -382,11 +380,11 @@ export default function CitasAleatoriasPage({ navigateTo }) {
               title="Me gusta"
               style={{
                 width: 72, height: 72, borderRadius: "50%", border: "none",
-                background: D.wine, display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", boxShadow: "0 4px 16px rgba(28,14,16,0.2)"
+                background: D.coral, display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", boxShadow: "3px 3px 0 rgba(196,68,100,0.28)"
               }}
             >
-              <Heart size={28} color={D.blush} fill={D.blush} />
+              <Heart size={28} color={D.white} fill={D.white} />
             </motion.button>
           </div>
         )}
@@ -471,37 +469,49 @@ export default function CitasAleatoriasPage({ navigateTo }) {
       {/* ── CONFIRM RESET MODAL ── */}
       <AnimatePresence>
         {confirmReset && (
-          <motion.div key="confirm-reset-overlay"
-            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:200,
-              display:'flex', alignItems:'center', justifyContent:'center', padding:'0 30px' }}
-            onClick={() => setConfirmReset(false)}>
-            <motion.div
-              initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.9, opacity:0 }}
-              transition={{ type:'spring', damping:25, stiffness:300 }}
-              onClick={e => e.stopPropagation()}
-              style={{ background:'#FDF6EC', borderRadius:24, padding:'32px 26px', width:'100%', maxWidth:360, textAlign:'center' }}>
-              <div style={{ fontSize:44, marginBottom:10 }}>⚠️</div>
-              <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:18, fontWeight:700, color:'#1C0E10', marginBottom:8 }}>
-                ¿Estás seguro/a?
-              </div>
-              <div style={{ fontFamily:"'Caveat',cursive", fontSize:14, color:'#9A7A6A', lineHeight:1.6, marginBottom:24 }}>
-                Se borrarán todos tus swipes y tus citas guardadas. Volverás a ver todas las citas desde cero.
-              </div>
-              <div style={{ display:'flex', gap:10 }}>
-                <button onClick={() => setConfirmReset(false)}
-                  style={{ flex:1, padding:'13px', borderRadius:14, background:'#EDE0D0', border:'none', cursor:'pointer',
-                    fontFamily:"'Caveat',cursive", fontSize:16, fontWeight:700, color:'#7A5A55' }}>
-                  Cancelar
-                </button>
-                <button onClick={() => { handleReset(); setConfirmReset(false); }}
-                  style={{ flex:1, padding:'13px', borderRadius:14, background:'#C44455', border:'none', cursor:'pointer',
-                    fontFamily:"'Caveat',cursive", fontSize:16, fontWeight:700, color:'#fff' }}>
-                  Sí, reiniciar
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setConfirmReset(false)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(45,27,46,0.5)', zIndex: 199 }} />
+            <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '0 20px', pointerEvents: 'none' }}>
+              <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} transition={{ duration: 0.18 }}
+                onClick={e => e.stopPropagation()}
+                style={{ width: '100%', maxWidth: 400, background: D.cream, borderRadius: 24, overflow: 'hidden', boxShadow: '0 8px 40px rgba(45,27,46,0.22)', pointerEvents: 'all' }}>
+                <div style={{ padding: '20px 20px 16px', borderBottom: `1.5px solid ${D.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <img src="/images/desliza.png" alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                      <h2 className="lora" style={{ fontSize: 20, fontWeight: 700, color: D.wine, margin: 0 }}>¿Reiniciar todo?</h2>
+                    </div>
+                    <button onClick={() => setConfirmReset(false)}
+                      style={{ width: 32, height: 32, borderRadius: '50%', background: '#FFF0F4', border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                      <X size={14} color={D.coral} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                  <img src="/images/subrayado1.png" alt="" style={{ display: 'block', width: '55%', maxWidth: 180, margin: '6px 0 0' }} />
+                </div>
+                <div style={{ padding: '20px 20px 24px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 44, marginBottom: 10 }}>⚠️</div>
+                  <p className="lora" style={{ fontSize: 15, color: D.wine, margin: '0 0 6px', fontStyle: 'italic', lineHeight: 1.5 }}>
+                    ¿Estás seguro/a?
+                  </p>
+                  <p className="caveat" style={{ fontSize: 14, color: D.muted, margin: '0 0 20px', lineHeight: 1.6 }}>
+                    Se borrarán todos tus swipes y citas guardadas. Volverás a ver todas las citas desde cero.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={() => setConfirmReset(false)}
+                      style={{ flex: 1, padding: '13px', borderRadius: 14, background: '#FFF0F4', border: `1.5px solid ${D.border}`, cursor: 'pointer' }}>
+                      <span className="caveat" style={{ fontSize: 15, fontWeight: 700, color: D.coral }}>Cancelar</span>
+                    </button>
+                    <button onClick={() => { handleReset(); setConfirmReset(false); }}
+                      style={{ flex: 1, padding: '13px', borderRadius: 14, background: D.coral, border: 'none', cursor: 'pointer', boxShadow: '3px 3px 0 rgba(196,68,100,0.28)' }}>
+                      <span className="caveat" style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Sí, reiniciar ✦</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
         )}
       </AnimatePresence>
     </div>

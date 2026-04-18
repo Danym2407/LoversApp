@@ -9,7 +9,6 @@ import RoulettePage from '@/pages/RoulettePage';
 import DashboardPage from '@/pages/DashboardPage';
 import ProfilePage from '@/pages/ProfilePage';
 import CalendarPage from '@/pages/CalendarPage';
-import RegistryPage from '@/pages/RegistryPage';
 import GamesPage from '@/pages/GamesPage';
 import ChallengesPage from '@/pages/ChallengesPage';
 import LettersPage from '@/pages/LettersPage';
@@ -29,7 +28,16 @@ import BottomNav from '@/components/BottomNav';
 const NO_NAV_PAGES = new Set(['personality-test', 'personality-profile', 'admin']);
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'admin') return 'admin';
+    if (hash.startsWith('reset-password')) return 'reset-password';
+    const VALID = new Set(['dashboard','profile','home','dates','detail','stats','roulette',
+      'calendar','games','challenges','letters','timeline','moments',
+      'important-dates','countdown','personality-test','personality-profile',
+      'citas-aleatorias','citas-personalizadas']);
+    return VALID.has(hash) ? hash : 'dashboard';
+  });
   const [selectedDateId, setSelectedDateId] = useState(null);
   const [backTo, setBackTo] = useState('dates');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -41,15 +49,57 @@ function App() {
     const token = localStorage.getItem('loversappToken');
     const user  = localStorage.getItem('loversappUser');
     setIsAuthenticated(!!(token && user));
-    // Hash-based shortcut: /#admin abre el panel directamente
-    if (window.location.hash === '#admin') {
-      setCurrentPage('admin');
-    } else if (window.location.hash.startsWith('#reset-password')) {
-      setCurrentPage('reset-password');
-    }
-  }, []);
+
+    // Sync the initial browser history entry with the current page
+    window.history.replaceState(
+      { page: currentPage, dateId: null, back: 'dates' },
+      '',
+      '#' + currentPage
+    );
+
+    const handlePopState = (e) => {
+      if (e.state?.page) {
+        setCurrentPage(e.state.page);
+        setSelectedDateId(e.state.dateId ?? null);
+        setBackTo(e.state.back || 'dates');
+      } else {
+        // Went past app history — stay in app on dashboard
+        window.history.pushState(
+          { page: 'dashboard', dateId: null, back: 'dates' },
+          '',
+          '#dashboard'
+        );
+        setCurrentPage('dashboard');
+      }
+    };
+
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').replace(/^\//, '');
+      if (hash === 'admin') { setCurrentPage('admin'); return; }
+      if (hash.startsWith('reset-password')) { setCurrentPage('reset-password'); return; }
+      const VALID = new Set(['dashboard','profile','home','dates','detail','stats','roulette',
+        'calendar','games','challenges','letters','timeline','moments',
+        'important-dates','countdown','personality-test','personality-profile',
+        'citas-aleatorias','citas-personalizadas']);
+      if (VALID.has(hash)) setCurrentPage(hash);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);  // eslint-disable-line
 
   const navigateTo = (page, dateId = null, back = null) => {
+    const newBack = back ?? (page === 'detail' ? 'dates' : backTo);
+    const newDateId = dateId ?? selectedDateId;
+    window.history.pushState(
+      { page, dateId: newDateId, back: newBack },
+      '',
+      '#' + page
+    );
     setCurrentPage(page);
     if (dateId !== null) setSelectedDateId(dateId);
     if (back !== null) setBackTo(back);
@@ -70,7 +120,7 @@ function App() {
         <meta name="description" content="LoversApp: La aplicación para parejas enamoradas. Citas, calendario, retos diarios, cartas digitales, línea del tiempo y más." />
       </Helmet>
       
-      <div style={{ background: '#FEF8F0', minHeight: '100vh' }}>
+      <div className={currentPage === 'admin' ? '' : 'lg:pl-56 lg:pt-16 app-content'} style={currentPage === 'admin' ? {} : { background: '#FAFAFA', minHeight: '100vh' }}>
         {currentPage === 'dashboard' && <DashboardPage navigateTo={navigateTo} onLogout={handleLogout} onOpenLogin={(tab = 'login') => { setLoginTab(tab); setShowLoginModal(true); }} isAuthenticated={isAuthenticated} />}
         {currentPage === 'profile' && <ProfilePage navigateTo={navigateTo} />}
         {currentPage === 'home' && <DatesListPage navigateTo={navigateTo} />}
@@ -79,7 +129,7 @@ function App() {
         {currentPage === 'stats' && <StatsPage navigateTo={navigateTo} />}
         {currentPage === 'roulette' && <RoulettePage navigateTo={navigateTo} />}
         {currentPage === 'calendar' && <CalendarPage navigateTo={navigateTo} />}
-        {currentPage === 'registry' && <RegistryPage navigateTo={navigateTo} />}
+        {currentPage === 'registry' && <MomentsPage navigateTo={navigateTo} />}
         {currentPage === 'games' && <GamesPage navigateTo={navigateTo} />}
         {currentPage === 'challenges' && <ChallengesPage navigateTo={navigateTo} />}
         {currentPage === 'letters' && <LettersPage navigateTo={navigateTo} />}
@@ -92,9 +142,6 @@ function App() {
         {currentPage === 'citas-aleatorias' && <CitasAleatoriasPage navigateTo={navigateTo} />}
         {currentPage === 'admin' && <AdminPage navigateTo={navigateTo} />}
         {currentPage === 'reset-password' && <ResetPasswordPage navigateTo={navigateTo} />}
-        {!NO_NAV_PAGES.has(currentPage) && (
-          <BottomNav currentPage={currentPage} navigateTo={navigateTo} />
-        )}
         {showLoginModal && !isAuthenticated && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
             <LoginPage
@@ -107,6 +154,9 @@ function App() {
         )}
         <Toaster />
       </div>
+      {!NO_NAV_PAGES.has(currentPage) && (
+        <BottomNav currentPage={currentPage} navigateTo={navigateTo} onLogout={handleLogout} isAuthenticated={isAuthenticated} onOpenLogin={(tab = 'login') => { setLoginTab(tab); setShowLoginModal(true); }} />
+      )}
     </>
   );
 }

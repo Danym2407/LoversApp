@@ -23,10 +23,10 @@ function getTransporter() {
   });
 }
 
-// Stricter rate limit for auth endpoints — 10 req / 15 min
+// Stricter rate limit for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV === 'production' ? 10 : 100,
   message: { error: 'Demasiados intentos, espera 15 minutos.' },
 });
 

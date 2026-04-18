@@ -4,7 +4,9 @@
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {
-		"dev": "vite --host :: --port 3000",
+		"dev": "concurrently \"node backend/server.js\" \"vite --host :: --port 3000\"",
+		"dev:frontend": "vite --host :: --port 3000",
+		"dev:backend": "node backend/server.js",
 		"build": "node tools/generate-llms.js || true && vite build && npm install --prefix backend --omit=dev",
 		"preview": "vite preview --host :: --port 3000",
 		"start": "node backend/server.js"
@@ -40,6 +42,7 @@
 		"@types/react-dom": "^18.3.5",
 		"@vitejs/plugin-react": "^4.3.4",
 		"autoprefixer": "^10.4.20",
+		"concurrently": "^9.2.1",
 		"eslint": "^8.57.1",
 		"eslint-config-react-app": "^7.0.1",
 		"postcss": "^8.4.49",

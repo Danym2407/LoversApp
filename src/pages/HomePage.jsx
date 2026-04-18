@@ -24,12 +24,12 @@ const CAT_STYLE = {
   Cultural:   { bg:'#EBF3FC', color:'#1A3A7A', dot:'#5B8ECC' },
   Gastro:     { bg:'#FFF0E8', color:'#7A3010', dot:'#E0723A' },
   Deportes:   { bg:'#E8FAF2', color:'#1A5A3A', dot:'#3AAA72' },
-  Romántica:  { bg:'#FEECF0', color:'#7A1530', dot:'#C44455' },
+  Romántica:  { bg:'#FEECF0', color:'#7A1530', dot:'#FF6B8A' },
   Aventura:   { bg:'#F0FAE8', color:'#2A5A10', dot:'#5BAA6A' },
   'Muy bajo': { bg:'#EEF8EE', color:'#2A6A2A', dot:'#5BAA6A' },
   Bajo:       { bg:'#FEFBE8', color:'#6A5A10', dot:'#D4A520' },
   Medio:      { bg:'#FEF5D8', color:'#8A6A10', dot:'#E8A020' },
-  Alto:       { bg:'#FEE8E8', color:'#8A2020', dot:'#C44455' },
+  Alto:       { bg:'#FEE8E8', color:'#8A2020', dot:'#FF6B8A' },
 };
 function DoodleTag({ label }) {
   const s = CAT_STYLE[label] || { bg:'#F0E8E0', color:'#7A5A55', dot:'#B09A90' };
@@ -110,7 +110,7 @@ export default function HomePage({ navigateTo }) {
   });
 
   return (
-    <div style={{ background:'#FDF6EC', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:430, margin:'0 auto', fontFamily:"'Lora',Georgia,serif", position:'relative', overflow:'hidden' }}>
+    <div style={{ background:'#FFF5F7', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:430, margin:'0 auto', fontFamily:"'Lora',Georgia,serif", position:'relative', overflow:'hidden' }}>
       <style>{`
         .caveat { font-family: 'Caveat', cursive; }
         .lora   { font-family: 'Lora', Georgia, serif; }
@@ -120,39 +120,39 @@ export default function HomePage({ navigateTo }) {
       <BgDoodles />
 
       {/* ── HEADER ── */}
-      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1.5px solid #EDE0D0', background:'#FDF6EC', position:'sticky', top:0, zIndex:40 }}>
-        <button onClick={() => navigateTo('dashboard')}
-          style={{ width:38, height:38, borderRadius:'50%', background:'#fff', border:'1.5px solid #EDE0D0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-          <ChevronLeft size={16} color="#C44455" strokeWidth={2.5}/>
+      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1.5px solid #FFD0DC', background:'#FFF5F7', position:'sticky', top:0, zIndex:40 }}>
+        <button onClick={() => window.history.back()}
+          style={{ width:38, height:38, borderRadius:'50%', background:'#fff', border:'1.5px solid #FFD0DC', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <ChevronLeft size={16} color="#FF6B8A" strokeWidth={2.5}/>
         </button>
         <div style={{ textAlign:'center' }}>
-          <div className="lora" style={{ fontSize:20, color:'#1C0E10', fontWeight:600, letterSpacing:1 }}>100 Citas</div>
-          <div className="caveat" style={{ fontSize:11, color:'#C44455', letterSpacing:2, marginTop:2 }}>✦ {couple} ✦</div>
+          <div className="lora" style={{ fontSize:20, color:'#2D1B2E', fontWeight:600, letterSpacing:1 }}>100 Citas</div>
+          <div className="caveat" style={{ fontSize:11, color:'#FF6B8A', letterSpacing:2, marginTop:2 }}>✦ {couple} ✦</div>
         </div>
-        <button style={{ width:38, height:38, borderRadius:'50%', background:'#fff', border:'1.5px solid #EDE0D0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-          <Search size={15} color="#C44455"/>
+        <button style={{ width:38, height:38, borderRadius:'50%', background:'#fff', border:'1.5px solid #FFD0DC', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <Search size={15} color="#FF6B8A"/>
         </button>
       </div>
 
       {/* ── PERFIL CHIPS ── */}
       <div style={{ padding:'12px 20px 0', display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative', zIndex:1 }}>
         <div style={{ display:'flex', gap:6 }}>
-          <span className="caveat" style={{ fontSize:12, fontWeight:700, background:'#1C0E10', color:'#F0C4CC', borderRadius:20, padding:'4px 12px' }}>Híbrido ⚖️</span>
+          <span className="caveat" style={{ fontSize:12, fontWeight:700, background:'#2D1B2E', color:'#FFD0DC', borderRadius:20, padding:'4px 12px' }}>Híbrido ⚖️</span>
           <span className="caveat" style={{ fontSize:12, fontWeight:700, background:'#FEF9E8', color:'#7A6A20', borderRadius:20, padding:'4px 12px', border:'1.5px solid #E8D890' }}>Presup. Medio</span>
         </div>
-        <span className="caveat" style={{ fontSize:12, color:'#9A7A6A' }}>{filtered.length} citas</span>
+        <span className="caveat" style={{ fontSize:12, color:'#9B8B95' }}>{filtered.length} citas</span>
       </div>
 
       {/* ── SEARCH BAR ── */}
       <div style={{ padding:'10px 20px 4px', position:'relative', zIndex:1 }}>
-        <div style={{ background:'#fff', border:'1.5px solid #EDE0D0', borderRadius:16, padding:'9px 14px', display:'flex', alignItems:'center', gap:8 }}>
-          <Search size={14} color="#C8B8A8"/>
+        <div style={{ background:'#fff', border:'1.5px solid #FFD0DC', borderRadius:16, padding:'9px 14px', display:'flex', alignItems:'center', gap:8 }}>
+          <Search size={14} color="#C4AAB0"/>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar cita..."
             className="caveat"
-            style={{ border:'none', background:'transparent', outline:'none', fontSize:14, fontWeight:600, color:'#1C0E10', flex:1 }}
+            style={{ border:'none', background:'transparent', outline:'none', fontSize:14, fontWeight:600, color:'#2D1B2E', flex:1 }}
           />
         </div>
       </div>
@@ -163,8 +163,8 @@ export default function HomePage({ navigateTo }) {
           const active = activeFilter === f;
           return (
             <button key={f} onClick={() => setActiveFilter(f)} className="caveat"
-              style={{ background: active?'#1C0E10':'#fff', color: active?'#F0C4CC':'#7A5A55',
-                border: active?'1.5px solid #1C0E10':'1.5px solid #EDE0D0',
+              style={{ background: active?'#2D1B2E':'#fff', color: active?'#FFD0DC':'#9B8B95',
+                border: active?'1.5px solid #2D1B2E':'1.5px solid #FFD0DC',
                 borderRadius:20, padding:'5px 16px', fontSize:13, fontWeight: active?700:600,
                 cursor:'pointer', whiteSpace:'nowrap' }}>
               {f}
@@ -178,7 +178,7 @@ export default function HomePage({ navigateTo }) {
         {filtered.length === 0 && (
           <div style={{ textAlign:'center', padding:'48px 0' }}>
             <div style={{ fontSize:36, marginBottom:10 }}>🔍</div>
-            <p className="lora" style={{ color:'#9A7A6A' }}>No encontramos citas</p>
+            <p className="lora" style={{ color:'#9B8B95' }}>No encontramos citas</p>
           </div>
         )}
 
@@ -189,28 +189,28 @@ export default function HomePage({ navigateTo }) {
           return (
             <div key={date.id}
               onClick={() => navigateTo('detail', date.id)}
-              style={{ background:'#fff', border:'1.5px solid #EDE0D0',
-                borderLeft: isFav ? '3.5px solid #C44455' : '3.5px solid #EDE0D0',
+              style={{ background:'#fff', border:'1.5px solid #FFD0DC',
+                borderLeft: isFav ? '3.5px solid #FF6B8A' : '3.5px solid #FFD0DC',
                 borderRadius:18, padding:'12px 14px',
                 display:'flex', alignItems:'center', gap:12, cursor:'pointer', transition:'transform 0.12s' }}>
 
               {/* Number badge */}
               <div style={{ minWidth:30, height:30, borderRadius:10,
-                background: isFav?'#FEE8EC':'#F5EEE8',
+                background: isFav?'#FFE8EF':'#FFF5F7',
                 display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <span className="caveat" style={{ fontSize:13, fontWeight:700, color: isFav?'#C44455':'#9A7A6A' }}>{num}</span>
+                <span className="caveat" style={{ fontSize:13, fontWeight:700, color: isFav?'#FF6B8A':'#9B8B95' }}>{num}</span>
               </div>
 
               {/* Info */}
               <div style={{ flex:1, minWidth:0 }}>
-                <div className="lora" style={{ fontSize:13, fontWeight:600, color:'#1C0E10', marginBottom:6, lineHeight:1.3 }}>
+                <div className="lora" style={{ fontSize:13, fontWeight:600, color:'#2D1B2E', marginBottom:6, lineHeight:1.3 }}>
                   {date.name}
                 </div>
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                   {cats.map(c => <DoodleTag key={c} label={c}/>)}
                   {date.budget && <DoodleTag label={date.budget}/>}
                   {date.time && (
-                    <span className="caveat" style={{ fontSize:10, fontWeight:600, background:'#F5EEE8', color:'#8A7060', borderRadius:20, padding:'2px 9px' }}>{date.time}</span>
+                    <span className="caveat" style={{ fontSize:10, fontWeight:600, background:'#FFF5F7', color:'#9B8B95', borderRadius:20, padding:'2px 9px' }}>{date.time}</span>
                   )}
                 </div>
               </div>
@@ -219,13 +219,13 @@ export default function HomePage({ navigateTo }) {
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 <button onClick={e => { e.stopPropagation(); toggleLike(date.id); }}
                   style={{ background:'none', border:'none', cursor:'pointer', padding:4 }}>
-                  <Heart size={17} color="#C44455" fill={isFav?'#C44455':'none'} strokeWidth={1.5}/>
+                  <Heart size={17} color="#FF6B8A" fill={isFav?'#FF6B8A':'none'} strokeWidth={1.5}/>
                 </button>
                 <button
                   onClick={e => { e.stopPropagation(); if (window.confirm('¿Ocultar esta cita de la lista?')) skipDate(date.id); }}
                   title="Ocultar cita"
                   style={{ background:'none', border:'none', cursor:'pointer', padding:4, opacity: 0.4 }}>
-                  <span style={{ fontSize: 14, color: '#9A7A6A' }}>✕</span>
+                  <span style={{ fontSize: 14, color: '#9B8B95' }}>✕</span>
                 </button>
               </div>
             </div>
@@ -234,7 +234,7 @@ export default function HomePage({ navigateTo }) {
 
         {filtered.length < dates.length && (
           <div style={{ textAlign:'center', padding:'8px 0 16px' }}>
-            <span className="caveat" style={{ fontSize:13, color:'#C44455' }}>
+            <span className="caveat" style={{ fontSize:13, color:'#FF6B8A' }}>
               · · · {dates.length - filtered.length} citas más · · ·
             </span>
           </div>

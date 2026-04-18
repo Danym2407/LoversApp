@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Heart, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
 
 const D = {
-  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
-  border: "#EDE0D0", muted: "#9A7A6A"
+  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
+  border: "#FFD0DC", muted: "#9B8B95"
 };
 
 export default function ResetPasswordPage({ navigateTo }) {
@@ -67,18 +67,12 @@ export default function ResetPasswordPage({ navigateTo }) {
         style={{
           width: "100%", maxWidth: 400, background: D.white,
           border: `1.5px solid ${D.border}`, borderRadius: 24,
-          padding: "32px 28px", boxShadow: "0 4px 32px rgba(28,14,16,0.08)"
+          padding: "32px 28px", boxShadow: "0 4px 32px rgba(45,27,46,0.10)"
         }}
       >
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: "50%", background: D.wine,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 12px"
-          }}>
-            <Heart size={26} color={D.blush} fill={D.blush} />
-          </div>
+          <img src="/images/corazon.png" alt="" style={{ width: 64, height: 64, objectFit: 'contain', margin: '0 auto 12px', display: 'block' }}/>
           <h1 className="lora" style={{ fontSize: 24, fontWeight: 700, color: D.wine, margin: 0 }}>
             Nueva contraseña
           </h1>
@@ -94,8 +88,9 @@ export default function ResetPasswordPage({ navigateTo }) {
             </p>
             <button onClick={() => navigateTo('dashboard')} style={{
               marginTop: 16, padding: "10px 24px", borderRadius: 12, border: "none",
-              background: D.wine, color: D.white, cursor: "pointer",
-              fontFamily: "Caveat, cursive", fontSize: 15
+              background: D.coral, color: D.white, cursor: "pointer",
+              fontFamily: "Caveat, cursive", fontSize: 15,
+              boxShadow: '3px 3px 0 rgba(196,68,100,0.28)'
             }}>Ir al inicio</button>
           </div>
         )}
@@ -150,10 +145,10 @@ export default function ResetPasswordPage({ navigateTo }) {
               disabled={loading}
               style={{
                 width: "100%", padding: "13px 0", borderRadius: 14, border: "none",
-                background: loading ? D.muted : D.coral, color: D.white,
+            background: loading ? D.muted : D.coral, color: D.white,
                 cursor: loading ? "not-allowed" : "pointer",
                 fontFamily: "Lora, Georgia, serif", fontSize: 16, fontWeight: 700,
-                marginTop: 4
+                marginTop: 4, boxShadow: loading ? 'none' : '3px 3px 0 rgba(196,68,100,0.28)'
               }}
             >
               {loading ? "Guardando..." : "Cambiar contraseña"}
@@ -172,8 +167,9 @@ export default function ResetPasswordPage({ navigateTo }) {
             </p>
             <button onClick={() => navigateTo('dashboard')} style={{
               width: "100%", padding: "12px 0", borderRadius: 14, border: "none",
-              background: D.wine, color: D.white, cursor: "pointer",
-              fontFamily: "Lora, Georgia, serif", fontSize: 16, fontWeight: 700
+              background: D.coral, color: D.white, cursor: "pointer",
+              fontFamily: "Lora, Georgia, serif", fontSize: 16, fontWeight: 700,
+              boxShadow: '3px 3px 0 rgba(196,68,100,0.28)'
             }}>
               Ir al inicio
             </button>

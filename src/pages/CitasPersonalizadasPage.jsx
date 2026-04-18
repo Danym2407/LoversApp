@@ -5,9 +5,9 @@ import { citasDatabase, citasPorCategoria } from "@/data/citas";
 import { api } from "@/lib/api";
 
 const D = {
-  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
-  border: "#EDE0D0", muted: "#9A7A6A"
+  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
+  border: "#FFD0DC", muted: "#9B8B95"
 };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
 
@@ -151,7 +151,7 @@ export default function CitasPersonalizadasPage({ navigateTo }) {
             Hacer el Test ♡
           </button>
           <div style={{ marginTop: 14 }}>
-            <button onClick={() => navigateTo("dashboard")} style={{
+            <button onClick={() => window.history.back()} style={{
               background: "none", border: "none", cursor: "pointer",
               fontFamily: "Caveat, cursive", fontSize: 15, color: D.muted
             }}>← Volver al inicio</button>
@@ -284,7 +284,7 @@ export default function CitasPersonalizadasPage({ navigateTo }) {
           ].map((s, i) => (
             <div key={i}>
               <div className="caveat" style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div className="caveat" style={{ fontSize: 13, color: "rgba(253,246,236,0.6)" }}>{s.label}</div>
+              <div className="caveat" style={{ fontSize: 13, color: "rgba(255,245,247,0.6)" }}>{s.label}</div>
             </div>
           ))}
         </div>

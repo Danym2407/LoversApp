@@ -5,9 +5,9 @@ import PersonalityTestModal from "@/components/PersonalityTestModal";
 import { api } from "@/lib/api";
 
 const D = {
-  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
-  border: "#EDE0D0", muted: "#9A7A6A"
+  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
+  border: "#FFD0DC", muted: "#9B8B95"
 };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
 
@@ -94,9 +94,9 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
       }}>
         {/* Doodle bg circles */}
         <div style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-          {[{ top: "8%", left: "5%", size: 90, color: D.blush, opacity: 0.4 },
-            { top: "70%", right: "4%", size: 120, color: D.gold, opacity: 0.18 },
-            { bottom: "10%", left: "8%", size: 70, color: D.coral, opacity: 0.13 }].map((c, i) => (
+          {[{ top: "8%", left: "5%", size: 90, color: D.blush, opacity: 0.5 },
+            { top: "70%", right: "4%", size: 120, color: D.coral, opacity: 0.12 },
+            { bottom: "10%", left: "8%", size: 70, color: D.blush, opacity: 0.35 }].map((c, i) => (
             <div key={i} style={{
               position: "absolute", top: c.top, left: c.left, right: c.right, bottom: c.bottom,
               width: c.size, height: c.size, borderRadius: "50%",
@@ -122,7 +122,7 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
           style={{
             position: "relative", zIndex: 1, width: "100%", maxWidth: 420,
             background: D.white, border: `1.5px solid ${D.border}`,
-            borderRadius: 24, padding: "32px 28px", boxShadow: "0 4px 32px rgba(28,14,16,0.08)"
+            borderRadius: 24, padding: "32px 28px", boxShadow: "0 4px 32px rgba(45,27,46,0.10)"
           }}
         >
           {/* Logo */}
@@ -150,7 +150,7 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
             {[{ key: true, label: "Iniciar Sesión" }, { key: false, label: "Registrarse" }].map(tab => (
               <button key={String(tab.key)} onClick={() => setIsLogin(tab.key)} style={{
                 flex: 1, padding: "9px 0", borderRadius: 10, border: "none",
-                background: isLogin === tab.key ? D.wine : "transparent",
+                background: isLogin === tab.key ? D.coral : "transparent",
                 color: isLogin === tab.key ? D.white : D.muted,
                 cursor: "pointer", fontFamily: "Caveat, cursive", fontSize: 16,
                 fontWeight: isLogin === tab.key ? 700 : 400, transition: "all 0.2s"
@@ -232,7 +232,8 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
                 width: "100%", padding: "13px 0", borderRadius: 14, border: "none",
                 background: loading ? D.muted : D.coral, color: D.white, cursor: loading ? "not-allowed" : "pointer",
                 fontFamily: "Lora, Georgia, serif", fontSize: 16, fontWeight: 700,
-                marginTop: 4, transition: "background 0.2s"
+                marginTop: 4, transition: "background 0.2s",
+                boxShadow: loading ? 'none' : '3px 3px 0 rgba(196,68,100,0.28)'
               }}
             >
               {loading ? "Conectando..." : isLogin ? "Entrar" : "Crear cuenta"}
@@ -254,12 +255,12 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
           {showForgot && (
             <div style={{
               position: "fixed", inset: 0, zIndex: 100,
-              background: "rgba(28,14,16,0.45)", display: "flex",
+              background: "rgba(45,27,46,0.45)", display: "flex",
               alignItems: "center", justifyContent: "center", padding: 20
             }}>
               <div style={{
                 background: D.white, borderRadius: 20, padding: "28px 24px",
-                width: "100%", maxWidth: 370, boxShadow: "0 8px 40px rgba(28,14,16,0.18)"
+                width: "100%", maxWidth: 370, boxShadow: "0 8px 40px rgba(45,27,46,0.18)"
               }}>
                 <h3 className="lora" style={{ color: D.wine, fontSize: 20, margin: "0 0 8px" }}>Recuperar contraseña</h3>
                 {!forgotSent ? (
@@ -294,7 +295,8 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
                       }} style={{
                         flex: 1, padding: "10px 0", borderRadius: 12, border: "none",
                         background: forgotLoading ? D.muted : D.coral, color: D.white, cursor: forgotLoading ? "not-allowed" : "pointer",
-                        fontFamily: "Caveat, cursive", fontSize: 15, fontWeight: 700
+                        fontFamily: "Caveat, cursive", fontSize: 15, fontWeight: 700,
+                        boxShadow: forgotLoading ? 'none' : '3px 3px 0 rgba(196,68,100,0.28)'
                       }}>{forgotLoading ? "Enviando..." : "Enviar"}</button>
                     </div>
                   </>
@@ -309,8 +311,9 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
                     </p>
                     <button onClick={() => { setShowForgot(false); setForgotSent(false); setForgotEmail(''); }} style={{
                       width: "100%", padding: "10px 0", borderRadius: 12, border: "none",
-                      background: D.wine, color: D.white, cursor: "pointer",
-                      fontFamily: "Caveat, cursive", fontSize: 15
+                      background: D.coral, color: D.white, cursor: "pointer",
+                      fontFamily: "Caveat, cursive", fontSize: 15, fontWeight: 700,
+                      boxShadow: '3px 3px 0 rgba(196,68,100,0.28)'
                     }}>Cerrar</button>
                   </>
                 )}

@@ -39,12 +39,12 @@ const CAT_STYLE = {
   Cultural:   { bg:'#EBF3FC', color:'#1A3A7A', dot:'#5B8ECC' },
   Gastro:     { bg:'#FFF0E8', color:'#7A3010', dot:'#E0723A' },
   Deportes:   { bg:'#E8FAF2', color:'#1A5A3A', dot:'#3AAA72' },
-  Romántica:  { bg:'#FEECF0', color:'#7A1530', dot:'#C44455' },
+  Romántica:  { bg:'#FEECF0', color:'#7A1530', dot:'#FF6B8A' },
   Aventura:   { bg:'#F0FAE8', color:'#2A5A10', dot:'#5BAA6A' },
   'Muy bajo': { bg:'#EEF8EE', color:'#2A6A2A', dot:'#5BAA6A' },
   Bajo:       { bg:'#FEFBE8', color:'#6A5A10', dot:'#D4A520' },
   Medio:      { bg:'#FEF5D8', color:'#8A6A10', dot:'#E8A020' },
-  Alto:       { bg:'#FEE8E8', color:'#8A2020', dot:'#C44455' },
+  Alto:       { bg:'#FEE8E8', color:'#8A2020', dot:'#FF6B8A' },
 };
 function DoodleTag({ label }) {
   const s = CAT_STYLE[label] || { bg:'#F0E8E0', color:'#7A5A55', dot:'#B09A90' };
@@ -56,12 +56,52 @@ function DoodleTag({ label }) {
   );
 }
 
+const TAG_IMG_MAP = {
+  'Especial':   '/images/Nuevo/favoritos.png',
+  'Especiales': '/images/Nuevo/favoritos.png',
+  'Recuerdo':   '/images/recuerdos.png',
+  'Recuerdos':  '/images/recuerdos.png',
+};
+const TAG_IMG_STYLE = {
+  'Especial':   { bg:'#FFF8E0', color:'#8A6010' },
+  'Especiales': { bg:'#FFF8E0', color:'#8A6010' },
+  'Recuerdo':   { bg:'#EEF3FF', color:'#3A5AA0' },
+  'Recuerdos':  { bg:'#EEF3FF', color:'#3A5AA0' },
+};
+function SmartTag({ label }) {
+  const imgSrc = TAG_IMG_MAP[label];
+  const s = TAG_IMG_STYLE[label] || {};
+  if (imgSrc) {
+    return (
+      <span style={{ fontSize:10, fontFamily:"'Caveat',cursive", fontWeight:700, background:s.bg||'#F5EEF8', color:s.color||'#6A40A0', borderRadius:20, padding:'2px 8px', display:'inline-flex', alignItems:'center', gap:3 }}>
+        <img src={imgSrc} style={{ width:11, height:11, objectFit:'contain' }}/>
+        {label}
+      </span>
+    );
+  }
+  return <DoodleTag label={label}/>;
+}
+
+const DECO_IMAGES = [
+  '/images/planeta-amarillo.png',
+  '/images/planeta-anillo.png',
+  '/images/musica.png',
+  '/images/tierra.png',
+  '/images/asteroide.png',
+  '/images/fotos.png',
+  '/images/cohete.png',
+];
+function getDecoImage(id) {
+  const hash = String(id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return DECO_IMAGES[hash % DECO_IMAGES.length];
+}
+
 const ALL_FILTERS = ['Todas', 'Exterior', 'Interior', 'Cultural', 'Gastro', 'Deportes', 'Romántica'];
 
 // ── Confetti particle component ──────────────────────────────────────────────
 function Confetti({ show }) {
   const PIECES = 60;
-  const colors = ['#C44455','#D4A520','#5BAA6A','#5B8ECC','#F0C4CC','#E8A020','#9B59C0'];
+  const colors = ['#FF6B8A','#D4A520','#5BAA6A','#5B8ECC','#FFD0DC','#E8A020','#9B59C0'];
   if (!show) return null;
   return (
     <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:999, overflow:'hidden' }}>
@@ -371,6 +411,8 @@ export default function DatesListPage({ navigateTo }) {
     .map(id => ALL_CITAS_FLAT.find(c => c.id === id))
     .filter(Boolean);
 
+  const citaReviews = JSON.parse(localStorage.getItem('completedCitasReviews') || '{}');
+
   const getViewDates = () => {
     if (viewFilter === 'mis_citas') return myDates;
     if (viewFilter === 'match')     return dates.filter(d => matchIds.has(d.id));
@@ -389,64 +431,99 @@ export default function DatesListPage({ navigateTo }) {
   })();
 
   return (
-    <div style={{ background:'#FDF6EC', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:430, margin:'0 auto', fontFamily:"'Lora',Georgia,serif", position:'relative', overflow:'hidden' }}>
+    <div style={{ background:'#FFF5F7', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:430, margin:'0 auto', fontFamily:"'Lora',Georgia,serif", position:'relative', overflow:'hidden' }}>
       <style>{`.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}input:focus{outline:none}::-webkit-scrollbar{display:none}`}</style>
       <BgDoodles />
 
       {/* ── HEADER ── */}
-      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1.5px solid #EDE0D0', background:'#FDF6EC', position:'sticky', top:0, zIndex:40 }}>
-        <button onClick={() => navigateTo('dashboard')}
-          style={{ width:38, height:38, borderRadius:'50%', background:'#fff', border:'1.5px solid #EDE0D0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-          <ChevronLeft size={16} color="#C44455" strokeWidth={2.5}/>
-        </button>
-        <div style={{ textAlign:'center' }}>
-          <div className="lora" style={{ fontSize:20, color:'#1C0E10', fontWeight:600, letterSpacing:1 }}>{total} Citas</div>
-          <div className="caveat" style={{ fontSize:11, color:'#C44455', letterSpacing:2, marginTop:2 }}>✦ {couple} ✦</div>
+      <div style={{ padding:'48px 20px 18px', background:'#FFF5F7', borderBottom:'1.5px solid #FFD0DC' }}>
+        {/* Top row: back + breadcrumb + citas count */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <button onClick={() => window.history.back()}
+              style={{ width:32, height:32, borderRadius:'50%', background:'#fff', border:'1.5px solid #FFD0DC', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              <ChevronLeft size={14} color="#FF6B8A" strokeWidth={2.5}/>
+            </button>
+            <span className="caveat" style={{ fontSize:12, color:'#C4AAB0', fontWeight:600 }}>Inicio &gt; Citas</span>
+          </div>
+          <span className="caveat" style={{ fontSize:13, color:'#FF6B8A', fontWeight:700 }}>{total} citas en total</span>
         </div>
-        <button onClick={() => setShowAddModal(true)} style={{ width:38, height:38, borderRadius:'50%', background:'#C44455', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 2px 10px rgba(196,68,85,0.25)' }}>
-          <Plus size={18} color="#fff" strokeWidth={2.5}/>
-        </button>
+
+        {/* Title + Nueva Cita */}
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <h1 className="lora" style={{ fontSize:30, fontWeight:700, color:'#2D1B2E', margin:0, lineHeight:1.1, display:'flex', alignItems:'center', gap:8 }}>
+              Mis Citas
+              <span style={{ fontSize:22 }}>💕</span>
+            </h1>
+            <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'65%', maxWidth:210, margin:'4px 0 8px' }} />
+            <p className="caveat" style={{ fontSize:14, color:'#9B8B95', margin:0 }}>Los planes más bonitos viven aquí ✨</p>
+          </div>
+          <motion.button whileTap={{ scale:0.95 }} onClick={() => setShowAddModal(true)}
+            style={{ flexShrink:0, padding:'12px 18px', background:'#FF6B8A', color:'#fff', border:'2px solid #FF6B8A', borderRadius:16, fontWeight:700, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', gap:7, boxShadow:'3px 3px 0 rgba(196,68,100,0.28)', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
+            <Plus size={16} color="#fff" strokeWidth={2.5}/>
+            Nueva Cita
+          </motion.button>
+        </div>
       </div>
 
       {/* ── VIEW FILTER CHIPS ── */}
       <div style={{ padding:'12px 20px 0', display:'flex', gap:6, overflowX:'auto', scrollbarWidth:'none', position:'relative', zIndex:1 }}>
         {[
-          { key: null,          label: `📋 Todas`,            bg: viewFilter===null?'#1C0E10':'#fff',    color: viewFilter===null?'#F0C4CC':'#7A5A55', border: viewFilter===null?'#1C0E10':'#EDE0D0' },
-          { key: 'match',       label: `❤️ ${matchIds.size} Match${matchIds.size!==1?'es':''}`, bg: viewFilter==='match'?'#C44455':'#FEF0F2',    color: viewFilter==='match'?'#fff':'#C44455', border: viewFilter==='match'?'#C44455':'#F0C4CC' },
-          { key: 'terminadas',  label: `✅ ${completed} Terminadas`, bg: viewFilter==='terminadas'?'#5BAA6A':'#EEF8EE', color: viewFilter==='terminadas'?'#fff':'#2A6A2A', border: viewFilter==='terminadas'?'#5BAA6A':'#A8D8A8' },
-          { key: 'mis_citas',   label: `🫀 Mis citas`,        bg: viewFilter==='mis_citas'?'#D4A520':'#FFF5E8',  color: viewFilter==='mis_citas'?'#fff':'#8A6A10',  border: viewFilter==='mis_citas'?'#D4A520':'#E8C868' },
-          { key: 'pareja',      label: `💕 ${partnerName}`,   bg: viewFilter==='pareja'?'#5B8ECC':'#EBF3FF',    color: viewFilter==='pareja'?'#fff':'#1A3A7A',     border: viewFilter==='pareja'?'#5B8ECC':'#AACAEE' },
-        ].map(chip => (
-          <button key={String(chip.key)} onClick={() => setViewFilter(viewFilter === chip.key ? null : chip.key)}
-            className="caveat"
-            style={{ background: chip.bg, color: chip.color, border: `1.5px solid ${chip.border}`,
-              borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            {chip.label}
-          </button>
-        ))}
+          { key: null,         img:'/images/tareas.png',           label: 'Todas',
+            activeBg:'#FF6B8A',  activeColor:'#fff',     activeBorder:'#FF6B8A',
+            inactiveBg:'#FFF5F7', inactiveColor:'#FF6B8A', inactiveBorder:'#FFD0DC' },
+          { key: 'match',      img:'/images/metas.png',            label: `${matchIds.size} Match${matchIds.size!==1?'es':''}`,
+            activeBg:'#FF6B8A',  activeColor:'#fff',     activeBorder:'#FF6B8A',
+            inactiveBg:'#FFF0F4', inactiveColor:'#FF6B8A', inactiveBorder:'#F5D0DC' },
+          { key: 'terminadas', img:'/images/trofeo.png',           label: `${completed} Hechas`,
+            activeBg:'#5BAA6A',  activeColor:'#fff',     activeBorder:'#5BAA6A',
+            inactiveBg:'#EEF8EE', inactiveColor:'#2A6A2A', inactiveBorder:'#A8D8A8' },
+          { key: 'mis_citas',  img:'/images/calendario-morado.png', label: 'Mis citas',
+            activeBg:'#9B7FD4',  activeColor:'#fff',     activeBorder:'#9B7FD4',
+            inactiveBg:'#F5F0FF', inactiveColor:'#6B50B0', inactiveBorder:'#C8B0F0' },
+          { key: 'pareja',     img:'/images/descubrir.png',        label: partnerName,
+            activeBg:'#6B9FD4',  activeColor:'#fff',     activeBorder:'#6B9FD4',
+            inactiveBg:'#EBF3FF', inactiveColor:'#1A3A7A', inactiveBorder:'#AACAEE' },
+        ].map(chip => {
+          const isActive = viewFilter === chip.key;
+          return (
+            <button key={String(chip.key)} onClick={() => setViewFilter(viewFilter === chip.key ? null : chip.key)}
+              className="caveat"
+              style={{ background: isActive ? chip.activeBg : chip.inactiveBg,
+                color: isActive ? chip.activeColor : chip.inactiveColor,
+                border: `2px solid ${isActive ? chip.activeBorder : chip.inactiveBorder}`,
+                borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 6,
+                boxShadow: isActive ? '2px 2px 0 rgba(0,0,0,0.10)' : 'none' }}>
+              <img src={chip.img} alt="" style={{ width:18, height:18, objectFit:'contain', flexShrink:0 }} />
+              {chip.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── PROGRESS BAR ── */}
       <Confetti show={showConfetti} />
       <div style={{ padding:'10px 20px 0', position:'relative', zIndex:1 }}>
-        <div style={{ height:7, background:'#EDE0D0', borderRadius:99, overflow:'hidden' }}>
+        <div style={{ height:7, background:'#FFD0DC', borderRadius:99, overflow:'hidden' }}>
           <motion.div
             initial={{ width:0 }}
             animate={{ width:`${progress}%` }}
             transition={{ duration:0.9, ease:'easeOut' }}
-            style={{ height:'100%', background:'linear-gradient(90deg,#5BAA6A,#7DC98A)', borderRadius:99 }}
+            style={{ height:'100%', background:'linear-gradient(90deg,#FF6B8A,#FFB3C6)', borderRadius:99 }}
           />
         </div>
         <div style={{ display:'flex', justifyContent:'flex-end', marginTop:3 }}>
-          <span className="caveat" style={{ fontSize:11, color:'#9A7A6A' }}>{progress}% completado</span>
+          <span className="caveat" style={{ fontSize:11, color:'#C4AAB0' }}>{progress}% completado</span>
         </div>
       </div>
 
       {/* ── SEARCH BAR ── */}
       <div style={{ padding:'10px 20px 4px', position:'relative', zIndex:1 }}>
-        <div style={{ background:'#fff', border:'1.5px solid #EDE0D0', borderRadius:16, padding:'9px 14px', display:'flex', alignItems:'center', gap:8 }}>
-          <Search size={14} color="#C8B8A8"/>
+        <div style={{ background:'#fff', border:'1.5px solid #FFD0DC', borderRadius:16, padding:'9px 14px', display:'flex', alignItems:'center', gap:8 }}>
+          <Search size={14} color="#F5B8C8"/>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cita..."
             className="caveat" style={{ border:'none', background:'transparent', outline:'none', fontSize:14, fontWeight:600, color:'#1C0E10', flex:1 }}/>
         </div>
@@ -458,10 +535,11 @@ export default function DatesListPage({ navigateTo }) {
           const active = activeFilter === f;
           return (
             <button key={f} onClick={() => setActiveFilter(f)} className="caveat"
-              style={{ background:active?'#1C0E10':'#fff', color:active?'#F0C4CC':'#7A5A55',
-                border:active?'1.5px solid #1C0E10':'1.5px solid #EDE0D0',
+              style={{ background:active?'#FF6B8A':'#fff', color:active?'#fff':'#9B8B95',
+                border:active?'2px solid #FF6B8A':'1.5px solid #FFD0DC',
                 borderRadius:20, padding:'5px 16px', fontSize:13, fontWeight:active?700:600,
-                cursor:'pointer', whiteSpace:'nowrap' }}>
+                cursor:'pointer', whiteSpace:'nowrap',
+                boxShadow: active ? '2px 2px 0 rgba(255,107,138,0.25)' : 'none' }}>
               {f}
             </button>
           );
@@ -489,7 +567,7 @@ export default function DatesListPage({ navigateTo }) {
         {/* ── PAREJA VIEW ── */}
         {viewFilter === 'pareja' && (
           <div style={{ marginBottom:8 }}>
-            <div className="lora" style={{ fontSize:14, fontWeight:600, color:'#1C0E10', marginBottom:10, paddingTop:8 }}>
+            <div className="lora" style={{ fontSize:14, fontWeight:600, color:'#2D1B2E', marginBottom:10, paddingTop:8 }}>
               💕 Citas que le gustaron a {partnerName}
             </div>
             {partnerOnlyCitas.length === 0 ? (
@@ -526,26 +604,26 @@ export default function DatesListPage({ navigateTo }) {
           <motion.div
             initial={{ opacity:0, y:12 }}
             animate={{ opacity:1, y:0 }}
-            style={{ margin:'32px 0', background:'#fff', border:'1.5px dashed #EDE0D0', borderRadius:20, padding:'32px 24px', textAlign:'center' }}
+            style={{ margin:'32px 0', background:'#fff', border:'1.5px dashed #FFD0DC', borderRadius:20, padding:'32px 24px', textAlign:'center' }}
           >
             <div style={{ fontSize:44, marginBottom:12 }}>💌</div>
-            <div className="lora" style={{ fontSize:17, fontWeight:600, color:'#1C0E10', marginBottom:10 }}>
+            <div className="lora" style={{ fontSize:17, fontWeight:600, color:'#2D1B2E', marginBottom:10 }}>
               Tu lista está vacía
             </div>
             <div className="caveat" style={{ fontSize:14, color:'#9A7A6A', lineHeight:1.6 }}>
               Esta lista se llenará una vez que llenes el test, agregues una cita por tu cuenta o tú y tu pareja consigan un match
             </div>
             <div style={{ display:'flex', justifyContent:'center', gap:16, marginTop:20, flexWrap:'wrap' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6, background:'#FEF0F2', borderRadius:30, padding:'6px 14px' }}>
-                <span style={{ fontSize:16 }}>❤️</span>
-                <span className="caveat" style={{ fontSize:13, color:'#C44455', fontWeight:700 }}>Match</span>
+              <div style={{ display:'flex', alignItems:'center', gap:6, background:'#FFF0F4', borderRadius:30, padding:'6px 14px' }}>
+                <img src="/images/metas.png" alt="" style={{ width:18, height:18, objectFit:'contain' }} />
+                <span className="caveat" style={{ fontSize:13, color:'#FF6B8A', fontWeight:700 }}>Match</span>
               </div>
-              <div style={{ display:'flex', alignItems:'center', gap:6, background:'#FFF5E8', borderRadius:30, padding:'6px 14px' }}>
-                <span style={{ fontSize:16 }}>🫀</span>
-                <span className="caveat" style={{ fontSize:13, color:'#D4A520', fontWeight:700 }}>Me gustaron a mí</span>
+              <div style={{ display:'flex', alignItems:'center', gap:6, background:'#F5F0FF', borderRadius:30, padding:'6px 14px' }}>
+                <img src="/images/calendario-morado.png" alt="" style={{ width:18, height:18, objectFit:'contain' }} />
+                <span className="caveat" style={{ fontSize:13, color:'#6B50B0', fontWeight:700 }}>Me gustaron a mí</span>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:6, background:'#EBF3FF', borderRadius:30, padding:'6px 14px' }}>
-                <span style={{ fontSize:16 }}>💕</span>
+                <img src="/images/descubrir.png" alt="" style={{ width:18, height:18, objectFit:'contain' }} />
                 <span className="caveat" style={{ fontSize:13, color:'#5B8ECC', fontWeight:700 }}>Le gustaron a mi pareja</span>
               </div>
             </div>
@@ -567,7 +645,7 @@ export default function DatesListPage({ navigateTo }) {
             const cats = date.categories || (date.category ? [date.category] : []);
             const num = String(date.priority ?? i + 1).padStart(2, '0');
             const globalIndex = dates.indexOf(date);
-            // Get full cita data for detail (fallback for custom/manual citas)
+            const location = citaReviews[date.id]?.lugar || date.location || '';
             const citaData = ALL_CITAS_FLAT.find(c => c.id === date.id)
               || (date.custom ? { id: date.id, title: date.name, description: date.description, category: date.category, budget: date.budget } : null);
             return (
@@ -578,62 +656,75 @@ export default function DatesListPage({ navigateTo }) {
                 onDragOver={e => handleDragOver(e, globalIndex)}
                 onDragEnd={handleDragEnd}
                 onClick={() => { if (citaData) setSelectedCita({ ...citaData, status: date.status, fromSwipe: date.fromSwipe }); }}
-                style={{ background: isCompleted ? '#F4FBF6' : '#fff',
-                  border:'1.5px solid #EDE0D0',
-                  borderLeft: isCompleted ? '3.5px solid #5BAA6A' : isFav ? '3.5px solid #C44455' : '3.5px solid #EDE0D0',
-                  borderRadius:18, padding:'12px 14px',
-                  display:'flex', alignItems:'center', gap:10, cursor:'pointer',
+                style={{ position:'relative', overflow:'hidden',
+                  background: isCompleted ? '#F4FBF6' : '#fff',
+                  border:'1.5px solid #FFD0DC',
+                  borderLeft: isCompleted ? '3.5px solid #5BAA6A' : isFav ? '3.5px solid #FF6B8A' : '3.5px solid #FFD0DC',
+                  borderRadius:18, padding:'14px 14px 14px 14px',
+                  display:'flex', alignItems:'center', gap:12, cursor:'pointer',
                   opacity: draggedItem === globalIndex ? 0.45 : 1 }}>
 
-                <GripVertical size={13} color="#C8B8A8" style={{ flexShrink:0 }}
-                  onMouseDown={e => e.stopPropagation()} />
+                {/* IMAGEN DE FONDO esquina derecha */}
+                <img src={getDecoImage(date.id)} alt="" style={{
+                  position:'absolute', right:-8, top:'50%', transform:'translateY(-50%)',
+                  width:100, height:100, objectFit:'contain', opacity:0.13, pointerEvents:'none',
+                  userSelect:'none'
+                }}/>
 
-                <div style={{ minWidth:30, height:30, borderRadius:10,
-                  background: isCompleted ? '#D4F0DD' : isFav ? '#FEE8EC' : '#F5EEE8',
-                  display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <span className="caveat" style={{ fontSize:13, fontWeight:700, color: isCompleted ? '#2A7A4A' : isFav?'#C44455':'#9A7A6A' }}>{num}</span>
+                {/* LEFT: citas icon */}
+                <div style={{ flexShrink:0, width:54, height:54, borderRadius:14,
+                  background: isCompleted ? '#D4F0DD' : isFav ? '#FEE8EC' : '#FFF0F4',
+                  border:'1.5px solid', borderColor: isCompleted ? '#A8D8A8' : '#FFD0DC',
+                  display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <img src="/images/citas.png" style={{ width:34, height:34, objectFit:'contain' }}/>
                 </div>
 
+                {/* MIDDLE: title + location + tags */}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div className="lora" style={{ fontSize:13, fontWeight:600, color:'#1C0E10', marginBottom:4, lineHeight:1.3 }}>{date.name}</div>
-                  <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                    {cats.map(c => <DoodleTag key={c} label={c}/>)}
+                  <div className="lora" style={{ fontSize:17, fontWeight:700, color:'#2D1B2E', marginBottom: location ? 5 : 7, lineHeight:1.25 }}>{date.name}</div>
+                  {location ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:7 }}>
+                      <img src="/images/Nuevo/plan.png" style={{ width:14, height:14, objectFit:'contain', flexShrink:0 }}/>
+                      <span className="caveat" style={{ fontSize:15, color:'#9B8B95' }}>{location}</span>
+                    </div>
+                  ) : null}
+                  <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                    {isCompleted
+                      ? <span className="caveat" style={{ fontSize:13, fontWeight:700, background:'#D4F0DD', color:'#2A6A2A', borderRadius:20, padding:'3px 10px', display:'inline-flex', alignItems:'center', gap:4 }}><img src="/images/trofeo.png" style={{ width:13, height:13, objectFit:'contain', flexShrink:0 }}/> Completada</span>
+                      : <span className="caveat" style={{ fontSize:13, fontWeight:700, background:'#FFF0F4', color:'#FF6B8A', borderRadius:20, padding:'3px 10px' }}>Pendiente</span>
+                    }
+                    {!isCompleted && i === 0 && <span className="caveat" style={{ fontSize:13, fontWeight:700, background:'#FFF8E0', color:'#8A6010', borderRadius:20, padding:'3px 10px' }}>#{num} Prioridad</span>}
+                    {cats.map(c => <SmartTag key={c} label={c}/>)}
                     {date.budget && <DoodleTag label={date.budget}/>}
-                    {matchIds.has(date.id) && (
-                      <span className="caveat" style={{ fontSize:10, fontWeight:700, background:'#FEF0F2', color:'#C44455', borderRadius:20, padding:'2px 9px' }}>❤️ Match</span>
-                    )}
+                    {isFav && <span className="caveat" style={{ fontSize:13, fontWeight:700, background:'#FFF0F4', color:'#FF6B8A', borderRadius:20, padding:'3px 10px', display:'inline-flex', alignItems:'center', gap:4 }}><img src="/images/corazon.png" style={{ width:13, height:13, objectFit:'contain' }}/> Favorita</span>}
+                    {matchIds.has(date.id) && <span className="caveat" style={{ fontSize:13, fontWeight:700, background:'#FFF0F4', color:'#FF6B8A', borderRadius:20, padding:'3px 10px' }}>❤️ Match</span>}
                   </div>
                 </div>
 
-                <div style={{ display:'flex', gap:4, flexShrink:0, alignItems:'center' }}
+                {/* RIGHT: botones de acción en horizontal */}
+                <div style={{ flexShrink:0, display:'flex', flexDirection:'row', alignItems:'center', gap:2, zIndex:1 }}
                   onClick={e => e.stopPropagation()}>
                   <button onClick={() => toggleLike(date.id)}
-                    title={isFav ? '📌 Pineada' : 'Pinear'}
-                    style={{ background:'none', border:'none', cursor:'pointer', padding:4 }}>
-                    <Heart size={16} color="#C44455" fill={isFav?'#C44455':'none'} strokeWidth={1.5}/>
+                    style={{ background:'none', border:'none', cursor:'pointer', padding:6 }}>
+                    <Heart size={22} color="#FF6B8A" fill={isFav?'#FF6B8A':'none'} strokeWidth={1.5}/>
                   </button>
-                  {isCompleted
-                    ? (
-                      <button onClick={() => markPending(date.id)}
-                        title="Marcar pendiente"
-                        style={{ background:'none', border:'none', cursor:'pointer', padding:4 }}>
-                        <CheckCircle size={18} color="#5BAA6A" fill="#D4F0DD"/>
+                  {isCompleted ? (
+                    <button onClick={() => markPending(date.id)}
+                      style={{ background:'none', border:'none', cursor:'pointer', padding:6 }}>
+                      <CheckCircle size={22} color="#5BAA6A" fill="#D4F0DD"/>
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={() => openReviewModal(date.id)}
+                        style={{ background:'none', border:'none', cursor:'pointer', padding:6 }}>
+                        <CheckCircle size={22} color="#C8B8A8" fill="none"/>
                       </button>
-                    )
-                    : (
-                      <>
-                        <button onClick={() => openReviewModal(date.id)}
-                          title="¡Completada!"
-                          style={{ background:'none', border:'none', cursor:'pointer', padding:4 }}>
-                          <CheckCircle size={18} color="#C8B8A8" fill="none"/>
-                        </button>
-                        <button onClick={() => setConfirmSkipId(date.id)}
-                          style={{ background:'none', border:'none', cursor:'pointer', padding:4, opacity:0.4 }}>
-                          <span style={{ fontSize:14, color:'#9A7A6A' }}>✕</span>
-                        </button>
-                      </>
-                    )
-                  }
+                      <button onClick={() => setConfirmSkipId(date.id)}
+                        style={{ background:'none', border:'none', cursor:'pointer', padding:6, opacity:0.5 }}>
+                        <span style={{ fontSize:18, color:'#9A7A6A' }}>✕</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </motion.div>
             );
@@ -642,7 +733,7 @@ export default function DatesListPage({ navigateTo }) {
 
         {filtered.length < dates.length && (
           <div style={{ textAlign:'center', padding:'8px 0 16px' }}>
-            <span className="caveat" style={{ fontSize:13, color:'#C44455' }}>
+            <span className="caveat" style={{ fontSize:13, color:'#FF6B8A' }}>
               · · · {dates.length - filtered.length} citas más · · ·
             </span>
           </div>
@@ -668,17 +759,17 @@ export default function DatesListPage({ navigateTo }) {
                 initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }}
                 transition={{ type:'spring', damping:28, stiffness:300 }}
                 onClick={e => e.stopPropagation()}
-                style={{ background:'#FDF6EC', borderRadius:'24px 24px 0 0', padding:'28px 24px 48px',
+                style={{ background:'#FFF5F7', borderRadius:'24px 24px 0 0', padding:'28px 24px 48px',
                   width:'100%', maxWidth:430, maxHeight:'85vh', overflowY:'auto' }}>
                 {/* Handle */}
-                <div style={{ width:40, height:4, background:'#EDE0D0', borderRadius:99, margin:'0 auto 20px' }}/>
+                <div style={{ width:40, height:4, background:'#FFD0DC', borderRadius:99, margin:'0 auto 20px' }}/>
                 {/* Title */}
                 <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:16, gap:12 }}>
                   <div className="lora" style={{ fontSize:20, fontWeight:700, color:'#1C0E10', lineHeight:1.3, flex:1 }}>
                     {cita.title}
                   </div>
                   <button onClick={() => setSelectedCita(null)}
-                    style={{ background:'#F5EEE8', border:'none', borderRadius:'50%', width:34, height:34,
+                    style={{ background:'#FFF0F4', border:'1.5px solid #FFD0DC', borderRadius:'50%', width:34, height:34,
                       display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
                     <X size={16} color="#9A7A6A"/>
                   </button>
@@ -696,11 +787,11 @@ export default function DatesListPage({ navigateTo }) {
                 </div>
                 {/* Description / venue */}
                 {cita.description && (
-                  <div style={{ background:'#fff', border:'1.5px solid #EDE0D0', borderLeft:'4px solid #C44455',
+                  <div style={{ background:'#fff', border:'1.5px solid #FFD0DC', borderLeft:'4px solid #FF6B8A',
                     borderRadius:16, padding:'14px 16px', marginBottom:14 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:8 }}>
-                      <MapPin size={14} color="#C44455"/>
-                      <span className="caveat" style={{ fontSize:13, fontWeight:700, color:'#C44455' }}>Lugar recomendado</span>
+                      <MapPin size={14} color="#FF6B8A"/>
+                      <span className="caveat" style={{ fontSize:13, fontWeight:700, color:'#FF6B8A' }}>Lugar recomendado</span>
                     </div>
                     <p className="caveat" style={{ fontSize:14, color:'#1C0E10', lineHeight:1.6, margin:0 }}>
                       {cita.description}
@@ -709,7 +800,7 @@ export default function DatesListPage({ navigateTo }) {
                 )}
                 {/* Cost */}
                 {cita.budget && (
-                  <div style={{ background:'#fff', border:'1.5px solid #EDE0D0', borderLeft:`4px solid ${budgetColors[budgetLabel] || '#D4A520'}`,
+                  <div style={{ background:'#fff', border:'1.5px solid #FFD0DC', borderLeft:`4px solid ${budgetColors[budgetLabel] || '#D4A520'}`,
                     borderRadius:16, padding:'14px 16px', marginBottom:14 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:6 }}>
                       <DollarSign size={14} color={budgetColors[budgetLabel] || '#D4A520'}/>
@@ -740,8 +831,8 @@ export default function DatesListPage({ navigateTo }) {
                     </>
                   )}
                   <button onClick={() => setSelectedCita(null)}
-                    style={{ padding:'13px 20px', borderRadius:16, background:'#F5EEE8', border:'none', cursor:'pointer' }}>
-                    <span className="caveat" style={{ fontSize:16, fontWeight:700, color:'#9A7A6A' }}>Cerrar</span>
+                    style={{ padding:'13px 20px', borderRadius:16, background:'#FFF0F4', border:'1.5px solid #FFD0DC', cursor:'pointer' }}>
+                    <span className="caveat" style={{ fontSize:16, fontWeight:700, color:'#FF6B8A' }}>Cerrar</span>
                   </button>
                 </div>
               </motion.div>
@@ -753,13 +844,13 @@ export default function DatesListPage({ navigateTo }) {
       {/* ── CONFIRM SKIP MODAL ── */}
       {confirmSkipId !== null && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 30px' }}>
-          <motion.div initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }} style={{ background:'#FDF6EC', borderRadius:24, padding:'28px 24px', width:'100%', maxWidth:360, textAlign:'center' }}>
+          <motion.div initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }} style={{ background:'#FFF5F7', borderRadius:24, padding:'28px 24px', width:'100%', maxWidth:360, textAlign:'center', border:'1.5px solid #FFD0DC' }}>
             <div style={{ fontSize:36, marginBottom:8 }}>🗑️</div>
-            <div className="lora" style={{ fontSize:17, fontWeight:600, color:'#1C0E10', marginBottom:8 }}>¿Quitar esta cita?</div>
+            <div className="lora" style={{ fontSize:17, fontWeight:600, color:'#2D1B2E', marginBottom:8 }}>¿Quitar esta cita?</div>
             <div className="caveat" style={{ fontSize:14, color:'#9A7A6A', marginBottom:20 }}>Se ocultará de tu lista. No se eliminará permanentemente.</div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => setConfirmSkipId(null)} style={{ flex:1, padding:'12px', borderRadius:14, background:'#EDE0D0', border:'none', cursor:'pointer' }}>
-                <span className="caveat" style={{ fontSize:15, fontWeight:700, color:'#7A5A55' }}>Cancelar</span>
+              <button onClick={() => setConfirmSkipId(null)} style={{ flex:1, padding:'12px', borderRadius:14, background:'#FFD0DC', border:'none', cursor:'pointer' }}>
+                <span className="caveat" style={{ fontSize:15, fontWeight:700, color:'#2D1B2E' }}>Cancelar</span>
               </button>
               <button onClick={() => { skipDate(confirmSkipId); setConfirmSkipId(null); }} style={{ flex:1, padding:'12px', borderRadius:14, background:'#C44455', border:'none', cursor:'pointer' }}>
                 <span className="caveat" style={{ fontSize:15, fontWeight:700, color:'#fff' }}>Quitar</span>
@@ -781,10 +872,10 @@ export default function DatesListPage({ navigateTo }) {
               initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }}
               transition={{ type:'spring', damping:28, stiffness:300 }}
               onClick={e => e.stopPropagation()}
-              style={{ background:'#FDF6EC', borderRadius:'24px 24px 0 0', padding:'24px 24px 48px',
+              style={{ background:'#FFF5F7', borderRadius:'24px 24px 0 0', padding:'24px 24px 48px',
                 width:'100%', maxWidth:430, maxHeight:'90vh', overflowY:'auto' }}>
               {/* Handle */}
-              <div style={{ width:40, height:4, background:'#EDE0D0', borderRadius:99, margin:'0 auto 18px' }}/>
+              <div style={{ width:40, height:4, background:'#FFD0DC', borderRadius:99, margin:'0 auto 18px' }}/>
               {/* Header */}
               <div style={{ textAlign:'center', marginBottom:20 }}>
                 <div style={{ fontSize:36, marginBottom:6 }}>✍️</div>
@@ -800,7 +891,7 @@ export default function DatesListPage({ navigateTo }) {
                   max={new Date().toISOString().slice(0, 10)}
                   onChange={e => setReviewForm(p => ({ ...p, fecha: e.target.value }))}
                   className="caveat"
-                  style={{ width:'100%', padding:'10px 14px', borderRadius:14, border:'1.5px solid #EDE0D0', background:'#fff', fontSize:14, color:'#1C0E10', outline:'none', boxSizing:'border-box' }}/>
+                  style={{ width:'100%', padding:'10px 14px', borderRadius:14, border:'1.5px solid #FFD0DC', background:'#fff', fontSize:14, color:'#1C0E10', outline:'none', boxSizing:'border-box' }}/>
               </div>
               {/* Campo lugar */}
               <div style={{ marginBottom:16 }}>
@@ -811,7 +902,7 @@ export default function DatesListPage({ navigateTo }) {
                   placeholder="El lugar era precioso, la música perfecta..."
                   rows={2}
                   className="caveat"
-                  style={{ width:'100%', padding:'10px 14px', borderRadius:14, border:'1.5px solid #EDE0D0',
+                  style={{ width:'100%', padding:'10px 14px', borderRadius:14, border:'1.5px solid #FFD0DC',
                     background:'#fff', fontSize:14, color:'#1C0E10', outline:'none',
                     boxSizing:'border-box', resize:'none', fontFamily:"'Caveat',cursive" }}/>
               </div>
@@ -824,14 +915,14 @@ export default function DatesListPage({ navigateTo }) {
                   placeholder="Me sentí muy conectad@ y feliz..."
                   rows={2}
                   className="caveat"
-                  style={{ width:'100%', padding:'10px 14px', borderRadius:14, border:'1.5px solid #EDE0D0',
+                  style={{ width:'100%', padding:'10px 14px', borderRadius:14, border:'1.5px solid #FFD0DC',
                     background:'#fff', fontSize:14, color:'#1C0E10', outline:'none',
                     boxSizing:'border-box', resize:'none', fontFamily:"'Caveat',cursive" }}/>
               </div>
               {/* Fotos */}
               <div style={{ marginBottom:20 }}>
                 <div className="caveat" style={{ fontSize:13, fontWeight:700, color:'#7A5A55', marginBottom:6 }}>📸 Fotos del momento <span style={{ fontWeight:400, color:'#B0A090' }}>(opcional)</span></div>
-                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', background:'#fff', border:'2px dashed #EDE0D0', borderRadius:14, padding:'10px 14px' }}>
+                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', background:'#fff', border:'2px dashed #FFD0DC', borderRadius:14, padding:'10px 14px' }}>
                   <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} style={{ display:'none' }}/>
                   <Camera size={16} color="#9A7A6A"/>
                   <span className="caveat" style={{ fontSize:14, color:'#9A7A6A' }}>Subir fotos</span>
@@ -908,8 +999,8 @@ export default function DatesListPage({ navigateTo }) {
                     )}
                     <div style={{ display:'flex', gap:10 }}>
                       <button onClick={() => { setIsEditingReview(false); setShowReviewModal(false); }}
-                        style={{ flex:'0 0 auto', padding:'13px 20px', borderRadius:16, background:'#F5EEE8', border:'none', cursor:'pointer' }}>
-                        <span className="caveat" style={{ fontSize:15, fontWeight:700, color:'#9A7A6A' }}>Cancelar</span>
+                        style={{ flex:'0 0 auto', padding:'13px 20px', borderRadius:16, background:'#FFF0F4', border:'1.5px solid #FFD0DC', cursor:'pointer' }}>
+                        <span className="caveat" style={{ fontSize:15, fontWeight:700, color:'#FF6B8A' }}>Cancelar</span>
                       </button>
                       <button
                         onClick={() => { if (canSave) { markComplete(pendingCompleteId, reviewForm, isEditingReview); setIsEditingReview(false); setShowReviewModal(false); } }}
@@ -930,8 +1021,8 @@ export default function DatesListPage({ navigateTo }) {
       {/* ── ADD DATE MODAL ── */}
       {showAddModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 30px' }}>
-          <motion.div initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }} style={{ background:'#FDF6EC', borderRadius:24, padding:'28px 24px', width:'100%', maxWidth:380 }}>
-            <div className="lora" style={{ fontSize:18, fontWeight:600, color:'#1C0E10', marginBottom:4, textAlign:'center' }}>✨ Nueva Cita</div>
+          <motion.div initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }} style={{ background:'#FFF5F7', borderRadius:24, padding:'28px 24px', width:'100%', maxWidth:380, border:'1.5px solid #FFD0DC' }}>
+            <div className="lora" style={{ fontSize:18, fontWeight:600, color:'#2D1B2E', marginBottom:4, textAlign:'center' }}>✨ Nueva Cita</div>
             <div className="caveat" style={{ fontSize:13, color:'#9A7A6A', textAlign:'center', marginBottom:18 }}>Escribe los datos de tu nueva cita</div>
             <div style={{ marginBottom:12 }}>
               <div className="caveat" style={{ fontSize:13, color:'#9A7A6A', marginBottom:6 }}>Nombre de la cita *</div>
@@ -941,7 +1032,7 @@ export default function DatesListPage({ navigateTo }) {
                 onKeyDown={e => e.key === 'Enter' && addDate()}
                 placeholder="Ej: Cena romántica..."
                 className="caveat"
-                style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'1.5px solid #EDE0D0', background:'#fff', fontSize:14, color:'#1C0E10', outline:'none', boxSizing:'border-box' }}/>
+                style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'1.5px solid #FFD0DC', background:'#fff', fontSize:14, color:'#1C0E10', outline:'none', boxSizing:'border-box' }}/>
             </div>
             <div style={{ marginBottom:12 }}>
               <div className="caveat" style={{ fontSize:13, color:'#9A7A6A', marginBottom:6 }}>Descripción (opcional)</div>
@@ -951,7 +1042,7 @@ export default function DatesListPage({ navigateTo }) {
                 placeholder="¿En qué consiste esta cita?..."
                 className="caveat"
                 rows={2}
-                style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'1.5px solid #EDE0D0', background:'#fff', fontSize:13, color:'#1C0E10', outline:'none', boxSizing:'border-box', resize:'none', fontFamily:"'Caveat',cursive" }}/>
+                style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'1.5px solid #FFD0DC', background:'#fff', fontSize:13, color:'#1C0E10', outline:'none', boxSizing:'border-box', resize:'none', fontFamily:"'Caveat',cursive" }}/>
             </div>
             <div style={{ marginBottom:12 }}>
               <div className="caveat" style={{ fontSize:13, color:'#9A7A6A', marginBottom:6 }}>Categoría</div>
@@ -959,7 +1050,7 @@ export default function DatesListPage({ navigateTo }) {
                 {['Exterior','Interior','Cultural','Gastro','Deportes','Romántica'].map(cat => (
                   <button key={cat} onClick={() => setNewDateForm(p => ({ ...p, category: p.category === cat ? '' : cat }))}
                     className="caveat"
-                    style={{ background: newDateForm.category === cat ? '#1C0E10' : '#fff', color: newDateForm.category === cat ? '#F0C4CC' : '#7A5A55', border: newDateForm.category === cat ? '1.5px solid #1C0E10' : '1.5px solid #EDE0D0', borderRadius:20, padding:'5px 14px', fontSize:13, cursor:'pointer' }}>
+                    style={{ background: newDateForm.category === cat ? '#FF6B8A' : '#fff', color: newDateForm.category === cat ? '#fff' : '#9B8B95', border: newDateForm.category === cat ? '1.5px solid #FF6B8A' : '1.5px solid #FFD0DC', borderRadius:20, padding:'5px 14px', fontSize:13, cursor:'pointer' }}>
                     {cat}
                   </button>
                 ))}
@@ -971,18 +1062,18 @@ export default function DatesListPage({ navigateTo }) {
                 {['Muy bajo','Bajo','Medio','Alto'].map(b => (
                   <button key={b} onClick={() => setNewDateForm(p => ({ ...p, budget: p.budget === b ? '' : b }))}
                     className="caveat"
-                    style={{ background: newDateForm.budget === b ? '#C44455' : '#fff', color: newDateForm.budget === b ? '#fff' : '#7A5A55', border: newDateForm.budget === b ? '1.5px solid #C44455' : '1.5px solid #EDE0D0', borderRadius:20, padding:'5px 14px', fontSize:13, cursor:'pointer' }}>
+                    style={{ background: newDateForm.budget === b ? '#FF6B8A' : '#fff', color: newDateForm.budget === b ? '#fff' : '#9B8B95', border: newDateForm.budget === b ? '1.5px solid #FF6B8A' : '1.5px solid #FFD0DC', borderRadius:20, padding:'5px 14px', fontSize:13, cursor:'pointer' }}>
                     {b}
                   </button>
                 ))}
               </div>
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => { setShowAddModal(false); setNewDateForm({ name:'', category:'', description:'', budget:'' }); }} style={{ flex:1, padding:'12px', borderRadius:14, background:'#EDE0D0', border:'none', cursor:'pointer' }}>
-                <span className="caveat" style={{ fontSize:15, fontWeight:700, color:'#7A5A55' }}>Cancelar</span>
+              <button onClick={() => { setShowAddModal(false); setNewDateForm({ name:'', category:'', description:'', budget:'' }); }} style={{ flex:1, padding:'12px', borderRadius:14, background:'#FFF0F4', border:'1.5px solid #FFD0DC', cursor:'pointer' }}>
+                <span className="caveat" style={{ fontSize:15, fontWeight:700, color:'#FF6B8A' }}>Cancelar</span>
               </button>
-              <button onClick={addDate} style={{ flex:1, padding:'12px', borderRadius:14, background: newDateForm.name.trim() ? '#C44455' : '#EDE0D0', border:'none', cursor: newDateForm.name.trim() ? 'pointer' : 'default' }}>
-                <span className="caveat" style={{ fontSize:15, fontWeight:700, color: newDateForm.name.trim() ? '#fff' : '#9A7A6A' }}>Añadir</span>
+              <button onClick={addDate} style={{ flex:1, padding:'12px', borderRadius:14, background: newDateForm.name.trim() ? '#FF6B8A' : '#FFD0DC', border:'none', cursor: newDateForm.name.trim() ? 'pointer' : 'default' }}>
+                <span className="caveat" style={{ fontSize:15, fontWeight:700, color: newDateForm.name.trim() ? '#fff' : '#C4AAB0' }}>Añadir</span>
               </button>
             </div>
           </motion.div>

@@ -13,38 +13,53 @@ const ALL_CITAS_FLAT = (() => {
   return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
 })();
 
-// ── Paleta doodle ─────────────────────────────────────────────────────────────
+// ── Paleta doodle (estética rosa ilustrada) ──────────────────────────────────────────────────────
 const D = {
-  cream:  '#FDF6EC', //white
-  wine:   '#1C0E10',
-  coral:  '#C44455',
-  gold:   '#D4A520',
-  blue:   '#5B8ECC',
-  green:  '#5BAA6A',
-  blush:  '#F0C4CC',
+  bg:     '#FFF5F7',   // fondo página
+  card:   '#FFFFFF',   // tarjetas blancas
+  pink:   '#FF6B8A',   // coral/rosa primario
+  pinkL:  '#FFD6E0',   // rosa claro
+  pinkXL: '#FFF0F4',   // rosa muy suave
+  dark:   '#2D1B2E',   // texto oscuro (casi negro morado)
+  muted:  '#9B8B95',   // texto secundario
+  gold:   '#F5A623',   // dorado/naranja
+  blue:   '#6B9FD4',   // azul
+  green:  '#5BAA6A',   // verde
+  purple: '#9B7FD4',   // morado
+  border: '#F5D0DC',   // bordes rosa
   white:  '#FFFFFF',
-  border: '#EDE0D0',
-  muted:  '#9A7A6A',
 };
 
 const STYLE = `
-  .caveat { font-family: 'Caveat', cursive; }
+  .caveat { font-family: 'Patrick Hand', cursive; text-transform: none !important; }
   .lora   { font-family: 'Lora', Georgia, serif; }
+  .dash-page { background: #FFF5F7; }
   .ql-card {
     background: #fff;
     border-radius: 20px;
-    border: 1.5px solid #EDE0D0;
+    border: 2px solid #F5D0DC;
     padding: 14px 16px;
     cursor: pointer;
-    transition: transform 0.15s;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(255,107,138,0.07);
   }
   .ql-card:active { transform: scale(0.97); }
-  .doodle-underline { position: relative; display: inline-block; }
-  .doodle-underline::after {
-    content: ''; position: absolute;
-    bottom: -3px; left: -2px;
-    width: calc(100% + 4px); height: 3px;
-    background: #D4A520; border-radius: 2px; transform: rotate(-0.7deg);
+  .ql-card:hover { box-shadow: 0 4px 16px rgba(255,107,138,0.13); }
+  .section-title {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #2D1B2E;
+    position: relative;
+    display: inline-block;
+  }
+  .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -3px; left: 0;
+    width: 100%; height: 3px;
+    background: linear-gradient(90deg, #FF6B8A, #FFB3C6);
+    border-radius: 2px;
   }
 `;
 
@@ -65,102 +80,100 @@ function getDates() {
   try { return JSON.parse(localStorage.getItem('coupleDates') || '[]'); } catch { return []; }
 }
 
-// ── BG Doodle SVG ─────────────────────────────────────────────────────────────
-function BgDoodles() {
-  return (
-    <svg style={{ position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.28 }} viewBox="0 0 390 820" fill="none">
-      <text x="340" y="78"  fontSize="14" fill="#D4A520" fontFamily="serif">✦</text>
-      <text x="26"  y="118" fontSize="10" fill="#C44455" fontFamily="serif">✦</text>
-      <text x="358" y="198" fontSize="9"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="16"  y="318" fontSize="11" fill="#D4A520" fontFamily="serif">✦</text>
-      <text x="352" y="418" fontSize="8"  fill="#C44455" fontFamily="serif">✦</text>
-      <text x="20"  y="498" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="354" cy="113" rx="22" ry="20" stroke="#5B8ECC" strokeWidth="2" strokeDasharray="4 3" fill="none" transform="rotate(-10 354 113)"/>
-      <circle cx="34" cy="198" r="10" fill="none" stroke="#D4A520" strokeWidth="1.5"/>
-      <ellipse cx="34" cy="198" rx="16" ry="5" fill="none" stroke="#D4A520" strokeWidth="1.5" transform="rotate(-25 34 198)"/>
-      <path d="M338 288 Q358 283 366 296" stroke="#C44455" strokeWidth="2" fill="none" strokeLinecap="round"/>
-      <path d="M363 293 L366 296 L360 298" stroke="#C44455" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M18 438 L24 426 L30 438 L24 436 Z" fill="none" stroke="#5B8ECC" strokeWidth="1.5" strokeLinejoin="round"/>
-      <path d="M20 438 L18 444 M28 438 L30 444" stroke="#5B8ECC" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
 // ── Date card (swipeable) ─────────────────────────────────────────────────────
 function DateCard({ date, onNext, onDetail }) {
   const handleDrag = (_, info) => { if (Math.abs(info.offset.x) > 55) onNext(); };
   return (
     <motion.div
       key={date.id}
-      initial={{ opacity:0, x:32 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-32 }}
+      initial={{ opacity:0, x:32, rotate:-1.5 }} animate={{ opacity:1, x:0, rotate:0 }} exit={{ opacity:0, x:-32 }}
       transition={{ type:'spring', stiffness:320, damping:26 }}
       drag="x" dragConstraints={{ left:0, right:0 }} dragElastic={0.22} onDragEnd={handleDrag}
-      style={{ background:D.wine, borderRadius:22, padding:'22px 22px 18px', cursor:'grab', userSelect:'none', position:'relative', overflow:'hidden' }}
+      className="doodle-card"
+      style={{
+        background:'#FFFFFF', borderRadius:24, border:'2px solid #F5D0DC',
+        boxShadow:'0 4px 20px rgba(255,107,138,0.12)',
+        cursor:'grab', userSelect:'none', position:'relative', overflow:'hidden',
+        display:'flex', alignItems:'stretch', minHeight:220,
+      }}
     >
-      {/* faint heart watermark */}
-      <svg style={{ position:'absolute', right:10, top:4, opacity:0.07 }} width="80" height="70" viewBox="0 0 80 70">
-        <text x="0" y="64" fontSize="70" fill="#F0C4CC">♡</text>
-      </svg>
-
-      <p className="caveat" style={{ color:D.gold, fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:12 }}>
-        ✦ Cita sugerida para hoy ✦
-      </p>
-      <h2 className="lora" style={{ color:D.white, fontSize:22, fontWeight:600, lineHeight:1.25, marginBottom:10 }}>
-        {date.name}
-      </h2>
-      <div style={{ display:'flex', gap:8, marginBottom:18, flexWrap:'wrap' }}>
-        {[date.status === 'completed' ? '✅ Hecha' : '📌 Pendiente', `#${date.priority}`].map((t,i) => (
-          <span key={i} className="caveat" style={{ background:'rgba(255,255,255,0.12)', color:D.blush, borderRadius:100, padding:'3px 12px', fontSize:12, fontWeight:600 }}>{t}</span>
-        ))}
+      <div style={{ flex:1, padding:'22px 18px 22px 22px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+        <div>
+          <p className="date-card-label" style={{ fontFamily:"'Patrick Hand',cursive", color:'#F5A623', fontSize:13, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:10 }}>
+            ✦ Cita sugerida para hoy ✦
+          </p>
+          <h2 className="date-card-title">
+            {date.name}
+          </h2>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:16 }}>
+            <span style={{ fontFamily:"'Inter',sans-serif", background:'#FFF0F4', color:'#2D1B2E', borderRadius:100, padding:'5px 14px', fontSize:14, fontWeight:700, border:'1.5px solid #F5D0DC', display:'inline-flex', alignItems:'center', gap:5 }}>
+              {date.status === 'completed'
+                ? '★ Hecha'
+                : <><img src="/images/tachuela-pinear.png" alt="" style={{ width:16, height:16, objectFit:'contain' }} /> Pendiente</>}
+            </span>
+            <span style={{ fontFamily:"'Inter',sans-serif", background:'#FFF8E6', color:'#2D1B2E', borderRadius:100, padding:'5px 14px', fontSize:14, fontWeight:700, border:'1.5px solid #F5E0A0' }}>
+              #{date.priority}
+            </span>
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <button onClick={onDetail} className="doodle-btn-primary" style={{ fontFamily:"'Inter',sans-serif", background:'#FF6B8A', color:'#FFFFFF', borderRadius:14, padding:'12px 28px', fontWeight:700, fontSize:15, border:'2px solid #e8436a', cursor:'pointer', boxShadow:'3px 3px 0 rgba(196,68,100,0.25)' }}>
+            Ver detalles
+          </button>
+          <span style={{ fontFamily:"'Inter',sans-serif", color:'#CFBFC8', fontSize:12 }}>← desliza →</span>
+        </div>
       </div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <button onClick={onDetail} className="caveat" style={{ background:D.coral, color:D.white, borderRadius:12, padding:'9px 20px', fontWeight:700, fontSize:14, border:'none', cursor:'pointer' }}>
-          Ver detalles
-        </button>
-        <p className="caveat" style={{ color:'rgba(255,255,255,0.28)', fontSize:11 }}>← desliza →</p>
+      <div className="date-card-img">
+        <img src={date.imageUrl || '/images/dibujo-astronauta.png'} alt="" onError={e => { e.target.style.display='none'; }}
+          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain', objectPosition:'center center' }} />
       </div>
     </motion.div>
   );
 }
 
-// ── Surprise card (inline, same dark style) ──────────────────────────────────
+// ── Surprise card ─────────────────────────────────────────────────────────────
 function SurpriseCard({ cita, onAddToList, onDetail, onClose }) {
   const name = cita.title || cita.name;
   return (
     <motion.div
       initial={{ opacity:0, y:18 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-18 }}
       transition={{ type:'spring', stiffness:300, damping:26 }}
-      style={{ background:D.wine, borderRadius:22, padding:'22px 22px 18px', position:'relative', overflow:'hidden' }}
+      style={{ background:'#FFFFFF', borderRadius:24, border:'2px solid #F5D0DC', boxShadow:'0 4px 20px rgba(255,107,138,0.12)', position:'relative', overflow:'hidden', display:'flex', alignItems:'stretch', minHeight:170 }}
     >
-      <svg style={{ position:'absolute', right:10, top:4, opacity:0.07 }} width="80" height="70" viewBox="0 0 80 70">
-        <text x="0" y="64" fontSize="70" fill="#F0C4CC">♡</text>
-      </svg>
-      <button onClick={onClose} style={{ position:'absolute', top:12, right:12, background:'rgba(255,255,255,0.12)', border:'none', borderRadius:'50%', width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:D.blush, fontSize:17, lineHeight:1 }}>×</button>
-
-      <p className="caveat" style={{ color:D.gold, fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:12 }}>
-        ✨ Cita sorpresa ✨
-      </p>
-      <h2 className="lora" style={{ color:D.white, fontSize:22, fontWeight:600, lineHeight:1.25, marginBottom:10 }}>
-        {name}
-      </h2>
-      {(cita.description || cita.desc) && (
-        <p className="caveat" style={{ color:'rgba(240,196,204,0.82)', fontSize:13, lineHeight:1.6, marginBottom:14 }}>
-          {cita.description || cita.desc}
-        </p>
-      )}
-      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-        <button onClick={onDetail} className="caveat" style={{ background:D.coral, color:D.white, borderRadius:12, padding:'9px 18px', fontWeight:700, fontSize:14, border:'none', cursor:'pointer' }}>
-          Ver detalles
-        </button>
-        {cita.inMyList ? (
-          <span className="caveat" style={{ background:'rgba(91,170,106,0.22)', color:'#7DC98A', borderRadius:12, padding:'9px 14px', fontSize:13, fontWeight:700, border:'1.5px solid rgba(91,170,106,0.35)' }}>
-            ✓ En mi lista
-          </span>
-        ) : (
-          <button onClick={onAddToList} className="caveat" style={{ background:'rgba(255,255,255,0.13)', color:D.blush, borderRadius:12, padding:'9px 14px', fontWeight:700, fontSize:13, border:'1.5px solid rgba(240,196,204,0.28)', cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-            <span style={{ fontSize:14 }}>♥</span> Agregar a mi lista
+      <div style={{ flex:1, padding:'22px 18px 22px 22px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+        <div style={{ position:'absolute', right:16, top:8, fontSize:70, opacity:0.06, lineHeight:1, color:'#FF6B8A' }}>♡</div>
+        <button onClick={onClose} style={{ position:'absolute', top:12, right:12, background:'#FFF0F4', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#FF6B8A', fontSize:18, lineHeight:1 }}>×</button>
+        <div>
+          <p style={{ fontFamily:"'Patrick Hand',cursive", color:'#F5A623', fontSize:13, fontWeight:600, letterSpacing:'0.08em', marginBottom:10 }}>
+            ✨ Cita sorpresa ✨
+          </p>
+          <h2 style={{ fontFamily:"'Lora',Georgia,serif", color:'#2D1B2E', fontSize:22, fontWeight:700, lineHeight:1.25, marginBottom:8 }}>
+            {name}
+          </h2>
+          {(cita.description || cita.desc) && (
+            <p style={{ fontFamily:"'Inter',sans-serif", color:'#9B8B95', fontSize:13, lineHeight:1.55, marginBottom:12 }}>
+              {cita.description || cita.desc}
+            </p>
+          )}
+        </div>
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+          <button onClick={onDetail} style={{ fontFamily:"'Inter',sans-serif", background:'#FF6B8A', color:'#FFFFFF', borderRadius:14, padding:'10px 20px', fontWeight:700, fontSize:14, border:'none', cursor:'pointer', boxShadow:'0 2px 8px rgba(255,107,138,0.30)' }}>
+            Ver detalles
           </button>
-        )}
+          {cita.inMyList ? (
+            <span style={{ fontFamily:"'Inter',sans-serif", background:'#F0FFF5', color:'#4CAF79', borderRadius:14, padding:'10px 14px', fontSize:13, fontWeight:700, border:'1.5px solid #C0DEC8' }}>
+              ✓ En mi lista
+            </span>
+          ) : (
+            <button onClick={onAddToList} style={{ fontFamily:"'Inter',sans-serif", background:'#FFF0F4', color:'#FF6B8A', borderRadius:14, padding:'10px 14px', fontWeight:700, fontSize:13, border:'1.5px solid #FFD0DC', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+              ♥ Agregar
+            </button>
+          )}
+        </div>
+      </div>
+      <div style={{ width:110, flexShrink:0, borderRadius:'0 22px 22px 0', background:'linear-gradient(135deg, #FFE8ED 0%, #FFD0DC 100%)', position:'relative', overflow:'hidden' }}>
+        <img src="/images/sorpresa.png" alt="" onError={e => { e.target.style.display='none'; }}
+          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain', objectPosition:'center center' }} />
       </div>
     </motion.div>
   );
@@ -168,64 +181,64 @@ function SurpriseCard({ cita, onAddToList, onDetail, onClose }) {
 
 const QUICK_CARDS = [
   {
-    id:'challenges', Icon:Zap,
-    iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
-    badge:'Activos', title:'Retos', sub:'Desafíos de pareja',
-    deco:'bar', barPct:30, trackBg:'#F0D0D5', barBg:'#C44455',
+    id:'challenges', img:'/images/Nuevo/reto.png',
+    cardBg:'#FFF5F7', cardBorder:'#FFD0DC', badgeColor:'#FF6B8A',
+    badge:'Activo', title:'Retos', sub:'Desafíos de pareja',
+    deco:'bar', barPct:30, trackBg:'#FFD6E0', barBg:'#FF6B8A',
   },
   {
-    id:'letters', Icon:Mail,
-    iconBg:'#D4A520', cardBorder:'#D4C090', cardBg:'#FDFAF0',
-    badge:'Mensajes', title:'Cartas', sub:'Escribirse con amor',
-    deco:'dots', dots:['#C44455','#D4A520','#C8B8A8','#5B8ECC'],
+    id:'letters', img:'/images/sobre-rayado.png',
+    cardBg:'#FFF8F0', cardBorder:'#F5D8A8', badgeColor:'#F5A623',
+    badge:'Mensajes', title:'Cartas', sub:'Escríbeles con amor',
+    deco:'dots', dots:['#FF6B8A','#F5A623','#C8B8A8','#6B9FD4'],
   },
   {
-    id:'calendar', Icon:Calendar,
-    iconBg:'#5B8ECC', cardBorder:'#C0D5E8', cardBg:'#F5FAFF',
+    id:'calendar', img:'/images/calendario-morado.png',
+    cardBg:'#F5F0FF', cardBorder:'#C8B0F0', badgeColor:'#9B7FD4',
     badge:'Próximos', title:'Calendario', sub:'Eventos y citas',
-    deco:'bar', barPct:55, trackBg:'#D0E5F5', barBg:'#5B8ECC',
+    deco:'bar', barPct:55, trackBg:'#DDD0F8', barBg:'#9B7FD4',
   },
   {
-    id:'timeline', Icon:Activity,
-    iconBg:'#5BAA6A', cardBorder:'#C0DEC8', cardBg:'#F5FBF6',
+    id:'timeline', img:'/images/recuerdos.png',
+    cardBg:'#F0FBF5', cardBorder:'#A8DEB8', badgeColor:'#5BAA6A',
     badge:'Recuerdos', title:'Línea del tiempo', sub:'Tu historia juntos',
-    deco:'dots', dots:['#5BAA6A','#D4A520','#C44455','#5B8ECC','#5BAA6A'],
+    deco:'dots', dots:['#5BAA6A','#F5A623','#FF6B8A','#6B9FD4','#5BAA6A'],
   },
   {
-    id:'registry', Icon:BookOpen,
-    iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
-    badge:'Historial', title:'Registro', sub:'Citas anotadas',
-    deco:'bar', barPct:20, trackBg:'#F0D0D5', barBg:'#C44455',
+    id:'registry', img:'/images/historial.png',
+    cardBg:'#FFF5F7', cardBorder:'#FFD0DC', badgeColor:'#FF6B8A',
+    badge:'Historial', title:'Historial', sub:'Citas que ya vivimos',
+    deco:'bar', barPct:20, trackBg:'#FFD6E0', barBg:'#FF6B8A',
   },
   {
-    id:'important-dates', Icon:Bell,
-    iconBg:'#D4A520', cardBorder:'#D4C090', cardBg:'#FDFAF0',
-    badge:'Próximas', title:'Fechas especiales', sub:'Aniversarios y más',
-    deco:'dots', dots:['#D4A520','#C44455','#D4A520','#C8B8A8'],
-  },
-  {
-    id:'countdown', Icon:Timer,
-    iconBg:'#5B8ECC', cardBorder:'#C0D5E8', cardBg:'#F5FAFF',
+    id:'countdown', img:'/images/countdown.png',
+    cardBg:'#FFF8F0', cardBorder:'#F5D8A8', badgeColor:'#F5A623',
     badge:'En curso', title:'Countdown', sub:'Cuenta regresiva',
-    deco:'bar', barPct:70, trackBg:'#D0E5F5', barBg:'#5B8ECC',
+    deco:'bar', barPct:70, trackBg:'#F5E0B0', barBg:'#F5A623',
   },
   {
-    id:'stats', Icon:BarChart2,
-    iconBg:'#5BAA6A', cardBorder:'#C0DEC8', cardBg:'#F5FBF6',
-    badge:'Análisis', title:'Estadísticas', sub:'Tu viaje en números',
-    deco:'bar', barPct:45, trackBg:'#C8E8D0', barBg:'#5BAA6A',
-  },
-  {
-    id:'roulette', Icon:Shuffle,
-    iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
+    id:'roulette', img:'/images/ruleta.png',
+    cardBg:'#FFF5F7', cardBorder:'#FFD0DC', badgeColor:'#FF6B8A',
     badge:'¡Suerte!', title:'Ruleta', sub:'Elige una cita al azar',
-    deco:'dots', dots:['#C44455','#D4A520','#5B8ECC','#5BAA6A','#C44455'],
+    deco:'dots', dots:['#FF6B8A','#F5A623','#6B9FD4','#5BAA6A','#FF6B8A'],
   },
   {
-    id:'citas-aleatorias', Icon:ThumbsUp,
-    iconBg:'#C44455', cardBorder:'#F5C4CC', cardBg:'#FFF5F6',
-    badge:'Para ti', title:'Citas para ti', sub:'Basadas en tu personalidad ♡',
-    deco:'dots', dots:['#C44455','#F0C4CC','#C44455','#F0C4CC','#C44455'],
+    id:'citas-aleatorias', img:'/images/mensajes.png',
+    cardBg:'#FFF5F7', cardBorder:'#FFD0DC', badgeColor:'#FF6B8A',
+    badge:'Descubrir', title:'Citas Aleatorias', sub:'Me gusta / No me gusta',
+    deco:'dots', dots:['#FF6B8A','#FFB3C6','#FF6B8A','#FFB3C6','#FF6B8A'],
+  },
+  {
+    id:'important-dates', img:'/images/fechas-especiales.png',
+    cardBg:'#FFF8F0', cardBorder:'#F5D8A8', badgeColor:'#F5A623',
+    badge:'Próximas', title:'Fechas especiales', sub:'Aniversarios y más',
+    deco:'dots', dots:['#F5A623','#FF6B8A','#F5A623','#C8B8A8'],
+  },
+  {
+    id:'stats', img:'/images/trofeo.png',
+    cardBg:'#F0FBF5', cardBorder:'#A8DEB8', badgeColor:'#5BAA6A',
+    badge:'Para ti', title:'Mis Citas', sub:'Personalizadas para ti',
+    deco:'dots', dots:['#5BAA6A','#F5A623','#FF6B8A','#6B9FD4'],
   },
 ];
 
@@ -235,20 +248,22 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
   const [dates, setDates]                   = useState([]);
   const [dateIdx, setDateIdx]               = useState(0);
   const [menuOpen, setMenuOpen]             = useState(false);
+  const menuRef                             = useRef(null);
+
   const [partnerGreeting, setPartnerGreeting] = useState(null);
   const [unreadLetters, setUnreadLetters]   = useState([]);
   const [citasHechas, setCitasHechas]       = useState(0);
   const [citasPendientes, setCitasPendientes] = useState(0);
   const [surpriseCita, setSurpriseCita]     = useState(null);
   const [showSurpriseModal, setShowSurpriseModal] = useState(false);
-  const menuRef                             = useRef(null);
 
   // Show partner's greeting if available, else own greeting, else default
   const greeting    = partnerGreeting?.message ?? user?.greetingMessage ?? user?.greeting_message ?? 'Buenos días, mi amor';
   const subGreeting = partnerGreeting?.subtext  ?? user?.greetingSubtext  ?? user?.greeting_subtext  ?? 'Hoy les toca una cita especial ✦';
-  const couple      = (user?.name && user?.partner)
-    ? `${user.name} & ${user.partner}`.toUpperCase()
-    : 'LOVERS APP';
+  const toFirst = str => str ? str.trim().split(/\s+/)[0].charAt(0).toUpperCase() + str.trim().split(/\s+/)[0].slice(1).toLowerCase() : '';
+  const couple  = (user?.name && user?.partner)
+    ? `${toFirst(user.name)} & ${toFirst(user.partner)}`
+    : 'LoversApp';
 
   useEffect(() => {
     const raw = localStorage.getItem('loversappUser');
@@ -331,51 +346,46 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
   };
 
   return (
-    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', position:'relative', overflow:'hidden', paddingBottom:80, fontFamily:"'Lora', Georgia, serif" }}>
-      <style>{STYLE}</style>
-      <BgDoodles />
+    <div style={{ background:'#FFF5F7', minHeight:'100vh', maxWidth:480, margin:'0 auto', position:'relative', paddingBottom:88, fontFamily:"'Inter',-apple-system,sans-serif" }}>
 
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
-      <div style={{ padding:'48px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:`1.5px solid ${D.border}`, background:D.cream, position:'sticky', top:0, zIndex:40 }}>
-        {/* Avatar / profile */}
+      <div className="lg:hidden mobile-only-header" style={{ padding:'52px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#FFFFFF', position:'sticky', top:0, zIndex:40, borderBottom:'1px solid #EDE0D0', boxShadow:'0 1px 8px rgba(0,0,0,0.04)' }}>
         <button onClick={() => isAuthenticated ? navigateTo('profile') : onOpenLogin?.('login')}
-          style={{ width:38, height:38, borderRadius:'50%', background:D.wine, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-          <User size={15} color={D.white} />
+          style={{ width:44, height:44, borderRadius:'50%', background:'transparent', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
+          <img src="/images/perfil.png" alt="Perfil" style={{ width:40, height:40, objectFit:'contain' }} />
         </button>
 
-        {/* Couple name */}
         <div style={{ textAlign:'center' }}>
-          <div className="lora" style={{ fontSize:20, color:D.wine, fontWeight:600, letterSpacing:1 }}>LoversApp</div>
-          <div className="caveat" style={{ fontSize:11, color:D.coral, letterSpacing:2, marginTop:1 }}>✦ {couple} ✦</div>
+          <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:22, fontWeight:700, color:'#2D1B2E', letterSpacing:0.5 }}>LoversApp</div>
+          <div style={{ fontFamily:"'Patrick Hand',cursive", fontSize:20, color:'#FF6B8A', letterSpacing:1, marginTop:2, textTransform:'none' }}>✦ {couple} ✦</div>
         </div>
 
-        {/* 3-dot menu */}
         <div style={{ position:'relative' }} ref={menuRef}>
           <button onClick={() => setMenuOpen(o => !o)}
-            style={{ width:38, height:38, borderRadius:'50%', background: menuOpen ? '#F5EEE8' : 'transparent', border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-            <MoreVertical size={16} color={D.wine} />
+            style={{ width:44, height:44, borderRadius:'50%', background:menuOpen ? '#F5EEE8' : 'transparent', border:'1.5px solid #EDE0D0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
+            <img src="/images/tres-puntitos.png" alt="Menú" style={{ width:22, height:22, objectFit:'contain' }} />
           </button>
           <AnimatePresence>
             {menuOpen && (
               <motion.div initial={{ opacity:0, y:-8, scale:0.95 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0, y:-8, scale:0.95 }} transition={{ duration:0.14 }}
-                style={{ position:'absolute', right:0, top:'108%', background:D.white, borderRadius:16, border:`1.5px solid ${D.border}`, boxShadow:'0 8px 28px rgba(0,0,0,0.11)', minWidth:178, overflow:'hidden', zIndex:50 }}>
+                style={{ position:'absolute', right:0, top:'110%', background:'#FFFFFF', borderRadius:16, border:'1.5px solid #EDE0D0', boxShadow:'0 8px 28px rgba(0,0,0,0.11)', minWidth:190, overflow:'hidden', zIndex:50 }}>
                 {isAuthenticated ? (<>
                   <button onClick={() => { setMenuOpen(false); navigateTo('profile'); }}
-                    className="caveat" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:D.wine }}>
-                    <Settings size={14} /> Ajustes
+                    style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 18px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:'#2D1B2E', fontFamily:"'Inter',sans-serif" }}>
+                    <Settings size={16} /> Ajustes
                   </button>
-                  <div style={{ height:1, background:D.border }} />
+                  <div style={{ height:1, background:'#F5D0DC' }} />
                   <button onClick={() => { setMenuOpen(false); onLogout?.(); }}
-                    className="caveat" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:'#B02020' }}>
-                    <LogOut size={14} /> Cerrar sesión
+                    style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 18px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:'#C0202A', fontFamily:"'Inter',sans-serif" }}>
+                    <LogOut size={16} /> Cerrar sesión
                   </button>
                 </>) : (<>
                   <button onClick={() => { setMenuOpen(false); onOpenLogin?.('login'); }}
-                    className="caveat" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:D.wine }}>
+                    style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 18px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:'#2D1B2E', fontFamily:"'Inter',sans-serif" }}>
                     Iniciar sesión
                   </button>
                   <button onClick={() => { setMenuOpen(false); onOpenLogin?.('register'); }}
-                    className="caveat" style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:D.wine }}>
+                    style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 18px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:'#2D1B2E', fontFamily:"'Inter',sans-serif" }}>
                     Registrarse
                   </button>
                 </>)}
@@ -386,97 +396,97 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
       </div>
 
       {/* ── CONTENT ────────────────────────────────────────────────────── */}
-      <div style={{ padding:'24px 20px 12px', position:'relative', zIndex:1 }}>
+      <div style={{ padding:'28px 20px 0' }}>
 
         {/* Greeting */}
-        <motion.div initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.38 }} style={{ marginBottom:26 }}>
-          <p className="caveat" style={{ color:D.gold, fontSize:12, fontWeight:700, letterSpacing:'0.13em', textTransform:'uppercase', marginBottom:4 }}>
-            {todayString()}
-          </p>
-          <h1 className="lora" style={{ fontSize:26, fontWeight:600, color:D.wine, lineHeight:1.25, marginBottom:6 }}>
-            {greeting}
-          </h1>
-          {days !== null && (
-            <p className="caveat" style={{ color:D.muted, fontSize:15, fontWeight:600 }}>
-              Llevan{' '}
-              <span style={{ fontWeight:700, color:D.coral }}>
-                <span style={{ position:'relative', display:'inline-block' }}>
-                  {days} días
-                  <span style={{ position:'absolute', bottom:-2, left:-2, width:'calc(100% + 4px)', height:3, background:D.coral, borderRadius:2, transform:'rotate(-0.7deg)' }} />
-                </span>
-              </span>
-              {' '}juntos. {subGreeting}
+        <motion.div initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.38 }} style={{ marginBottom:28, display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
+          {/* Left: text */}
+          <div style={{ flex:'1 1 260px', minWidth:0 }}>
+            <p style={{ fontFamily:"'Patrick Hand',cursive", fontSize:13, fontWeight:600, color:'#F5A623', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:8 }}>
+              📅 {todayString()}
             </p>
-          )}
+            <h1 className="hand-title" style={{ fontFamily:"'Lora',Georgia,serif", fontSize:30, fontWeight:700, fontStyle:'italic', transform:'rotate(-2deg)', transformOrigin:'left center', display:'inline-flex', alignItems:'center', gap:8, color:'#2D1B2E', lineHeight:1.2, marginBottom:6 }}>
+              {greeting}
+              <img src="/images/corazon-mensaje.png" alt="" style={{ height:'1em', width:'auto', display:'inline-block', verticalAlign:'middle', pointerEvents:'none' }} />
+            </h1>
+            <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'80%', maxWidth:320, height:'auto', marginBottom:10, pointerEvents:'none' }} />
+            <p style={{ fontFamily:"'Lora',Georgia,serif", fontSize:16, fontStyle:'italic', color:'#9B8B95', lineHeight:1.5, margin:'0 0 8px' }}>
+              {subGreeting}
+            </p>
+          </div>
 
-          {/* CTA buttons */}
-          <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:18 }}>
-            <div style={{ display:'flex', gap:10 }}>
-              <motion.button whileTap={{ scale:0.96 }} onClick={() => navigateTo('dates')}
-                className="caveat" style={{ flex:1, padding:'13px 0', background:D.wine, color:D.white, borderRadius:16, fontWeight:700, fontSize:16, border:'none', cursor:'pointer' }}>
+          {/* Right: CTA Buttons */}
+          <div style={{ flex:'0 0 auto', display:'flex', flexDirection:'column', gap:12, minWidth:220 }}>
+            <div style={{ display:'flex', gap:12 }}>
+              <motion.button whileTap={{ scale:0.95, rotate:-1 }} onClick={() => navigateTo('dates')}
+                className="doodle-btn-primary"
+                style={{ flex:1, padding:'15px 20px', background:'#FF6B8A', color:'#FFFFFF', borderRadius:16, fontWeight:700, fontSize:16, border:'2px solid #FF6B8A', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontFamily:"'Inter',sans-serif", boxShadow:'3px 3px 0 rgba(196,68,100,0.30)', whiteSpace:'nowrap' }}>
+                <img src="/images/citas.png" alt="" style={{ width:36, height:36, objectFit:'contain' }} />
                 Ver Citas
               </motion.button>
-              <motion.button whileTap={{ scale:0.96 }} onClick={surprise}
-                className="caveat" style={{ flex:1, padding:'13px 0', background:'transparent', border:`2px solid ${D.wine}`, color:D.wine, borderRadius:16, fontWeight:700, fontSize:16, cursor:'pointer' }}>
+              <motion.button whileTap={{ scale:0.95, rotate:1 }} onClick={surprise}
+                className="doodle-btn-primary"
+                style={{ flex:1, padding:'15px 20px', background:'transparent', border:'2px solid #FF6B8A', color:'#FF6B8A', borderRadius:16, fontWeight:700, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
+                <img src="/images/sorpresa.png" alt="" className="doodle-icon" style={{ width:36, height:36, objectFit:'contain' }} />
                 Sorpresa ✦
               </motion.button>
             </div>
-            {!isAuthenticated && (
-              <motion.button whileTap={{ scale:0.96 }} onClick={() => onOpenLogin?.('login')}
-                className="caveat" style={{ width:'100%', padding:'13px 0', background:D.coral, color:D.white, borderRadius:16, fontWeight:700, fontSize:16, border:'none', cursor:'pointer' }}>
-                Iniciar Sesión / Registrarse ♡
-              </motion.button>
-            )}
           </div>
         </motion.div>
 
-        {/* Stats strip */}
+        {/* Stats cards */}
         {days !== null && (
           <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }}
-            style={{ background:D.wine, borderRadius:20, padding:'16px 20px', display:'flex', justifyContent:'space-around', alignItems:'center', marginBottom:22, overflow:'hidden', position:'relative' }}>
-            <svg style={{ position:'absolute', right:8, top:4, opacity:0.07 }} width="70" height="60" viewBox="0 0 70 60">
-              <text x="0" y="50" fontSize="60" fill="#F0C4CC">♡</text>
-            </svg>
-            {[
-              { val: days,              sub: 'días juntos',  color: D.blush },
-              { val: citasHechas,       sub: 'citas hechas', color: D.green },
-              { val: `✦ ${citasPendientes}`, sub: 'por vivir', color: D.gold },
-            ].reduce((acc, item, i) => {
-              if (i > 0) acc.push(<div key={`div-${i}`} style={{ width:0.5, height:38, background:'rgba(240,196,204,0.18)' }} />);
-              acc.push(
-                <div key={i} style={{ textAlign:'center', flex:1 }}>
-                  <div className="caveat" style={{ fontSize:26, fontWeight:700, color:item.color, lineHeight:1 }}>{item.val}</div>
-                  <div className="caveat" style={{ fontSize:11, color:'rgba(240,196,204,0.55)', marginTop:3, letterSpacing:0.5 }}>{item.sub}</div>
-                </div>
-              );
-              return acc;
-            }, [])}
+            style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:28 }}>
+            {/* días juntos */}
+            <div style={{ background:'#FFF0F4', borderRadius:16, padding:'14px 14px', border:'2px solid #FF6B8A', display:'flex', alignItems:'center', gap:10, boxShadow:'3px 3px 0 rgba(255,107,138,0.20)' }}>
+              <img src="/images/metas.png" alt="" style={{ width:40, height:40, objectFit:'contain', flexShrink:0 }} />
+              <div>
+                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:28, fontWeight:700, color:'black', lineHeight:1 }}>{days}</div>
+                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:11, color:'#CF8FA0', marginTop:4 }}>días juntos</div>
+              </div>
+            </div>
+            {/* citas hechas */}
+            <div style={{ background:'#F0FFF5', borderRadius:16, padding:'14px 14px', border:'2px solid #4CAF79', display:'flex', alignItems:'center', gap:10, boxShadow:'3px 3px 0 rgba(76,175,121,0.20)' }}>
+              <img src="/images/feliz.png" alt="" style={{ width:40, height:40, objectFit:'contain', flexShrink:0 }} />
+              <div>
+                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:28, fontWeight:700, color:'black', lineHeight:1 }}>{citasHechas}</div>
+                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:11, color:'#5BAA6A', marginTop:4 }}>citas hechas</div>
+              </div>
+            </div>
+            {/* por vivir */}
+            <div style={{ background:'#FFFBF0', borderRadius:16, padding:'14px 14px', border:'2px solid #C4973E', display:'flex', alignItems:'center', gap:10, boxShadow:'3px 3px 0 rgba(196,151,62,0.20)' }}>
+              <img src="/images/triste.png" alt="" style={{ width:40, height:40, objectFit:'contain', flexShrink:0 }} />
+              <div>
+                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:28, fontWeight:700, color:'black', lineHeight:1 }}>{citasPendientes}</div>
+                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:11, color:'#C4973E', marginTop:4 }}>por vivir</div>
+              </div>
+            </div>
           </motion.div>
         )}
 
         {/* Unread letters card */}
         {unreadLetters.length > 0 && (
-          <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} transition={{delay:0.08}}
+          <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.08 }}
             onClick={() => navigateTo('letters')}
-            style={{background:'#FEE8EC',border:`1.5px solid #F0C4CC`,borderLeft:`4px solid ${D.coral}`,
-              borderRadius:20,padding:'16px 18px',marginBottom:22,cursor:'pointer',display:'flex',alignItems:'center',gap:14}}>
-            <motion.div animate={{rotate:[0,-10,10,-10,10,0]}} transition={{delay:0.6,duration:0.7}}>
-              <span style={{fontSize:32}}>💌</span>
+            style={{ background:'#FFF0F4', border:'1.5px solid #F5D0DC', borderLeft:'4px solid #FF6B8A', borderRadius:20, padding:'16px 18px', marginBottom:28, cursor:'pointer', display:'flex', alignItems:'center', gap:14 }}>
+            <motion.div animate={{ rotate:[0,-10,10,-10,10,0] }} transition={{ delay:0.6, duration:0.7 }}>
+              <span style={{ fontSize:34 }}>💌</span>
             </motion.div>
-            <div style={{flex:1}}>
-              <p className="lora" style={{fontSize:15,fontWeight:700,color:D.wine,margin:'0 0 3px'}}>
+            <div style={{ flex:1 }}>
+              <p style={{ fontFamily:"'Lora',Georgia,serif", fontSize:16, fontWeight:700, color:'#2D1B2E', margin:'0 0 4px' }}>
                 {unreadLetters.length === 1 ? '¡Tienes una carta!' : `¡Tienes ${unreadLetters.length} cartas!`}
               </p>
-              <p className="caveat" style={{fontSize:13,color:'#9A7A6A',margin:0}}>
+              <p style={{ fontFamily:"'Inter',sans-serif", fontSize:14, color:'#9B8B95', margin:0 }}>
                 De: {unreadLetters[0].sender_name || 'Tu pareja'} · toca para abrirla ✦
               </p>
             </div>
-            <ChevronRight size={18} color={D.coral}/>
+            <ChevronRight size={20} color="#FF6B8A" />
           </motion.div>
         )}
 
         {/* Swipeable date card OR surprise card */}
-        <motion.section initial={{ opacity:0, y:18 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.14 }} style={{ marginBottom:22 }}>
+        <motion.section initial={{ opacity:0, y:18 }} animate={{ opacity:1, y:0 }} whileHover={{ rotate: 0.3 }} transition={{ delay:0.14 }} style={{ marginBottom:28 }}>
           <AnimatePresence mode="wait">
             {showSurpriseModal && surpriseCita ? (
               <SurpriseCard
@@ -491,15 +501,15 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
             ) : null}
           </AnimatePresence>
           {!showSurpriseModal && cur && (
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:12, padding:'0 4px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:14, padding:'0 4px' }}>
               <div style={{ display:'flex', gap:6, alignItems:'center' }}>
                 {Array.from({ length:DOTS }, (_,i) => (
                   <button key={i} onClick={() => setDateIdx(i)}
-                    style={{ width: i===dateIdx%DOTS ? 20 : 8, height:8, borderRadius:4, background: i===dateIdx%DOTS ? D.coral : D.blush, transition:'width 0.28s ease', border:'none', padding:0, cursor:'pointer' }} />
+                    style={{ width:i===dateIdx%DOTS ? 22 : 8, height:8, borderRadius:4, background:i===dateIdx%DOTS ? '#FF6B8A' : '#FFD0DC', transition:'width 0.28s ease', border:'none', padding:0, cursor:'pointer' }} />
                 ))}
               </div>
-              <button onClick={nextDate} className="caveat"
-                style={{ display:'flex', alignItems:'center', gap:3, color:D.coral, fontSize:14, fontWeight:700, background:'none', border:'none', cursor:'pointer' }}>
+              <button onClick={nextDate}
+                style={{ display:'flex', alignItems:'center', gap:4, color:'#FF6B8A', fontSize:14, fontWeight:700, background:'none', border:'none', cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
                 o ver otra <ChevronRight size={15} />
               </button>
             </div>
@@ -507,47 +517,81 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
         </motion.section>
 
         {/* Quick links */}
-        <motion.section initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.22 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-            <span className="caveat doodle-underline" style={{ fontSize:15, fontWeight:700, color:D.wine }}>Accesos rápidos</span>
-            <div style={{ flex:1, height:1.5, background:`repeating-linear-gradient(90deg,${D.border} 0,${D.border} 6px,transparent 6px,transparent 12px)` }}/>
+        <motion.section initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.22 }} style={{ width:'100%' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
+            <h2 style={{ fontFamily:"'Lora',Georgia,serif", fontSize:20, fontWeight:700, color:'#2D1B2E', margin:0 }}>
+              Accesos rápidos
+            </h2>
+            <div style={{ flex:1, height:2, background:'linear-gradient(90deg, #F5D0DC 0%, transparent 100%)', borderRadius:2 }} />
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            {QUICK_CARDS.map(({ id, Icon, iconBg, cardBorder, cardBg, badge, title, sub, deco, barPct, trackBg, barBg, dots }) => (
-              <div key={id} className="ql-card"
-                style={{ borderColor:cardBorder, background:cardBg }}
-                onClick={() => navigateTo(id)}>
-                {/* Icon + badge row */}
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-                  <div style={{ width:36, height:36, background:iconBg, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <Icon size={18} color="#fff" strokeWidth={2} />
+          {/* Fila 1: 4 tarjetas grandes */}
+          <div className="quick-grid-main">
+            {QUICK_CARDS.slice(0, 4).map(({ id, img, cardBorder, cardBg, badgeColor, badge, title, sub, deco, barPct, trackBg, barBg }, index) => (
+              <button key={id}
+                onClick={() => navigateTo(id)}
+                className="quick-card-pop"
+                style={{ background:cardBg || '#FFFFFF', borderRadius:22, border:`2px solid ${cardBorder || '#F5D0DC'}`, padding:'18px 14px', cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:10, outline:'none', position:'relative', animationDelay:`${index * 0.06}s`, boxShadow:'2px 2px 0 rgba(255,107,138,0.10)' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02) rotate(-0.5deg)'; e.currentTarget.style.boxShadow = '3px 3px 0 rgba(255,107,138,0.20)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) rotate(0deg)'; e.currentTarget.style.boxShadow = '2px 2px 0 rgba(255,107,138,0.10)'; }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.96)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                onTouchStart={e => e.currentTarget.style.transform = 'scale(0.96)'}
+                onTouchEnd={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                {badge && (
+                  <span style={{ position:'absolute', top:10, right:10, fontFamily:"'Inter',sans-serif", fontSize:11, fontWeight:700, color: badgeColor || '#FF6B8A', background:'transparent', borderRadius:8, padding:'2px 4px', lineHeight:1.4 }}>{badge}</span>
+                )}
+                <img src={img} alt={title} className="doodle-icon" style={{ width:64, height:64, objectFit:'contain' }} />
+                <div>
+                  <div style={{ fontFamily:"'Baloo 2',cursive", fontSize:15, fontWeight:700, color:'#2D1B2E', marginBottom:4, lineHeight:1.2 }}>{title}</div>
+                  <div style={{ fontFamily:"'Inter',sans-serif", fontSize:12, color:'#9B8B95', lineHeight:1.35 }}>{sub}</div>
+                </div>
+                {deco === 'bar' ? (
+                  <div style={{ width:'100%', height:7, borderRadius:99, background: trackBg || '#FFD6E0', overflow:'hidden' }}>
+                    <div style={{ width:`${barPct}%`, height:'100%', borderRadius:99, background: barBg || '#FF6B8A' }} />
                   </div>
-                  <span className="caveat" style={{ fontSize:11, background:`${iconBg}22`, color:iconBg, borderRadius:20, padding:'3px 10px', fontWeight:700 }}>
-                    {badge}
-                  </span>
+                ) : (
+                  <img src="/images/puntitos-de-colores.png" alt="" style={{ width:40, height:13, objectFit:'contain', objectPosition:'left center', opacity:0.85 }} />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Fila 2: tarjetas más compactas */}
+          <div className="quick-grid-secondary">
+            {QUICK_CARDS.slice(4).map(({ id, img, cardBorder, cardBg, badgeColor, badge, title, sub, deco, barPct, trackBg, barBg }, index) => (
+              <button key={id}
+                onClick={() => navigateTo(id)}
+                className="quick-card-pop"
+                style={{ background:cardBg || '#FFFFFF', borderRadius:18, border:`2px solid ${cardBorder || '#F5D0DC'}`, padding:'14px 10px', cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:8, outline:'none', position:'relative', animationDelay:`${(index + 4) * 0.06}s`, boxShadow:'2px 2px 0 rgba(255,107,138,0.10)' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02) rotate(-0.5deg)'; e.currentTarget.style.boxShadow = '3px 3px 0 rgba(255,107,138,0.20)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) rotate(0deg)'; e.currentTarget.style.boxShadow = '2px 2px 0 rgba(255,107,138,0.10)'; }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.96)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                onTouchStart={e => e.currentTarget.style.transform = 'scale(0.96)'}
+                onTouchEnd={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                {badge && (
+                  <span style={{ position:'absolute', top:8, right:8, fontFamily:"'Inter',sans-serif", fontSize:10, fontWeight:700, color: badgeColor || '#FF6B8A', background:'transparent', borderRadius:8, padding:'1px 4px', lineHeight:1.4 }}>{badge}</span>
+                )}
+                <img src={img} alt={title} className="doodle-icon" style={{ width:52, height:52, objectFit:'contain' }} />
+                <div>
+                  <div style={{ fontFamily:"'Baloo 2',cursive", fontSize:13, fontWeight:700, color:'#2D1B2E', marginBottom:2, lineHeight:1.2 }}>{title}</div>
+                  <div style={{ fontFamily:"'Inter',sans-serif", fontSize:11, color:'#9B8B95', lineHeight:1.3 }}>{sub}</div>
                 </div>
-                {/* Title + subtitle */}
-                <div className="lora" style={{ fontSize:13, fontWeight:600, color:D.wine, marginBottom:2, lineHeight:1.25 }}>{title}</div>
-                <div className="caveat" style={{ fontSize:12, color:D.muted }}>{sub}</div>
-                {/* Bottom decoration */}
-                <div style={{ marginTop:10 }}>
-                  {deco === 'bar' ? (
-                    <div style={{ height:5, background:trackBg, borderRadius:10, overflow:'hidden' }}>
-                      <div style={{ width:`${barPct}%`, height:'100%', background:barBg, borderRadius:10 }}/>
-                    </div>
-                  ) : (
-                    <div style={{ display:'flex', gap:4 }}>
-                      {dots.map((c,i) => <div key={i} style={{ width:8, height:8, borderRadius:'50%', background:c }}/>)}
-                    </div>
-                  )}
-                </div>
-              </div>
+                {deco === 'bar' ? (
+                  <div style={{ width:'100%', height:6, borderRadius:99, background: trackBg || '#FFD6E0', overflow:'hidden' }}>
+                    <div style={{ width:`${barPct}%`, height:'100%', borderRadius:99, background: barBg || '#FF6B8A' }} />
+                  </div>
+                ) : (
+                  <img src="/images/puntitos-de-colores.png" alt="" style={{ width:34, height:11, objectFit:'contain', objectPosition:'left center', opacity:0.85 }} />
+                )}
+              </button>
             ))}
           </div>
         </motion.section>
 
       </div>
-
 
     </div>
   );

@@ -2,15 +2,18 @@
 import { ChevronLeft, Dices } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const D = { cream:'#FFF5F7', wine:'#2D1B2E', coral:'#FF6B8A', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#FFD0DC', white:'#FFFFFF', border:'#FFD0DC', muted:'#9B8B95' };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
 
 function BgDoodles() {
   return (
-    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.18}} viewBox="0 0 390 700" fill="none">
-      <text x="355" y="90" fontSize="12" fill="#D4A520" fontFamily="serif">✦</text>
-      <text x="18" y="200" fontSize="9" fill="#C44455" fontFamily="serif">✦</text>
+    <svg style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
+      <text x="355" y="90" fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
+      <text x="20" y="160" fontSize="9" fill="#E05060" fontFamily="serif">✦</text>
+      <text x="360" y="280" fontSize="8" fill="#5B8ECC" fontFamily="serif">★</text>
+      <text x="18" y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
       <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
+      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -30,10 +33,10 @@ const DARES = [
 ];
 
 const GAMES = [
-  { id:'question', title:'Preguntas',      desc:'Preguntas profundas para conocerse mejor', icon:'🎲', accent: '#C44455' },
-  { id:'truth',    title:'Verdad o Reto',  desc:'Elige verdad o atrévete con un reto',       icon:'🤔', accent: '#D4A520' },
-  { id:'dice',     title:'Dado del Amor',  desc:'Lanza el dado y haz lo que diga',            icon:'🎯', accent: '#5B8ECC' },
-  { id:'memory',   title:'Recuerdos',      desc:'Revive nuestros momentos favoritos',         icon:'📸', accent: '#5BAA6A' },
+  { id:'question', title:'Preguntas',      desc:'Preguntas profundas para conocerse mejor', icon:'/images/descubrir.png',   accent: '#FF6B8A' },
+  { id:'truth',    title:'Verdad o Reto',  desc:'Elige verdad o atrévete con un reto',       icon:'/images/retos.png',       accent: '#D4A520' },
+  { id:'dice',     title:'Dado del Amor',  desc:'Lanza el dado y haz lo que diga',            icon:'/images/videojuegos.png', accent: '#5B8ECC' },
+  { id:'memory',   title:'Recuerdos',      desc:'Revive nuestros momentos favoritos',         icon:'/images/recuerdos.png',   accent: '#5BAA6A' },
 ];
 
 export default function GamesPage({ navigateTo }) {
@@ -58,16 +61,24 @@ export default function GamesPage({ navigateTo }) {
       <BgDoodles />
 
       {/* Header */}
-      <div style={{padding:'48px 20px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1.5px solid ${D.border}`,background:D.cream,position:'sticky',top:0,zIndex:40}}>
-        <button onClick={() => selectedGame ? setSelectedGame(null) : navigateTo('dashboard')}
-          style={{width:38,height:38,borderRadius:'50%',background:D.white,border:`1.5px solid ${D.border}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
-          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5}/>
-        </button>
-        <div style={{textAlign:'center'}}>
-          <div className="lora" style={{fontSize:20,fontWeight:600,color:D.wine,letterSpacing:1}}>{selectedGame ? GAMES.find(g=>g.id===selectedGame)?.title : 'Juegos'}</div>
-          <div className="caveat" style={{fontSize:11,color:D.muted}}>Diviértanse juntos ✦</div>
+      <div style={{ padding:'48px 20px 18px', background:D.cream, borderBottom:`1.5px solid ${D.border}`, position:'relative', zIndex:10 }}>
+        <div style={{ display:'flex', alignItems:'center', marginBottom:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <button onClick={() => selectedGame ? setSelectedGame(null) : window.history.back()}
+              style={{ width:32, height:32, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5}/>
+            </button>
+            <span className="caveat" style={{ fontSize:12, color:'#C4AAB0', fontWeight:600 }}>
+              {selectedGame ? `Inicio > Juegos > ${GAMES.find(g=>g.id===selectedGame)?.title}` : 'Inicio > Juegos'}
+            </span>
+          </div>
         </div>
-        <div style={{width:38}}/>
+        <h1 className="lora" style={{ fontSize:30, fontWeight:700, color:D.wine, margin:0, display:'flex', alignItems:'center', gap:8 }}>
+          {selectedGame ? GAMES.find(g=>g.id===selectedGame)?.title : 'Juegos'}
+          <img src="/images/videojuegos.png" alt="" style={{ width:28, height:28, objectFit:'contain' }}/>
+        </h1>
+        <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'65%', maxWidth:220, margin:'4px 0 8px' }}/>
+        <p className="caveat" style={{ fontSize:14, color:D.muted, margin:0 }}>Diviértanse juntos ✦</p>
       </div>
 
       <div style={{padding:'20px',position:'relative',zIndex:1}}>
@@ -77,7 +88,9 @@ export default function GamesPage({ navigateTo }) {
               <motion.div key={g.id} initial={{opacity:0,y:14}} animate={{opacity:1,y:0}} transition={{delay:i*0.07}}
                 whileTap={{scale:0.97}} onClick={() => { setSelectedGame(g.id); setCard(null); setMode(null); setDice(null); }}
                 style={{background:D.white,borderRadius:20,border:`1.5px solid ${D.border}`,borderLeft:`4px solid ${g.accent}`,padding:'18px',cursor:'pointer',display:'flex',alignItems:'center',gap:14}}>
-                <div style={{width:52,height:52,borderRadius:14,background:`${g.accent}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{g.icon}</div>
+                <div style={{width:52,height:52,borderRadius:14,background:`${g.accent}18`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <img src={g.icon} alt="" style={{width:32,height:32,objectFit:'contain'}}/>
+                </div>
                 <div>
                   <div className="lora" style={{fontSize:16,fontWeight:600,color:D.wine}}>{g.title}</div>
                   <div className="caveat" style={{fontSize:13,color:D.muted}}>{g.desc}</div>
@@ -91,7 +104,7 @@ export default function GamesPage({ navigateTo }) {
               {card && (
                 <motion.div key={card} initial={{opacity:0,y:-20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:20}}
                   style={{background:D.white,borderRadius:24,border:`1.5px solid ${D.border}`,padding:'32px 24px',marginBottom:24,borderLeft:`4px solid ${D.coral}`}}>
-                  <div style={{fontSize:40,marginBottom:16}}>🎲</div>
+                  <img src="/images/descubrir.png" alt="" style={{width:40,height:40,objectFit:'contain',marginBottom:16}}/>
                   <p className="lora" style={{fontSize:17,color:D.wine,lineHeight:1.6}}>{card}</p>
                 </motion.div>
               )}
@@ -115,7 +128,7 @@ export default function GamesPage({ navigateTo }) {
               {card && (
                 <motion.div key={card} initial={{opacity:0,scale:0.9}} animate={{opacity:1,scale:1}} exit={{opacity:0,scale:0.9}}
                   style={{background:D.white,borderRadius:24,border:`1.5px solid ${D.border}`,padding:'32px 24px',marginBottom:16,borderLeft:`4px solid ${mode==='truth'?D.coral:D.gold}`}}>
-                  <div style={{fontSize:40,marginBottom:16}}>{mode==='truth'?'🤔':'🎯'}</div>
+                  <img src={mode==='truth'?'/images/retos.png':'/images/logros.png'} alt="" style={{width:40,height:40,objectFit:'contain',marginBottom:16}}/>
                   <p className="lora" style={{fontSize:17,color:D.wine,lineHeight:1.6}}>{card}</p>
                 </motion.div>
               )}
@@ -141,7 +154,7 @@ export default function GamesPage({ navigateTo }) {
           </div>
         ) : (
           <div style={{textAlign:'center',padding:'32px 0'}}>
-            <div style={{fontSize:48,marginBottom:16}}>📸</div>
+            <img src="/images/recuerdos.png" alt="" style={{width:48,height:48,objectFit:'contain',marginBottom:16}}/>
             <p className="lora" style={{color:D.muted}}>Próximamente</p>
             <p className="caveat" style={{fontSize:13,color:D.muted,marginTop:6}}>Los recuerdos llegarán pronto ✦</p>
           </div>

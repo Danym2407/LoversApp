@@ -1,14 +1,14 @@
 ﻿import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, CheckCircle, Heart } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { upsertCalendarEvent } from "@/lib/eventSync";
 import { api } from "@/lib/api";
 
 const D = {
-  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
-  border: "#EDE0D0", muted: "#9A7A6A"
+  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
+  border: "#FFD0DC", muted: "#9B8B95"
 };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
 
@@ -212,12 +212,7 @@ export default function PersonalityTestPage({ navigateTo }) {
             transition={{ delay: 0.2, duration: 0.6, type: "spring" }}
             style={{ marginBottom: 20 }}
           >
-            <div style={{
-              width: 96, height: 96, borderRadius: "50%", background: D.wine,
-              display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto"
-            }}>
-              <Heart size={44} color={D.blush} fill={D.blush} />
-            </div>
+            <img src="/images/corazon.png" alt="" style={{ width: 96, height: 96, objectFit: 'contain', display: 'block', margin: '0 auto' }}/>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
@@ -259,7 +254,8 @@ export default function PersonalityTestPage({ navigateTo }) {
             style={{
               width: "100%", padding: "14px 0", borderRadius: 16, border: "none",
               background: D.coral, color: D.white, cursor: "pointer",
-              fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 700, marginBottom: 10
+              fontFamily: "Lora, Georgia, serif", fontSize: 17, fontWeight: 700, marginBottom: 10,
+              boxShadow: '3px 3px 0 rgba(196,68,100,0.28)'
             }}
           >
             Ver mis 100 Citas Personalizadas ❤️
@@ -378,7 +374,7 @@ export default function PersonalityTestPage({ navigateTo }) {
                       onClick={() => handleAnswer(question.id, opt.id)}
                       style={{
                         padding: "13px 16px", border: `1.5px solid ${sel ? D.coral : D.border}`,
-                        borderRadius: 14, background: sel ? "#FEF1F3" : D.white,
+                        borderRadius: 14, background: sel ? "#FFE8ED" : D.white,
                         cursor: "pointer", textAlign: "left",
                         fontFamily: "Lora, Georgia, serif", fontSize: 15,
                         color: sel ? D.coral : D.wine, fontWeight: sel ? 700 : 400,
@@ -425,7 +421,8 @@ export default function PersonalityTestPage({ navigateTo }) {
               flex: 2, padding: "12px 0", borderRadius: 14, border: "none",
               background: D.coral, color: D.white, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              fontFamily: "Lora, Georgia, serif", fontSize: 16, fontWeight: 700
+              fontFamily: "Lora, Georgia, serif", fontSize: 16, fontWeight: 700,
+              boxShadow: '3px 3px 0 rgba(196,68,100,0.28)'
             }}
           >
             {currentQuestion === questions.length - 1 ? "Completar" : "Siguiente"}

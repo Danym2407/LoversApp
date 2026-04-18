@@ -1,15 +1,28 @@
 ﻿import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Heart, Copy, Check, Users, Mail, Calendar, Zap, Target, Trophy, ThumbsUp, ThumbsDown, LogOut } from "lucide-react";
+import { ChevronLeft, Heart, Copy, Check, LogOut } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { api } from "@/lib/api";
 
 const D = {
-  cream: "#FDF6EC", wine: "#1C0E10", coral: "#C44455", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#F0C4CC", white: "#FFFFFF",
-  border: "#EDE0D0", muted: "#9A7A6A"
+  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
+  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
+  border: "#FFD0DC", muted: "#9B8B95"
 };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+function BgDoodles() {
+  return (
+    <svg style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
+      <text x="355" y="90" fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
+      <text x="20" y="160" fontSize="9" fill="#E05060" fontFamily="serif">✦</text>
+      <text x="360" y="280" fontSize="8" fill="#5B8ECC" fontFamily="serif">★</text>
+      <text x="18" y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
+      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
+      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 function SectionCard({ title, icon, accent = D.coral, children }) {
   return (
@@ -19,7 +32,7 @@ function SectionCard({ title, icon, accent = D.coral, children }) {
       marginBottom: 14
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-        {icon}
+        <img src={icon} alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
         <h3 className="lora" style={{ fontSize: 17, fontWeight: 700, color: D.wine, margin: 0 }}>{title}</h3>
       </div>
       {children}
@@ -219,26 +232,25 @@ export default function ProfilePage({ navigateTo }) {
   const initials = ((user.name?.[0] || "") + (user.partner?.[0] || "")).toUpperCase();
 
   return (
-    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden" }}>
       <style>{STYLE}</style>
+      <BgDoodles />
 
       {/* Header */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 10, background: D.cream,
-        borderBottom: `1.5px solid ${D.border}`, padding: "48px 20px 14px"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => navigateTo("dashboard")} style={{
-            width: 36, height: 36, borderRadius: "50%", border: `1.5px solid ${D.border}`,
-            background: D.white, display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", flexShrink: 0
-          }}>
-            <ChevronLeft size={18} color={D.coral} />
-          </button>
-          <h1 className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.wine, margin: 0 }}>
-            Mi Perfil
-          </h1>
+      <div style={{ padding:'48px 20px 18px', background:D.cream, borderBottom:`1.5px solid ${D.border}`, position:'relative', zIndex:10 }}>
+        <div style={{ display:'flex', alignItems:'center', marginBottom:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <button onClick={() => navigateTo("dashboard")} style={{ width:32, height:32, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5}/>
+            </button>
+            <span className="caveat" style={{ fontSize:12, color:'#C4AAB0', fontWeight:600 }}>Inicio &gt; Mi Perfil</span>
+          </div>
         </div>
+        <h1 className="lora" style={{ fontSize:30, fontWeight:700, color:D.wine, margin:0, display:'flex', alignItems:'center', gap:8 }}>
+          Mi Perfil
+          <img src="/images/perfil.png" alt="" style={{ width:28, height:28, objectFit:'contain' }}/>
+        </h1>
+        <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'65%', maxWidth:220, margin:'4px 0 8px' }}/>
       </div>
 
       <div style={{ padding: "18px 20px" }}>
@@ -249,7 +261,7 @@ export default function ProfilePage({ navigateTo }) {
         }}>
           <div style={{
             width: 58, height: 58, borderRadius: "50%",
-            background: "rgba(240,196,204,0.25)", border: "2px solid rgba(240,196,204,0.4)",
+            background: "rgba(255,208,220,0.3)", border: "2px solid rgba(255,208,220,0.5)",
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
           }}>
             <span className="caveat" style={{ fontSize: 22, fontWeight: 700, color: D.blush }}>{initials || "❤"}</span>
@@ -260,7 +272,7 @@ export default function ProfilePage({ navigateTo }) {
             </h2>
             {user.email && (
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <Mail size={12} color={D.blush} />
+                <img src="/images/mensajes.png" alt="" style={{ width:12, height:12, objectFit:'contain', opacity:0.7 }}/>
                 <span className="caveat" style={{ fontSize: 13, color: D.blush }}>{user.email}</span>
               </div>
             )}
@@ -268,7 +280,7 @@ export default function ProfilePage({ navigateTo }) {
         </div>
 
         {/* Partner Pairing */}
-        <SectionCard title="Vincular Pareja" icon={<Users size={16} color={D.coral} />} accent={D.coral}>
+        <SectionCard title="Vincular Pareja" icon="/images/2-corazoncitos.png" accent={D.coral}>
           {!coupled ? (
             <div>
               <p className="caveat" style={{ fontSize: 14, color: D.muted, margin: "0 0 8px" }}>
@@ -336,7 +348,7 @@ export default function ProfilePage({ navigateTo }) {
         </SectionCard>
 
         {/* Relationship Dates */}
-        <SectionCard title="Fechas de la Relación" icon={<Calendar size={16} color={D.gold} />} accent={D.gold}>
+        <SectionCard title="Fechas de la Relación" icon="/images/calendario.png" accent={D.gold}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
               <label className="caveat" style={{ fontSize: 14, color: D.wine, display: "block", marginBottom: 5 }}>
@@ -380,7 +392,7 @@ export default function ProfilePage({ navigateTo }) {
         </SectionCard>
 
         {/* Greeting Message */}
-        <SectionCard title="Mensaje de Bienvenida" icon={<Zap size={16} color={D.blue} />} accent={D.blue}>
+        <SectionCard title="Mensaje de Bienvenida" icon="/images/mensajes.png" accent={D.blue}>
           <div style={{ marginBottom: 10 }}>
             <label className="caveat" style={{ fontSize: 14, color: D.wine, display: "block", marginBottom: 5 }}>
               Mensaje principal
@@ -401,7 +413,7 @@ export default function ProfilePage({ navigateTo }) {
         </SectionCard>
 
         {/* Personality Test */}
-        <SectionCard title="Test de Personalidad" icon={<Heart size={16} color={D.coral} />} accent={D.coral}>
+        <SectionCard title="Test de Personalidad" icon="/images/descubrir.png" accent={D.coral}>
           {personalityTest ? (
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
@@ -460,7 +472,7 @@ export default function ProfilePage({ navigateTo }) {
 
         {/* Preferences Analytics */}
         {Object.keys(preferences).length > 0 && (
-          <SectionCard title="Mis Preferencias" icon={<ThumbsUp size={16} color={D.green} />} accent={D.green}>
+          <SectionCard title="Mis Preferencias" icon="/images/favoritos.png" accent={D.green}>
             <div style={{ display: "flex", gap: 10 }}>
               <div style={{
                 flex: 1, background: "#EFF8F1", border: `1.5px solid ${D.green}`,
@@ -481,7 +493,7 @@ export default function ProfilePage({ navigateTo }) {
         )}
 
         {/* Goals */}
-        <SectionCard title="Nuestras Metas" icon={<Target size={16} color={D.gold} />} accent={D.gold}>
+        <SectionCard title="Nuestras Metas" icon="/images/metas.png" accent={D.gold}>
           <form onSubmit={handleAddGoal} style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             <input value={newGoal} onChange={(e) => setNewGoal(e.target.value)}
               placeholder="Nueva meta..." style={{ ...inputSt, flex: 1 }} />
@@ -523,7 +535,7 @@ export default function ProfilePage({ navigateTo }) {
         </SectionCard>
 
         {/* Achievements */}
-        <SectionCard title="Logros" icon={<Trophy size={16} color={D.gold} />} accent={D.gold}>
+        <SectionCard title="Logros" icon="/images/trofeo.png" accent={D.gold}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {[
               { icon: "❤️", label: "Primer Mes", desc: "1 mes juntos", color: D.coral },

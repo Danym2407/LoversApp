@@ -1,14 +1,26 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Heart, Star, Upload, Trash2, Calendar, MapPin, RefreshCw, CheckCircle, Clock } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
 import {
   upsertCalendarEvent, upsertTimelineEvent, upsertCountdownEvent,
   removeCalendarEventBySource, removeTimelineEventBySource, removeCountdownEventBySource
 } from '@/lib/eventSync';
 
-const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const D = { cream:'#FFF5F7', wine:'#2D1B2E', coral:'#FF6B8A', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#FFD0DC', white:'#FFFFFF', border:'#FFD0DC', muted:'#9B8B95' };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+
+function BgDoodles() {
+  return (
+    <svg style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
+      <text x="355" y="90" fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
+      <text x="20" y="160" fontSize="9" fill="#E05060" fontFamily="serif">✦</text>
+      <text x="360" y="280" fontSize="8" fill="#5B8ECC" fontFamily="serif">★</text>
+      <text x="18" y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
+      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
+      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 function Input({ value, onChange, placeholder, type='text', style={} }) {
   return (
@@ -33,7 +45,8 @@ function SectionCard({ title, accent=D.coral, children }) {
 
 export default function DateDetailPage({ dateId, navigateTo, backTo = 'dates' }) {
   const [date, setDate] = useState(null);
-  const { toast } = useToast();
+  const [msg, setMsg] = useState(null);
+  const showMsg = (text, color = D.green) => { setMsg({ text, color }); setTimeout(() => setMsg(null), 2500); };
 
   // Detect current user once at top level so all handlers share the same key
   const _userRaw = localStorage.getItem('loversappUser');
@@ -94,26 +107,26 @@ export default function DateDetailPage({ dateId, navigateTo, backTo = 'dates' })
     if (!date?.location?.trim()) missing.push('lugar');
     if (!date?.[`${myKey}Review`]?.trim()) missing.push('tu reseña');
     if (missing.length > 0) {
-      toast({ title: '⚠️ Faltan datos', description: `Para completar llena: ${missing.join(', ')}.` });
+      showMsg(`Faltan: ${missing.join(', ')}`, D.coral);
       return;
     }
     saveDate({ ...date, status:'completed' });
-    toast({ title:'¡Cita completada! 🎉', description:'Marcada como completada.' });
+    showMsg('¡Cita completada! 🎉', D.green);
   };
   const handleMarkPending = () => {
     saveDate({ ...date, status:'pending' });
-    toast({ title:'Cita pendiente', description:'Marcada como pendiente.' });
+    showMsg('Cita pendiente ⏳', D.muted);
   };
   const handleResyncCompleted = () => {
     removeCalendarEventBySource('date', date.id);
     removeTimelineEventBySource('date', date.id);
     saveDate({ ...date, status:'completed', resyncedAt:new Date().toISOString() });
-    toast({ title:'Cita sincronizada', description:'Actualizada en calendario y línea del tiempo.' });
+    showMsg('Cita sincronizada ✓', D.green);
   };
   const handleSavePlan = () => {
-    if (!date?.plannedDate) { toast({ title:'Falta la fecha', description:'Selecciona una fecha planeada.' }); return; }
+    if (!date?.plannedDate) { showMsg('Selecciona una fecha planeada', D.coral); return; }
     saveDate({ ...date });
-    toast({ title:'Plan guardado', description:'Cita planeada en Countdown.' });
+    showMsg('Plan guardado en Countdown ✓', D.green);
   };
   const handleInputChange = (field, value) => saveDate({ ...date, [field]:value });
   const handleRatingChange = (person, type, value) => saveDate({ ...date, [`${person}Rating`]:{...date[`${person}Rating`],[type]:value} });
@@ -195,13 +208,19 @@ export default function DateDetailPage({ dateId, navigateTo, backTo = 'dates' })
   const isCompleted = date.status === 'completed';
 
   return (
-    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', paddingBottom:88 }}>
+    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', paddingBottom:88, position:'relative', overflow:'hidden' }}>
       <style>{STYLE}</style>
+      <BgDoodles/>
+      {msg && (
+        <div style={{ position:'fixed', bottom:100, left:'50%', transform:'translateX(-50%)', background:msg.color, color:'#fff', borderRadius:20, padding:'10px 20px', zIndex:500, fontFamily:"'Caveat',cursive", fontSize:14, fontWeight:700, pointerEvents:'none', whiteSpace:'nowrap' }}>
+          {msg.text}
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ padding:'48px 20px 14px', background:D.cream, borderBottom:`1.5px solid ${D.border}`, position:'sticky', top:0, zIndex:40 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-          <button onClick={() => navigateTo(backTo)}
+          <button onClick={() => window.history.back()}
             style={{ width:38, height:38, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
             <ChevronLeft size={16} color={D.coral} strokeWidth={2.5}/>
           </button>

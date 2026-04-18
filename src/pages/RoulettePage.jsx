@@ -1,7 +1,6 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Heart, Star, RefreshCw, Calendar } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { ChevronLeft, Heart, Star, RefreshCw, Calendar, X } from 'lucide-react';
 import { citasDatabase, citasPorCategoria } from '@/data/citas';
 import { api } from '@/lib/api';
 
@@ -11,17 +10,18 @@ const ALL_CITAS_FLAT = (() => {
   return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
 })();
 
-const D = { cream:'#FDF6EC', wine:'#1C0E10', coral:'#C44455', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#F0C4CC', white:'#FFFFFF', border:'#EDE0D0', muted:'#9A7A6A' };
+const D = { cream:'#FFF5F7', wine:'#2D1B2E', coral:'#FF6B8A', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#FFD0DC', white:'#FFFFFF', border:'#FFD0DC', muted:'#9B8B95' };
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
 
 function BgDoodles() {
   return (
-    <svg style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0, opacity: 0.18 }} aria-hidden>
-      <text x="12%" y="18%" fontSize="22" fill={D.coral}>✦</text>
-      <text x="78%" y="12%" fontSize="16" fill={D.gold}>★</text>
-      <text x="88%" y="55%" fontSize="20" fill={D.blue}>✦</text>
-      <text x="6%"  y="72%" fontSize="14" fill={D.green}>★</text>
-      <ellipse cx="50%" cy="50%" rx="44%" ry="34%" fill="none" stroke={D.blush} strokeWidth="1.2" strokeDasharray="6 8"/>
+    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
+      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
+      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
+      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
+      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
+      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
+      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -34,7 +34,8 @@ export default function RoulettePage({ navigateTo }) {
   const [prevDate, setPrevDate] = useState(null);
   const [rotation, setRotation] = useState(0);
   const [isInMyList, setIsInMyList] = useState(false);
-  const { toast } = useToast();
+  const [showEmpty, setShowEmpty] = useState(false);
+  const [envelopePhase, setEnvelopePhase] = useState(0); // 0=closed 1=opening 2=revealing
 
   const checkInList = useCallback((id) => {
     const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
@@ -92,7 +93,7 @@ export default function RoulettePage({ navigateTo }) {
 
   const spinWheel = () => {
     if (pendingDates.length === 0) {
-      toast({ title: '¡Misión cumplida! 🎉', description: 'Ya no quedan citas pendientes.' });
+      setShowEmpty(true);
       return;
     }
     const idx = Math.floor(Math.random() * pendingDates.length);
@@ -103,10 +104,10 @@ export default function RoulettePage({ navigateTo }) {
     setGameState('spinning');
     const newRot = rotation + 360 * (5 + Math.random() * 5) + Math.random() * 360;
     setRotation(newRot);
-    setTimeout(() => setGameState('envelope'), 3500);
+    setTimeout(() => { setGameState('envelope'); setEnvelopePhase(0); }, 3500);
   };
 
-  const reset = () => { setGameState('idle'); setSelectedDate(null); setIsInMyList(false); };
+  const reset = () => { setGameState('idle'); setSelectedDate(null); setIsInMyList(false); setEnvelopePhase(0); };
 
   const addToMyList = () => {
     if (!selectedDate) return;
@@ -144,16 +145,22 @@ export default function RoulettePage({ navigateTo }) {
       <BgDoodles />
 
       {/* Header */}
-      <div style={{ padding: '48px 20px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: D.cream, borderBottom: `1.5px solid ${D.border}`, position: 'sticky', top: 0, zIndex: 40 }}>
-        <button onClick={() => navigateTo('dates')}
-          style={{ width: 38, height: 38, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <ChevronLeft size={16} color={D.coral} strokeWidth={2.5} />
-        </button>
-        <div style={{ textAlign: 'center' }}>
-          <div className="lora" style={{ fontSize: 20, fontWeight: 600, color: D.wine }}>Ruleta de Citas</div>
-          <div className="caveat" style={{ fontSize: 11, color: D.muted }}>{pendingDates.length} citas disponibles ✦</div>
+      <div style={{ padding: '48px 20px 18px', background: D.cream, borderBottom: `1.5px solid ${D.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => window.history.back()}
+              style={{ width: 32, height: 32, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5} />
+            </button>
+            <span className="caveat" style={{ fontSize: 12, color: '#C4AAB0', fontWeight: 600 }}>Inicio &gt; Ruleta</span>
+          </div>
         </div>
-        <div style={{ width: 38 }} />
+        <h1 className="lora" style={{ fontSize: 30, fontWeight: 700, color: D.wine, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          Ruleta
+          <img src="/images/ruleta.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+        </h1>
+        <img src="/images/subrayado1.png" alt="" style={{ display: 'block', width: '65%', maxWidth: 220, margin: '4px 0 8px' }} />
+        <p className="caveat" style={{ fontSize: 14, color: D.muted, margin: 0 }}>{pendingDates.length} citas disponibles 💕</p>
       </div>
 
       <div style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 1 }}>
@@ -164,7 +171,10 @@ export default function RoulettePage({ navigateTo }) {
             <motion.div key="wheel" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
 
-              <div className="lora" style={{ fontSize: 22, fontWeight: 600, color: D.wine, marginBottom: 20, textAlign: 'center' }}>¿Qué cita nos toca?</div>
+              <div className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.wine, marginBottom: 20, textAlign: 'center', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                ¿Qué cita nos toca?
+                <img src="/images/ruleta.png" alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+              </div>
 
               {/* Source selector — only visible in idle */}
               {gameState === 'idle' && (
@@ -180,7 +190,7 @@ export default function RoulettePage({ navigateTo }) {
                       style={{
                         padding: '7px 15px', borderRadius: 20, cursor: 'pointer', fontSize: 14, fontWeight: 700, transition: 'all 0.18s',
                         ...(sourceMode === mode
-                          ? { background: D.wine, color: D.white, border: `2px solid ${D.wine}` }
+                          ? { background: D.coral, color: D.white, border: `2px solid ${D.coral}` }
                           : { background: D.cream, color: D.wine, border: `2px solid ${D.border}` })
                       }}>
                       {label}
@@ -220,7 +230,7 @@ export default function RoulettePage({ navigateTo }) {
               </div>
 
               <button onClick={spinWheel} disabled={gameState === 'spinning'}
-                style={{ padding: '14px 40px', borderRadius: 30, background: gameState === 'spinning' ? D.muted : D.wine, border: 'none', cursor: gameState === 'spinning' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                style={{ padding: '14px 40px', borderRadius: 30, background: gameState === 'spinning' ? D.muted : D.coral, border: 'none', cursor: gameState === 'spinning' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, boxShadow: gameState === 'spinning' ? 'none' : '3px 3px 0 rgba(196,68,100,0.28)' }}>
                 {gameState === 'spinning'
                   ? <><RefreshCw size={18} color={D.white} style={{ animation: 'spin 1s linear infinite' }} /><span className="caveat" style={{ fontSize: 16, fontWeight: 700, color: D.white }}>Girando...</span></>
                   : <><span className="caveat" style={{ fontSize: 18, fontWeight: 700, color: D.white }}>Girar la ruleta</span><Star size={18} color={D.gold} fill={D.gold} /></>
@@ -233,26 +243,85 @@ export default function RoulettePage({ navigateTo }) {
           {/* ENVELOPE */}
           {gameState === 'envelope' && (
             <motion.div key="envelope" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
-              onClick={() => setGameState('card')}>
-              <div className="lora" style={{ fontSize: 20, fontWeight: 600, color: D.wine, marginBottom: 28, textAlign: 'center' }}>
-                ¡Tenemos una cita!<br/>
-                <span style={{ fontSize: 15, color: D.muted, fontStyle: 'italic' }}>Toca para abrir 💌</span>
-              </div>
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+              {/* Label fades out when opening */}
+              <motion.div
+                animate={{ opacity: envelopePhase >= 1 ? 0 : 1, y: envelopePhase >= 1 ? -8 : 0 }}
+                transition={{ duration: 0.3 }}
+                style={{ marginBottom: 28, textAlign: 'center' }}>
+                <div className="lora" style={{ fontSize: 20, fontWeight: 600, color: D.wine }}>¡Tenemos una cita!</div>
+                <div style={{ fontSize: 15, color: D.muted, fontStyle: 'italic' }}>Toca el sobre para abrir 💌</div>
+              </motion.div>
+
+              {/* Envelope wrapper */}
               <motion.div
                 initial={{ scale: 0.6, rotate: -8 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                whileHover={{ scale: 1.06, rotate: 2 }}
-                style={{ width: 240, height: 160, position: 'relative' }}
+                whileHover={envelopePhase === 0 ? { scale: 1.04, rotate: 1 } : {}}
+                onClick={() => {
+                  if (envelopePhase !== 0) return;
+                  setEnvelopePhase(1);
+                  setTimeout(() => setEnvelopePhase(2), 650);
+                  setTimeout(() => setGameState('card'), 2000);
+                }}
+                style={{ width: 240, height: 160, position: 'relative', cursor: envelopePhase === 0 ? 'pointer' : 'default' }}
               >
-                <div style={{ position: 'absolute', inset: 0, background: `${D.blush}66`, border: `2px solid ${D.border}`, borderRadius: 16, boxShadow: '0 8px 32px rgba(28,14,16,0.14)' }} />
-                {/* Flap */}
-                <div style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0,
-                  borderLeft: '120px solid transparent', borderRight: '120px solid transparent', borderTop: `72px solid ${D.border}` }} />
+                {/* Body */}
+                <div style={{ position: 'absolute', inset: 0, background: `${D.blush}66`, border: `2px solid ${D.border}`, borderRadius: 16, boxShadow: '0 8px 32px rgba(45,27,46,0.14)' }}>
+                  {/* Bottom V fold lines */}
+                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 240 160" fill="none" preserveAspectRatio="none">
+                    <line x1="0" y1="160" x2="120" y2="88" stroke={D.border} strokeWidth="1.5"/>
+                    <line x1="240" y1="160" x2="120" y2="88" stroke={D.border} strokeWidth="1.5"/>
+                  </svg>
+                </div>
+
+                {/* Card preview — slides up from inside envelope */}
+                <motion.div
+                  animate={envelopePhase >= 2
+                    ? { y: -82, opacity: 1 }
+                    : { y: 4, opacity: envelopePhase >= 1 ? 0.8 : 0 }
+                  }
+                  transition={{ duration: 0.55, ease: [0.34, 1.4, 0.64, 1] }}
+                  style={{ position: 'absolute', top: 20, left: 18, right: 18, background: D.white,
+                    borderRadius: 10, border: `1.5px solid ${D.border}`, borderTop: `3px solid ${D.coral}`,
+                    padding: '10px 12px', zIndex: 2, boxShadow: '0 4px 16px rgba(45,27,46,0.12)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                    <img src="/images/ruleta.png" alt="" style={{ width: 12, height: 12, objectFit: 'contain' }} />
+                    <span className="caveat" style={{ fontSize: 10, color: D.muted, fontWeight: 600 }}>CITA #{selectedDate?.id}</span>
+                  </div>
+                  <div className="lora" style={{ fontSize: 13, fontWeight: 700, color: D.wine, lineHeight: 1.3 }}>
+                    {selectedDate?.name || selectedDate?.title}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
+                    <Heart size={10} color={D.coral} fill={D.coral} />
+                    <span className="caveat" style={{ fontSize: 10, color: D.muted }}>{selectedDate?.category || 'Cita especial'}</span>
+                  </div>
+                </motion.div>
+
+                {/* Flap — SVG shape rotates open */}
+                <motion.div
+                  animate={{ rotateX: envelopePhase >= 1 ? -175 : 0 }}
+                  transition={{ duration: 0.7, ease: 'easeInOut' }}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%',
+                    transformOrigin: 'top center', transformPerspective: 700,
+                    backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', zIndex: 3 }}>
+                  <svg width="100%" viewBox="0 0 240 95" style={{ display: 'block' }} fill="none">
+                    <path d="M0,0 L240,0 L240,58 L120,94 L0,58 Z" fill={D.blush} stroke={D.border} strokeWidth="1.5"/>
+                  </svg>
+                </motion.div>
+
                 {/* Seal */}
-                <div style={{ position: 'absolute', top: '38%', left: '50%', transform: 'translate(-50%,-50%)', width: 52, height: 52, borderRadius: '50%', background: D.coral, border: `3px solid ${D.wine}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Heart size={24} color={D.white} fill={D.white} />
+                <div style={{ position: 'absolute', top: '32%', left: '50%', width: 0, height: 0, zIndex: 5 }}>
+                  <motion.div
+                    animate={{ opacity: envelopePhase >= 1 ? 0 : 1, scale: envelopePhase >= 1 ? 0.2 : 1 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ position: 'absolute', left: -26, top: -26, width: 52, height: 52,
+                      borderRadius: '50%', background: D.coral, border: `3px solid ${D.wine}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Heart size={24} color={D.white} fill={D.white} />
+                  </motion.div>
                 </div>
               </motion.div>
             </motion.div>
@@ -330,15 +399,15 @@ export default function RoulettePage({ navigateTo }) {
                 )}
 
                 <button onClick={goToDetail}
-                  style={{ width: '100%', padding: '14px', borderRadius: 14, background: D.wine, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+                  style={{ width: '100%', padding: '14px', borderRadius: 14, background: D.coral, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10, boxShadow: '3px 3px 0 rgba(196,68,100,0.28)' }}>
                   <Calendar size={18} color={D.white} />
                   <span className="caveat" style={{ fontSize: 17, fontWeight: 700, color: D.white }}>Ver detalles de la cita</span>
                 </button>
 
                 <button onClick={reset}
-                  style={{ width: '100%', padding: '14px', borderRadius: 14, background: D.cream, border: `1.5px solid ${D.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: prevDate ? 10 : 0 }}>
-                  <RefreshCw size={16} color={D.wine} />
-                  <span className="caveat" style={{ fontSize: 17, fontWeight: 700, color: D.wine }}>Girar otra vez</span>
+                  style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#FFF0F4', border: `1.5px solid ${D.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: prevDate ? 10 : 0 }}>
+                  <RefreshCw size={16} color={D.coral} />
+                  <span className="caveat" style={{ fontSize: 17, fontWeight: 700, color: D.coral }}>Girar otra vez</span>
                 </button>
 
                 {prevDate && (
@@ -357,6 +426,49 @@ export default function RoulettePage({ navigateTo }) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Misión cumplida modal */}
+      <AnimatePresence>
+        {showEmpty && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowEmpty(false)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(45,27,46,0.5)', zIndex: 199 }} />
+            <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '0 20px', pointerEvents: 'none' }}>
+              <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} transition={{ duration: 0.18 }}
+                onClick={e => e.stopPropagation()}
+                style={{ width: '100%', maxWidth: 400, background: D.cream, borderRadius: 24, overflow: 'hidden', boxShadow: '0 8px 40px rgba(45,27,46,0.22)', pointerEvents: 'all' }}>
+                <div style={{ padding: '20px 20px 16px', borderBottom: `1.5px solid ${D.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <img src="/images/trofeo.png" alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                      <h2 className="lora" style={{ fontSize: 20, fontWeight: 700, color: D.wine, margin: 0 }}>¡Misión cumplida!</h2>
+                    </div>
+                    <button onClick={() => setShowEmpty(false)}
+                      style={{ width: 32, height: 32, borderRadius: '50%', background: '#FFF0F4', border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                      <X size={14} color={D.coral} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                  <img src="/images/subrayado1.png" alt="" style={{ display: 'block', width: '55%', maxWidth: 180, margin: '6px 0 0' }} />
+                </div>
+                <div style={{ padding: '20px 20px 24px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+                  <p className="lora" style={{ fontSize: 15, color: D.wine, margin: '0 0 6px', fontStyle: 'italic', lineHeight: 1.5 }}>
+                    Ya no quedan citas pendientes.
+                  </p>
+                  <p className="caveat" style={{ fontSize: 14, color: D.muted, margin: '0 0 20px' }}>
+                    ¡Han completado todas las citas disponibles! 💕
+                  </p>
+                  <button onClick={() => setShowEmpty(false)}
+                    style={{ width: '100%', padding: '13px', borderRadius: 14, background: D.coral, border: 'none', cursor: 'pointer', boxShadow: '3px 3px 0 rgba(196,68,100,0.28)' }}>
+                    <span className="caveat" style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>¡Entendido! ✦</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
