@@ -265,14 +265,14 @@ export default defineConfig({
 					if (id.includes('node_modules/@radix-ui/')) return 'vendor-radix';
 					if (id.includes('node_modules/')) return 'vendor-other';
 				},
-				entryFileNames: 'js/[name]-[hash].js',
-				chunkFileNames: 'js/[name]-[hash].js',
+				entryFileNames: 'js/[name].[hash].js',
+				chunkFileNames: 'js/[name].[hash].js',
 				assetFileNames: (assetInfo) => {
-					const info = assetInfo.name.split('.');
-					const ext = info[info.length - 1];
-					if (/png|jpe?g|gif|svg/i.test(ext)) return 'images/[name]-[hash][extname]';
-					if (/woff2?/i.test(ext)) return 'fonts/[name][extname]';
-					return '[ext]/[name]-[hash][extname]';
+					const fileName = assetInfo?.name || '';
+					if (/\.(png|jpe?g|gif|svg|webp)$/i.test(fileName)) return 'images/[name].[hash][extname]';
+					if (/\.(woff2?|ttf|eot|otf)$/i.test(fileName)) return 'fonts/[name][extname]';
+					if (/\.css$/i.test(fileName)) return 'css/[name].[hash][extname]';
+					return 'assets/[name].[hash][extname]';
 				},
 			},
 		},
