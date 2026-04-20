@@ -45,6 +45,40 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(sanitizeBody);   // strip null bytes + control chars from all string fields
 
+// ── Compression & Caching ────────────────────────────────────────────────────
+const compression = require('compression');
+app.use(compression({ 
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  },
+  level: 6 // Balance between compression ratio and speed
+}));
+
+// Cache middleware for static assets
+app.use((req, res, next) => {
+  // Cache API responses very briefly (only GET, not POST/PUT/DELETE)
+  if (req.method === 'GET' && req.path.startsWith('/api/')) {
+    res.set('Cache-Control', 'public, max-age=60'); // 1 minute
+  }
+  next();
+});
+
+// Cache static assets for longer periods
+if (isProd) {
+  app.use((req, res, next) => {
+    // Hash-busted assets (from Vite) can be cached for 1 year
+    if (/\.[0-9a-f]{8}\.(js|css|woff2?)$/i.test(req.path)) {
+      res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+    // HTML, JSON, images get shorter cache
+    else if (/\.(html|json|svg|png|jpg|jpeg|gif|webp)$/i.test(req.path)) {
+      res.set('Cache-Control', 'public, max-age=3600'); // 1 hour
+    }
+    next();
+  });
+}
+
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 app.use(globalLimiter);  // 200 req / 15 min per IP on all routes
 app.use('/api', writeLimiter); // 60 write-ops / min per IP (skips GET/HEAD/OPTIONS)

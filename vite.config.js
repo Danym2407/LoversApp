@@ -243,6 +243,13 @@ export default defineConfig({
 		},
 	},
 	build: {
+		minify: 'terser',
+		terserOptions: {
+			compress: { drop_console: true },
+			mangle: true,
+		},
+		cssCodeSplit: true,
+		sourcemap: false,
 		rollupOptions: {
 			external: [
 				'@babel/parser',
@@ -256,8 +263,19 @@ export default defineConfig({
 					if (id.includes('node_modules/framer-motion/')) return 'vendor-motion';
 					if (id.includes('node_modules/lucide-react/')) return 'vendor-icons';
 					if (id.includes('node_modules/@radix-ui/')) return 'vendor-radix';
+					if (id.includes('node_modules/')) return 'vendor-other';
+				},
+				entryFileNames: 'js/[name]-[hash].js',
+				chunkFileNames: 'js/[name]-[hash].js',
+				assetFileNames: (assetInfo) => {
+					const info = assetInfo.name.split('.');
+					const ext = info[info.length - 1];
+					if (/png|jpe?g|gif|svg/i.test(ext)) return 'images/[name]-[hash][extname]';
+					if (/woff2?/i.test(ext)) return 'fonts/[name][extname]';
+					return '[ext]/[name]-[hash][extname]';
 				},
 			},
-		}
+		},
+		chunkSizeWarningLimit: 600,
 	}
 });
