@@ -6,6 +6,18 @@
 /* ── Base scale ────────────────────────────────────────────────────────────── */
 html {
   font-size: 18px; /* Scales all rem/em-based values (Tailwind, etc.) */
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* #root must NOT have overflow:hidden or transforms — those trap position:fixed */
+#root {
+  min-height: 100%;
 }
 
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
@@ -214,5 +226,81 @@ body {
   }
   .mobile-only-header {
     display: none !important;
+  }
+}
+
+/* ── PageLoader spinner ─────────────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── BottomNav portal: hide on desktop ──────────────────────────────────────── */
+/* The mobile nav is rendered via createPortal to document.body (outside React  */
+/* tree), so Tailwind's lg:hidden cannot reach it — we use a plain CSS rule.    */
+.bottom-nav-mobile {
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 1024px) {
+  .bottom-nav-mobile {
+    display: none !important;
+  }
+}
+
+/* ── Skeleton shimmer for image placeholders ────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.img-skeleton {
+  background: linear-gradient(90deg, #EDE0D0 25%, #F7EEE8 50%, #EDE0D0 75%);
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--r-md);
+}
+
+/* ── Mobile: safe bottom padding for content above glass nav bar ────────────── */
+@media (max-width: 767px) {
+  .app-content > * {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  html {
+    font-size: 16px;
+  }
+}
+
+/* ── Tablet layout (768px – 1023px) ─────────────────────────────────────────── */
+/* Intermediate breakpoint: full-width fluid layout, BottomNav floating dock     */
+@media (min-width: 768px) and (max-width: 1023px) {
+  html {
+    font-size: 17px;
+  }
+
+  /* Remove the mobile "centered card" max-width so content fills the viewport.   */
+  /* PageLayout (maxWidth:430) and DashboardPage (maxWidth:480) use inline styles  */
+  /* so !important is required to override them from CSS.                          */
+  .app-content > * {
+    max-width:     none !important;
+    width:         100% !important;
+    margin-left:   0    !important;
+    margin-right:  0    !important;
+    /* Extra bottom padding to clear the floating dock (bottom:20px + height:64px) */
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* BottomNav portal → floating centered dock */
+  /* Inline styles are overridden with !important because the node is outside React tree */
+  .bottom-nav-mobile {
+    left:      50%   !important;
+    right:     auto  !important;
+    bottom:    20px  !important;
+    transform: translateX(-50%) !important;
+    width:     min(640px, 88vw) !important;
+    border-radius: 28px !important;
+    border:    1.5px solid rgba(255,182,199,0.55) !important;
+    border-top: 1.5px solid rgba(255,182,199,0.55) !important;
+    box-shadow: 0 8px 40px rgba(255,107,138,0.22) !important;
+    background: rgba(255,255,255,0.92) !important;
+    padding-bottom: 0 !important;
   }
 }

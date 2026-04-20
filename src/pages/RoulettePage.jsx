@@ -1,30 +1,12 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Heart, Star, RefreshCw, Calendar, X } from 'lucide-react';
-import { citasDatabase, citasPorCategoria } from '@/data/citas';
+import { Heart, Star, RefreshCw, Calendar, X } from 'lucide-react';
+import { getAllCitasFlat } from '@/data/citas';
+const ALL_CITAS_FLAT = getAllCitasFlat;
 import { api } from '@/lib/api';
-
-const ALL_CITAS_FLAT = (() => {
-  const merged = [...Object.values(citasDatabase).flat(), ...Object.values(citasPorCategoria).flat()];
-  const seen = new Set();
-  return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
-})();
-
-const D = { cream:'#FFF5F7', wine:'#2D1B2E', coral:'#FF6B8A', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#FFD0DC', white:'#FFFFFF', border:'#FFD0DC', muted:'#9B8B95' };
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
-
-function BgDoodles() {
-  return (
-    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
-      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
-  );
-}
+import { D } from '@/design-system/tokens';
+import PageLayout from '@/components/PageLayout';
+import PageHeader from '@/components/PageHeader';
 
 export default function RoulettePage({ navigateTo }) {
   const [pendingDates, setPendingDates] = useState([]);
@@ -37,25 +19,64 @@ export default function RoulettePage({ navigateTo }) {
   const [showEmpty, setShowEmpty] = useState(false);
   const [envelopePhase, setEnvelopePhase] = useState(0); // 0=closed 1=opening 2=revealing
 
-  const checkInList = useCallback((id) => {
-    const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
-    return favs.some(f => f.id === id);
+  // API-loaded sets (source of truth when authenticated)
+  const [likedCitaIds, setLikedCitaIds]         = useState(new Set());
+  const [completedCitaIds, setCompletedCitaIds] = useState(new Set());
+
+  // Load liked & completed from API on mount
+  useEffect(() => {
+    Promise.all([
+      api.getCitaSwipes().catch(() => []),
+      api.getCompletedCitas().catch(() => [])
+    ]).then(([swipes, completed]) => {
+      setLikedCitaIds(new Set(swipes.filter(s => s.action === 'like').map(s => s.cita_id)));
+      setCompletedCitaIds(new Set(completed.map(r => r.cita_id)));
+    });
   }, []);
 
+  const checkInList = useCallback((id) => {
+    if (likedCitaIds.size > 0) return likedCitaIds.has(id);
+    return JSON.parse(localStorage.getItem('favoritesCitas') || '[]').some(f => f.id === id);
+  }, [likedCitaIds]);
+
   const loadPool = useCallback(async (mode) => {
-    const completedIds = new Set(JSON.parse(localStorage.getItem('completedCitas') || '[]'));
-    const manual = JSON.parse(localStorage.getItem('manualDates') || '[]');
-    const manualCompleted = new Set(manual.filter(d => d.status === 'completed').map(d => d.id));
-    const allCompleted = new Set([...completedIds, ...manualCompleted]);
+    // Prefer API state; fall back to localStorage
+    const allCompleted = completedCitaIds.size > 0
+      ? completedCitaIds
+      : (() => {
+          const ids = new Set(JSON.parse(localStorage.getItem('completedCitas') || '[]'));
+          JSON.parse(localStorage.getItem('manualDates') || '[]')
+            .filter(d => d.status === 'completed').forEach(d => ids.add(d.id));
+          return ids;
+        })();
 
     let pool = [];
     if (mode === 'mi_lista') {
-      const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
-      const seen = new Set();
-      pool = [
-        ...favs.map(f => ({ ...f, name: f.name || f.title })),
-        ...manual.map(m => ({ ...m, name: m.name || m.title }))
-      ].filter(d => { if (seen.has(d.id) || allCompleted.has(d.id)) return false; seen.add(d.id); return true; });
+      if (likedCitaIds.size > 0) {
+        // API source of truth for liked citas
+        pool = [...likedCitaIds]
+          .filter(id => !allCompleted.has(id))
+          .map(id => ALL_CITAS_FLAT.find(c => c.id === id))
+          .filter(Boolean)
+          .map(c => ({ ...c, name: c.title }));
+        // Also include manual dates from localStorage (custom citas)
+        const manual = JSON.parse(localStorage.getItem('manualDates') || '[]');
+        const seen = new Set(pool.map(d => d.id));
+        manual.filter(m => !allCompleted.has(m.id) && !seen.has(m.id))
+          .forEach(m => { seen.add(m.id); pool.push({ ...m, name: m.name || m.title }); });
+      } else {
+        // localStorage fallback (unauthenticated)
+        const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+        const manual = JSON.parse(localStorage.getItem('manualDates') || '[]');
+        const seen = new Set();
+        pool = [
+          ...favs.map(f => ({ ...f, name: f.name || f.title })),
+          ...manual.map(m => ({ ...m, name: m.name || m.title }))
+        ].filter(d => {
+          if (seen.has(d.id) || allCompleted.has(d.id)) return false;
+          seen.add(d.id); return true;
+        });
+      }
     } else if (mode === 'match') {
       try {
         const matchIds = await api.getSwipeMatches();
@@ -70,7 +91,7 @@ export default function RoulettePage({ navigateTo }) {
       pool = ALL_CITAS_FLAT.filter(c => !allCompleted.has(c.id));
     }
     setPendingDates(pool);
-  }, []);
+  }, [likedCitaIds, completedCitaIds]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem('rouletteState');
@@ -111,20 +132,24 @@ export default function RoulettePage({ navigateTo }) {
 
   const addToMyList = () => {
     if (!selectedDate) return;
-    const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
-    if (!favs.find(f => f.id === selectedDate.id)) {
-      const citaToSave = { ...selectedDate, name: selectedDate.name || selectedDate.title };
-      localStorage.setItem('favoritesCitas', JSON.stringify([citaToSave, ...favs]));
-    }
+    // API is the source of truth — only write to localStorage as unauthenticated fallback
     const token = localStorage.getItem('loversappToken');
-    if (token) api.swipeCita(selectedDate.id, 'like').catch(() => {});
+    if (token) {
+      api.swipeCita(selectedDate.id, 'like').catch(() => {});
+    } else {
+      const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+      if (!favs.find(f => f.id === selectedDate.id)) {
+        localStorage.setItem('favoritesCitas', JSON.stringify([{ ...selectedDate, name: selectedDate.name || selectedDate.title }, ...favs]));
+      }
+    }
+    setLikedCitaIds(prev => new Set([...prev, selectedDate.id]));
     setIsInMyList(true);
   };
 
   const goToDetail = () => {
-    if (!selectedDate) return;
-    sessionStorage.setItem('rouletteState', JSON.stringify({ gameState: 'card', selectedDate, sourceMode, rotation, prevDate }));
-    navigateTo('detail', selectedDate.id, 'roulette');
+    // Navigate to DatesListPage (shows the user's liked citas from the 100 citas system)
+    // NOTE: DateDetailPage is for the bucket-list system (dates.js) — different IDs
+    navigateTo('dates');
   };
 
   const BUDGET_LABEL = { 1: '💰 Muy económico', 2: '💳 Económico', 3: '🎯 Moderado', 4: '✨ Premium', 5: '💎 Lujo', low: '💳 Económico', medium: '🎯 Moderado', high: '✨ Premium' };
@@ -140,28 +165,13 @@ export default function RoulettePage({ navigateTo }) {
   const SEGMENTS = 12;
 
   return (
-    <div style={{ background: D.cream, minHeight: '100vh', maxWidth: 430, margin: '0 auto', paddingBottom: 40, position: 'relative', overflow: 'hidden' }}>
-      <style>{STYLE}</style>
-      <BgDoodles />
-
-      {/* Header */}
-      <div style={{ padding: '48px 20px 18px', background: D.cream, borderBottom: `1.5px solid ${D.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => window.history.back()}
-              style={{ width: 32, height: 32, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5} />
-            </button>
-            <span className="caveat" style={{ fontSize: 12, color: '#C4AAB0', fontWeight: 600 }}>Inicio &gt; Ruleta</span>
-          </div>
-        </div>
-        <h1 className="lora" style={{ fontSize: 30, fontWeight: 700, color: D.wine, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          Ruleta
-          <img src="/images/ruleta.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-        </h1>
-        <img src="/images/subrayado1.png" alt="" style={{ display: 'block', width: '65%', maxWidth: 220, margin: '4px 0 8px' }} />
-        <p className="caveat" style={{ fontSize: 14, color: D.muted, margin: 0 }}>{pendingDates.length} citas disponibles 💕</p>
-      </div>
+    <PageLayout paddingBottom={40}>
+      <PageHeader
+        breadcrumb="Ruleta"
+        title="Ruleta"
+        icon="/images/ruleta.png"
+        subtitle={`${pendingDates.length} citas disponibles 💕`}
+      />
 
       <div style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 1 }}>
         <AnimatePresence mode="wait">
@@ -469,6 +479,6 @@ export default function RoulettePage({ navigateTo }) {
           </>
         )}
       </AnimatePresence>
-    </div>
+    </PageLayout>
   );
 }

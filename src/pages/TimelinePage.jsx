@@ -1,22 +1,9 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronRight, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getTimelineEvents } from '@/lib/eventSync';
-
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
-
-function BgDoodles() {
-  return (
-    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.25}} viewBox="0 0 390 820" fill="none">
-      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M15 340 Q35 335 43 348" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
-  );
-}
+import PageLayout from '@/components/PageLayout';
+import PageHeader from '@/components/PageHeader';
 
 export default function TimelinePage({ navigateTo }) {
   const [events, setEvents]           = useState([]);
@@ -66,37 +53,19 @@ export default function TimelinePage({ navigateTo }) {
   const photos = selectedEvent ? resolvePhotos(selectedEvent) : [];
 
   return (
-    <div style={{background:'#FFF5F7',minHeight:'100vh',maxWidth:430,margin:'0 auto',position:'relative',overflow:'hidden',paddingBottom:88,fontFamily:"'Lora',Georgia,serif"}}>
-      <style>{STYLE}</style>
-      <BgDoodles />
-
-      {/* ── HEADER ── */}
-      <div style={{padding:'48px 20px 18px',background:'#FFF5F7',borderBottom:'1.5px solid #FFD0DC'}}>
-        {/* Top row: back + breadcrumb */}
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
-          <button onClick={() => window.history.back()}
-            style={{width:32,height:32,borderRadius:'50%',background:'#fff',border:'1.5px solid #FFD0DC',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>
-            <ChevronLeft size={14} color="#FF6B8A" strokeWidth={2.5}/>
-          </button>
-          <span className="caveat" style={{fontSize:12,color:'#C4AAB0',fontWeight:600}}>Inicio &gt; Línea del Tiempo</span>
-        </div>
-
-        {/* Title + add button */}
-        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
-          <div style={{flex:1,minWidth:0}}>
-            <h1 className="lora" style={{fontSize:30,fontWeight:700,color:'#2D1B2E',margin:0,lineHeight:1.1,display:'flex',alignItems:'center',gap:8}}>
-              Línea del Tiempo
-              <img src="/images/linea-tiempo.png" alt="" style={{width:28,height:28,objectFit:'contain'}}/>
-            </h1>
-            <img src="/images/subrayado1.png" alt="" style={{display:'block',width:'65%',maxWidth:250,margin:'4px 0 8px'}}/>
-            <p className="caveat" style={{fontSize:14,color:'#9B8B95',margin:0}}>Nuestra historia juntos ✨</p>
-          </div>
+    <PageLayout>
+      <PageHeader
+        breadcrumb="Línea del Tiempo"
+        title="Línea del Tiempo"
+        icon="/images/linea-tiempo.png"
+        subtitle="Nuestra historia juntos ✨"
+        titleAction={
           <motion.button whileTap={{scale:0.95}} onClick={() => navigateTo('moments')}
             style={{flexShrink:0,width:40,height:40,borderRadius:'50%',background:'#FF6B8A',border:'2px solid #FF6B8A',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',boxShadow:'3px 3px 0 rgba(196,68,100,0.28)'}}>
             <Plus size={18} color="#fff" strokeWidth={2.5}/>
           </motion.button>
-        </div>
-      </div>
+        }
+      />
 
       <div style={{padding:'20px',position:'relative',zIndex:1}}>
         {sorted.length === 0 ? (
@@ -207,6 +176,6 @@ export default function TimelinePage({ navigateTo }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </PageLayout>
   );
 }

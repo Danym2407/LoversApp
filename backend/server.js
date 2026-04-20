@@ -3,38 +3,58 @@ const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
 const path    = require('path');
-const rateLimit = require('express-rate-limit');
+
+const { globalLimiter, writeLimiter } = require('./middleware/rateLimit');
+const sanitizeBody = require('./middleware/sanitize');
 
 const app    = express();
 const PORT   = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
 
-// ── Security middleware ────────────────────────────────────────────────
-app.use(helmet({ contentSecurityPolicy: false }));
+// ── Security headers (helmet) ─────────────────────────────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: false,          // Managed by the SPA / CDN layer
+  crossOriginEmbedderPolicy: false,      // Allows embedding assets without COEP issues
+  hsts: isProd
+    ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+    : false,
+}));
+
+// ── CORS ──────────────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+if (!isProd) {
+  ALLOWED_ORIGINS.push('http://localhost:5173', 'http://localhost:3000');
+} else if (process.env.FRONTEND_URL) {
+  ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
+}
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:5173',
-  ],
+  origin: (origin, cb) => {
+    // Allow server-to-server (no Origin header) and listed origins
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
 }));
-app.use(express.json({ limit: '2mb' }));
 
-// Global rate limit — 200 req / 15 min per IP
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Demasiadas peticiones, intenta más tarde.' },
-}));
+// ── Body parsing & input sanitization ────────────────────────────────────────
+app.use(express.json({ limit: '2mb' }));
+app.use(sanitizeBody);   // strip null bytes + control chars from all string fields
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+app.use(globalLimiter);  // 200 req / 15 min per IP on all routes
+app.use('/api', writeLimiter); // 60 write-ops / min per IP (skips GET/HEAD/OPTIONS)
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',            require('./routes/auth'));
 app.use('/api/users',           require('./routes/users'));
 app.use('/api/couple-dates',    require('./routes/couple-dates'));
 app.use('/api/cita-swipes',     require('./routes/cita-swipes'));
+app.use('/api/citas',           require('./routes/citas'));
 app.use('/api/letters',         require('./routes/letters'));
 app.use('/api/moments',         require('./routes/moments'));
 app.use('/api/challenges',      require('./routes/challenges'));
@@ -43,6 +63,8 @@ app.use('/api/timeline',        require('./routes/timeline'));
 app.use('/api/important-dates', require('./routes/important-dates'));
 app.use('/api/countdowns',      require('./routes/countdowns'));
 app.use('/api/admin',           require('./routes/admin'));
+app.use('/api/achievements',    require('./routes/achievements'));
+app.use('/api/games',           require('./routes/games'));
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));

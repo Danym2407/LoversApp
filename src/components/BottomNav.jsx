@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Home, HeartHandshake, Camera, Gamepad2, User, Settings, LogOut, HelpCircle, Bell, Search, ChevronDown } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -17,53 +18,96 @@ export default function BottomNav({ currentPage, navigateTo, onLogout, isAuthent
     try {
       const raw = localStorage.getItem('loversappUser');
       if (raw) setUser(JSON.parse(raw));
+      else setUser(null);
     } catch {}
-  }, []);
+  }, [isAuthenticated]);
 
   const failImg = (key) => setImgFails(p => ({ ...p, [key]: true }));
 
-  const couple = (user?.name && user?.partner)
-    ? `${user.name.trim().split(/\s+/)[0]} & ${user.partner.trim().split(/\s+/)[0]}`
+  const firstName = user?.name ? user.name.trim().split(/\s+/)[0] : null;
+  const partnerFirst = (user?.partner_name || user?.partner)
+    ? (user.partner_name || user.partner).trim().split(/\s+/)[0]
+    : null;
+  const couple = firstName
+    ? (partnerFirst ? `${firstName} & ${partnerFirst}` : firstName)
     : 'LoversApp';
 
   const NavIcon = ({ imgKey, FallbackIcon, active }) => (
     !imgFails[imgKey]
       ? <img src={`/images/nav-${imgKey}.png`} alt="" onError={() => failImg(imgKey)}
-          style={{ width: 26, height: 26, objectFit: 'contain', flexShrink: 0,
-            filter: active ? 'brightness(0) invert(1)' : 'none' }} />
-      : <FallbackIcon size={20} style={{ color: active ? '#FFFFFF' : '#9A8A8A', strokeWidth: active ? 2.5 : 1.8, flexShrink: 0 }} />
+          style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0,
+            filter: active
+              ? 'invert(41%) sepia(85%) saturate(500%) hue-rotate(306deg) brightness(105%)'
+              : 'invert(80%) sepia(15%) saturate(300%) hue-rotate(306deg) brightness(105%)' }} />
+      : <FallbackIcon size={20} style={{ color: active ? '#FF6B8A' : '#FFD0DC', strokeWidth: active ? 2.5 : 1.8, flexShrink: 0 }} />
+  );
+
+  // Portal the mobile nav directly to document.body so it can never be
+  // trapped inside an ancestor with transform / filter / overflow.
+  const mobileNav = createPortal(
+    <nav
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 99999,
+        background: 'rgba(255,255,255,0.78)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        borderTop: '1.5px solid rgba(255,182,199,0.55)',
+        boxShadow: '0 -4px 28px rgba(255,107,138,0.14)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+      // Hide on desktop via inline media workaround — lg:hidden class won't apply
+      // because this node is outside the React subtree. Use a CSS class instead.
+      className="bottom-nav-mobile"
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 64 }}>
+        {NAV_ITEMS.map(({ id, label, Icon }) => {
+          const active = currentPage === id;
+          return (
+            <button key={id} onClick={() => navigateTo(id)}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 3, padding: '6px 12px', border: 'none', background: 'transparent',
+                cursor: 'pointer', flex: 1, minWidth: 0, position: 'relative',
+              }}>
+              {active && (
+                <span style={{
+                  position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
+                  width: 4, height: 4, borderRadius: '50%', background: '#FF6B8A',
+                }} />
+              )}
+              <Icon
+                size={20}
+                style={{
+                  color: active ? '#FF6B8A' : '#FFD0DC',
+                  strokeWidth: active ? 2.5 : 1.8,
+                  transition: 'color 0.2s ease',
+                }}
+              />
+              <span style={{
+                fontFamily: "'Inter',sans-serif",
+                fontSize: 10,
+                fontWeight: active ? 700 : 400,
+                color: active ? '#FF6B8A' : '#C4A8B0',
+                letterSpacing: 0.2,
+                transition: 'color 0.2s ease',
+              }}>
+                {label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>,
+    document.body
   );
 
   return (
     <>
-      {/* -- MOBILE: frosted glass bottom bar (sin cambios) --------- */}
-      <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50"
-        style={{
-          background: 'rgba(253,246,236,0.82)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
-          borderTop: '1px solid rgba(196,151,62,0.12)',
-          boxShadow: '0 -2px 16px rgba(28,14,16,0.06)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: 64 }}>
-          {NAV_ITEMS.map(({ id, label, Icon }) => {
-            const active = currentPage === id;
-            return (
-              <button key={id} onClick={() => navigateTo(id)}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: 3, padding: '6px 12px', border: 'none', background: 'transparent', cursor: 'pointer', flex: 1, minWidth: 0 }}>
-                <Icon size={20} style={{ color: active ? '#C44455' : '#B0A0A8', strokeWidth: active ? 2.5 : 1.8 }} />
-                <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: active ? 700 : 400, color: active ? '#C44455' : '#9A8A8A', letterSpacing: 0.2 }}>
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      {mobileNav}
 
       {/* -- DESKTOP: left sidebar ----------------------------------- */}
       <nav className="hidden lg:flex fixed top-0 bottom-0 left-0 flex-col z-50 w-56"
@@ -100,14 +144,14 @@ export default function BottomNav({ currentPage, navigateTo, onLogout, isAuthent
             <img src="/images/subrayado1.png" alt="" style={{ display: 'block', width: '40%', height: 'auto', margin: '0 0 6px 14px', objectFit: 'contain', pointerEvents: 'none' }} />
             <div style={{ height: 1, background: '#EDE0D0', margin: '0 8px 8px' }} />
 
-            <button onClick={() => navigateTo('profile')} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '10px 14px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 14, width: '100%', textAlign: 'left' }}>
-              <NavIcon imgKey="ajustes" FallbackIcon={Settings} active={false} />
-              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 500, color: '#5A4A50' }}>Ajustes</span>
+            <button onClick={() => navigateTo('settings')} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '10px 14px', border: 'none', background: currentPage === 'settings' ? '#C44455' : 'transparent', cursor: 'pointer', borderRadius: 14, width: '100%', textAlign: 'left' }}>
+              <NavIcon imgKey="ajustes" FallbackIcon={Settings} active={currentPage === 'settings'} />
+              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: currentPage === 'settings' ? 700 : 500, color: currentPage === 'settings' ? '#FFFFFF' : '#5A4A50' }}>Ajustes</span>
             </button>
 
-            <button onClick={() => {}} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '10px 14px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 14, width: '100%', textAlign: 'left' }}>
-              <NavIcon imgKey="ayuda" FallbackIcon={HelpCircle} active={false} />
-              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 500, color: '#5A4A50' }}>Ayuda</span>
+            <button onClick={() => navigateTo('help')} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '10px 14px', border: 'none', background: currentPage === 'help' ? '#C44455' : 'transparent', cursor: 'pointer', borderRadius: 14, width: '100%', textAlign: 'left' }}>
+              <NavIcon imgKey="ayuda" FallbackIcon={HelpCircle} active={currentPage === 'help'} />
+              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: currentPage === 'help' ? 700 : 500, color: currentPage === 'help' ? '#FFFFFF' : '#5A4A50' }}>Ayuda</span>
             </button>
 
             {isAuthenticated ? (
@@ -127,7 +171,7 @@ export default function BottomNav({ currentPage, navigateTo, onLogout, isAuthent
         {/* Sticky note */}
         <div style={{ padding: '0 14px 22px' }}>
           <div style={{ borderRadius: 16, overflow: 'hidden' }}>
-            <img src="/images/el-mejor-lugar-para-nosotros.png" alt="El mejor lugar para nosotros" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} />
+            <img src="/images/el-mejor-lugar-para-nosotros.png" alt="El mejor lugar para nosotros" loading="lazy" style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }} />
           </div>
         </div>
       </nav>

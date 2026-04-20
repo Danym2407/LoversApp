@@ -15,6 +15,7 @@ const D = {
   muted:  '#9B8B95',
   text:   '#EDE0D0',
   danger: '#E05555',
+  purple: '#9B7BCC',
 };
 
 function adminFetch(path, secret, options = {}) {
@@ -60,6 +61,62 @@ function Avatar({ name, size = 36 }) {
   );
 }
 
+function RoleBadge({ role }) {
+  const cfg = {
+    admin:     { bg: '#3A1520', color: D.coral,  label: 'Admin'  },
+    moderator: { bg: '#1A2A3A', color: D.blue,   label: 'Mod'    },
+    user:      { bg: '#1A2A1A', color: D.green,  label: 'User'   },
+  };
+  const c = cfg[role] || cfg.user;
+  return (
+    <span style={{ background: c.bg, color: c.color, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+      {c.label}
+    </span>
+  );
+}
+
+function ActionBadge({ action = '' }) {
+  const color = action.includes('hard') || action.includes('delete') ? D.danger
+              : action.includes('restore')  ? D.green
+              : action.includes('role')     ? D.purple
+              : action.includes('db_row')   ? D.blue
+              : D.gold;
+  return (
+    <span style={{ background: `${color}22`, color, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
+      {action}
+    </span>
+  );
+}
+
+function ConfirmModal({ title, message, onConfirm, onCancel, danger = false, requireTyping = null, confirmLabel = 'Confirmar' }) {
+  const [text, setText] = useState('');
+  const canConfirm = requireTyping ? text === requireTyping : true;
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20000, fontFamily: 'Lora, Georgia, serif' }}>
+      <div style={{ background: D.card, borderRadius: 16, padding: '28px 24px', border: `1px solid ${danger ? D.danger : D.border}`, maxWidth: 400, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.7)' }}>
+        <h3 style={{ color: danger ? D.danger : D.text, margin: '0 0 10px', fontSize: 17 }}>{title}</h3>
+        <p style={{ color: D.muted, margin: '0 0 18px', fontSize: 13, lineHeight: 1.6 }}>{message}</p>
+        {requireTyping && (
+          <div style={{ marginBottom: 18 }}>
+            <p style={{ color: D.muted, fontSize: 12, marginBottom: 6 }}>
+              Escribe <code style={{ color: D.danger }}>{requireTyping}</code> para confirmar:
+            </p>
+            <input value={text} onChange={e => setText(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${D.border}`, background: D.wine, color: D.text, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onCancel} style={{ padding: '9px 18px', borderRadius: 8, border: `1px solid ${D.border}`, background: 'transparent', color: D.muted, cursor: 'pointer', fontSize: 13 }}>Cancelar</button>
+          <button onClick={onConfirm} disabled={!canConfirm} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: danger ? D.danger : D.coral, color: '#fff', cursor: canConfirm ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 700, opacity: canConfirm ? 1 : 0.5 }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Login Screen ───────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [secret, setSecret] = useState('');
@@ -92,7 +149,7 @@ function LoginScreen({ onLogin }) {
         boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🛡️</div>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
           <h1 style={{ color: D.coral, fontSize: 24, fontWeight: 700, margin: 0 }}>Panel de Admin</h1>
           <p style={{ color: D.muted, fontSize: 14, margin: '8px 0 0' }}>LoversApp — Acceso restringido</p>
         </div>
@@ -132,26 +189,23 @@ function LoginScreen({ onLogin }) {
 // ── Stats Cards ────────────────────────────────────────────────────────────────
 function StatsGrid({ stats }) {
   const cards = [
-    { label: 'Usuarios', value: stats.users,          icon: '👥', color: D.blue  },
-    { label: 'Citas realizadas', value: stats.datesDone,     icon: '💑', color: D.coral },
-    { label: 'Cartas',   value: stats.letters,        icon: '✉️',  color: D.gold  },
-    { label: 'Momentos', value: stats.moments,        icon: '📸', color: D.green },
-    { label: 'Retos completados', value: stats.challengesDone, icon: '🏆', color: '#B07BCC' },
-    { label: 'Swipes citas', value: stats.swipes,     icon: '💘', color: '#E07BAA' },
+    { label: 'Usuarios activos', value: stats.users,          icon: '👥', color: D.blue   },
+    { label: 'Citas realizadas', value: stats.datesDone,      icon: '💑', color: D.coral  },
+    { label: 'Cartas',           value: stats.letters,        icon: '💌',  color: D.gold   },
+    { label: 'Momentos',         value: stats.moments,        icon: '📸', color: D.green  },
+    { label: 'Retos completos',  value: stats.challengesDone, icon: '🎯', color: D.purple },
+    { label: 'Swipes',           value: stats.swipes,         icon: '💘', color: '#E07BAA' },
+    { label: 'Archivados',       value: stats.deletedUsers,   icon: '📦', color: D.muted  },
+    { label: 'Nuevos (7d)',      value: stats.recentSignups,  icon: '🆕', color: D.gold   },
+    { label: 'Acciones admin',   value: stats.totalLogs,      icon: '📋', color: D.blue   },
   ];
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-      gap: 12, marginBottom: 28,
-    }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 24 }}>
       {cards.map(c => (
-        <div key={c.label} style={{
-          background: D.card, borderRadius: 14, padding: '18px 16px',
-          border: `1px solid ${D.border}`, textAlign: 'center',
-        }}>
-          <div style={{ fontSize: 28 }}>{c.icon}</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: c.color, lineHeight: 1.2, marginTop: 4 }}>{c.value}</div>
-          <div style={{ fontSize: 12, color: D.muted, marginTop: 2 }}>{c.label}</div>
+        <div key={c.label} style={{ background: D.card, borderRadius: 12, padding: '16px 14px', border: `1px solid ${D.border}`, textAlign: 'center' }}>
+          <div style={{ fontSize: 24 }}>{c.icon}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: c.color, lineHeight: 1.2, marginTop: 4 }}>{c.value ?? '—'}</div>
+          <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>{c.label}</div>
         </div>
       ))}
     </div>
@@ -172,10 +226,46 @@ const DATA_TABS = [
   { key: 'countdown', label: 'Countdowns' },
 ];
 
-function UserModal({ user, secret, onClose, onDelete }) {
+function UserDetailModal({ user, secret, onClose, onAction }) {
   const [tab, setTab]     = useState('perfil');
   const [data, setData]   = useState({});
   const [loading, setLoading] = useState({});
+  const [roleChanging, setRoleChanging] = useState(false);
+  const [confirm, setConfirm] = useState(null);
+  const [actionErr, setActionErr] = useState('');
+
+  const handleRoleChange = async role => {
+    setRoleChanging(true); setActionErr('');
+    try {
+      await adminFetch(`/users/${user.id}/role`, secret, { method: 'PATCH', body: JSON.stringify({ role }) });
+      onAction('role_changed', { ...user, role });
+    } catch (e) { setActionErr(e.message); }
+    finally { setRoleChanging(false); }
+  };
+  const handleSoftDelete = () => setConfirm({
+    title: 'Archivar usuario',
+    message: `¿Archivar a ${user.name || user.email}? Podrá restaurarse más tarde.`,
+    danger: true, confirmLabel: 'Archivar',
+    onConfirm: async () => {
+      setConfirm(null);
+      try { await adminFetch(`/users/${user.id}`, secret, { method: 'DELETE' }); onAction('soft_deleted', user); onClose(); }
+      catch (e) { setActionErr(e.message); }
+    },
+  });
+  const handleRestore = async () => {
+    try { await adminFetch(`/users/${user.id}/restore`, secret, { method: 'POST' }); onAction('restored', user); onClose(); }
+    catch (e) { setActionErr(e.message); }
+  };
+  const handleHardDelete = () => setConfirm({
+    title: 'Eliminar permanentemente',
+    message: `Borrará a ${user.name || user.email} y TODOS sus datos de forma irreversible.`,
+    danger: true, confirmLabel: 'Eliminar para siempre', requireTyping: 'DELETE_PERMANENTLY',
+    onConfirm: async () => {
+      setConfirm(null);
+      try { await adminFetch(`/users/${user.id}/hard`, secret, { method: 'DELETE', body: JSON.stringify({ confirm: 'DELETE_PERMANENTLY' }) }); onAction('hard_deleted', user); onClose(); }
+      catch (e) { setActionErr(e.message); }
+    },
+  });
 
   const load = useCallback(async (key) => {
     if (data[key] !== undefined) return;
@@ -235,14 +325,16 @@ function UserModal({ user, secret, onClose, onDelete }) {
   );
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
-        zIndex: 9999, display: 'flex', alignItems: 'flex-end',
-        fontFamily: 'Lora, Georgia, serif',
-      }}
-    >
+    <>
+      {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+          zIndex: 9999, display: 'flex', alignItems: 'flex-end',
+          fontFamily: 'Lora, Georgia, serif',
+        }}
+      >
       <div
         onClick={e => e.stopPropagation()}
         style={{
@@ -258,25 +350,24 @@ function UserModal({ user, secret, onClose, onDelete }) {
         }}>
           <Avatar name={user.name} size={46} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: D.text, fontWeight: 700, fontSize: 17, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ color: D.text, fontWeight: 700, fontSize: 17, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</span>
+              <RoleBadge role={user.role} />
+              {user.is_deleted ? <span style={{ background: '#3A1010', color: D.danger, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>Archivado</span> : null}
+            </div>
             <div style={{ color: D.muted, fontSize: 12 }}>{user.email}</div>
             {user.partner_name && <div style={{ color: D.coral, fontSize: 12 }}>💕 {user.partner_name}</div>}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => { if (window.confirm(`¿Eliminar usuario ${user.name || user.email} y todos sus datos?`)) onDelete(user.id); }}
-              style={{ padding: '7px 14px', background: D.danger, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
-              Eliminar
-            </button>
-            <button
-              onClick={onClose}
-              style={{ padding: '7px 14px', background: D.border, color: D.text, border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}
-            >
-              ✕
-            </button>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {user.is_deleted
+              ? <button onClick={handleRestore} style={{ padding: '7px 12px', background: '#1A3A1A', color: D.green, border: `1px solid ${D.green}40`, borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Restaurar</button>
+              : <button onClick={handleSoftDelete} style={{ padding: '7px 12px', background: '#2A1515', color: D.danger, border: `1px solid ${D.danger}40`, borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Archivar</button>
+            }
+            <button onClick={handleHardDelete} style={{ padding: '7px 12px', background: D.danger, color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Borrar</button>
+            <button onClick={onClose} style={{ padding: '7px 12px', background: D.border, color: D.text, border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>✕</button>
           </div>
         </div>
+        {actionErr && <div style={{ background: '#3A1010', color: D.danger, padding: '8px 20px', fontSize: 13 }}>{actionErr}</div>}
 
         {/* Tabs */}
         <div style={{ display: 'flex', overflowX: 'auto', borderBottom: `1px solid ${D.border}`, flexShrink: 0 }}>
@@ -301,6 +392,7 @@ function UserModal({ user, secret, onClose, onDelete }) {
               {[
                 ['ID', user.id],
                 ['Email', user.email],
+                ['Verificado', user.email_verified ? '✓ Sí' : '✗ No'],
                 ['Nombre', user.name || '—'],
                 ['Pareja', user.partner_name || '—'],
                 ['Código', user.partner_code || '—'],
@@ -316,6 +408,19 @@ function UserModal({ user, secret, onClose, onDelete }) {
                   <span style={{ color: D.text, fontSize: 13, wordBreak: 'break-all' }}>{v}</span>
                 </div>
               ))}
+              <div style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: `1px solid ${D.border}22`, alignItems: 'center' }}>
+                <span style={{ color: D.muted, fontSize: 13, width: 140, flexShrink: 0 }}>Rol</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <RoleBadge role={user.role} />
+                  <select defaultValue={user.role || 'user'} onChange={e => handleRoleChange(e.target.value)} disabled={roleChanging}
+                    style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${D.border}`, background: D.wine, color: D.text, fontSize: 12, cursor: 'pointer' }}>
+                    <option value="user">user</option>
+                    <option value="moderator">moderator</option>
+                    <option value="admin">admin</option>
+                  </select>
+                  {roleChanging && <span style={{ color: D.muted, fontSize: 12 }}>Guardando…</span>}
+                </div>
+              </div>
               {user.personality_test && (
                 <div style={{ marginTop: 14 }}>
                   <div style={{ color: D.muted, fontSize: 12, marginBottom: 6 }}>Test de personalidad (JSON)</div>
@@ -338,7 +443,7 @@ function UserModal({ user, secret, onClose, onDelete }) {
             loading.citas
               ? <p style={{ color: D.muted, textAlign: 'center' }}>Cargando…</p>
               : <Table
-                  cols={['#', 'Cita ID', 'Estado', 'Fecha', 'Lugar', 'P1 ⭐', 'P1 ❤️', 'Reseña']}
+                  cols={['#', 'Cita ID', 'Estado', 'Fecha', 'Lugar', 'P1 �?', 'P1 🎯�?', 'Reseña']}
                   rows={data.citas || []}
                   renderRow={r => [
                     r.id,
@@ -363,7 +468,7 @@ function UserModal({ user, secret, onClose, onDelete }) {
                     r.id,
                     r.from_name,
                     r.title,
-                    r.favorite ? '❤️' : '—',
+                    r.favorite ? '🎯�?' : '—',
                     fmt(r.created_at),
                   ]}
                 />
@@ -380,7 +485,7 @@ function UserModal({ user, secret, onClose, onDelete }) {
                     r.title,
                     r.description ? r.description.slice(0, 60) + (r.description.length > 60 ? '…' : '') : '—',
                     fmt(r.date),
-                    r.favorite ? '❤️' : '—',
+                    r.favorite ? '🎯�?' : '—',
                   ]}
                 />
           )}
@@ -456,7 +561,7 @@ function UserModal({ user, secret, onClose, onDelete }) {
                     renderRow={r => [
                       r.cita_id,
                       r.action === 'like'
-                        ? <span style={{ color: D.green }}>❤️ Like</span>
+                        ? <span style={{ color: D.green }}>🎯�? Like</span>
                         : <span style={{ color: D.danger }}>✗ Dislike</span>,
                       fmtTime(r.swiped_at),
                     ]}
@@ -488,190 +593,458 @@ function UserModal({ user, secret, onClose, onDelete }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
-// ── Main Admin Dashboard ───────────────────────────────────────────────────────
-export default function AdminPage({ navigateTo }) {
-  const [secret, setSecret]         = useState(() => sessionStorage.getItem('adminSecret') || '');
-  const [authed, setAuthed]         = useState(false);
-  const [stats, setStats]           = useState(null);
-  const [users, setUsers]           = useState([]);
-  const [search, setSearch]         = useState('');
-  const [selected, setSelected]     = useState(null);
-  const [loadingData, setLoadingData] = useState(false);
-  const [error, setError]           = useState('');
-
-  const load = useCallback(async () => {
-    setLoadingData(true); setError('');
-    try {
-      const [s, u] = await Promise.all([
-        adminFetch('/stats', secret),
-        adminFetch('/users', secret),
-      ]);
-      setStats(s); setUsers(u);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoadingData(false);
-    }
-  }, [secret]);
-
-  const handleLogin = (s) => {
-    setSecret(s);
-    sessionStorage.setItem('adminSecret', s);
-    setAuthed(true);
-  };
-
-  useEffect(() => {
-    if (authed) load();
-  }, [authed, load]);
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('adminSecret');
-    setAuthed(false); setSecret(''); setStats(null); setUsers([]);
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await adminFetch(`/users/${id}`, secret, { method: 'DELETE' });
-      setUsers(u => u.filter(x => x.id !== id));
-      setSelected(null);
-    } catch (e) {
-      alert('Error al eliminar: ' + e.message);
-    }
-  };
-
-  if (!authed) return <LoginScreen onLogin={handleLogin} />;
-
-  const filtered = users.filter(u =>
-    !search.trim() ||
-    (u.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (u.email || '').toLowerCase().includes(search.toLowerCase())
-  );
-
+// ── Overview Section ──────────────────────────────────────────────────────────
+function OverviewSection({ stats, recentLogs }) {
   return (
-    <div style={{ minHeight: '100dvh', background: D.bg, fontFamily: 'Lora, Georgia, serif', color: D.text }}>
-
-      {/* Top bar */}
-      <div style={{
-        background: D.card, borderBottom: `1px solid ${D.border}`,
-        padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
-        position: 'sticky', top: 0, zIndex: 100,
-      }}>
-        <button onClick={() => navigateTo('home')} style={{ background: 'none', border: 'none', color: D.muted, cursor: 'pointer', fontSize: 20, padding: 0 }}>←</button>
-        <span style={{ fontSize: 20 }}>🛡️</span>
-        <span style={{ fontWeight: 700, fontSize: 17, color: D.coral, flex: 1 }}>Panel de Administración</span>
-        <button onClick={load} disabled={loadingData} style={{
-          padding: '6px 14px', background: D.border, border: 'none',
-          color: D.text, borderRadius: 8, fontSize: 13, cursor: 'pointer',
-        }}>
-          {loadingData ? '…' : '⟳ Actualizar'}
-        </button>
-        <button onClick={handleLogout} style={{
-          padding: '6px 14px', background: '#3A1010', border: 'none',
-          color: D.danger, borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 600,
-        }}>
-          Salir
-        </button>
-      </div>
-
-      <div style={{ padding: '20px', maxWidth: 1100, margin: '0 auto' }}>
-        {error && (
-          <div style={{ background: '#3A1010', border: `1px solid ${D.danger}`, borderRadius: 10, padding: '12px 16px', marginBottom: 20, color: D.danger, fontSize: 14 }}>
-            {error}
+    <div>
+      {stats && <StatsGrid stats={stats} />}
+      {recentLogs && recentLogs.length > 0 && (
+        <div style={{ background: D.card, borderRadius: 14, border: `1px solid ${D.border}`, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${D.border}` }}>
+            <span style={{ color: D.muted, fontSize: 12, fontWeight: 600 }}>ACTIVIDAD RECIENTE</span>
           </div>
-        )}
-
-        {stats && <StatsGrid stats={stats} />}
-
-        {/* Users section */}
-        <div style={{ background: D.card, borderRadius: 16, border: `1px solid ${D.border}`, overflow: 'hidden' }}>
-          <div style={{
-            padding: '16px 20px', borderBottom: `1px solid ${D.border}`,
-            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-          }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: D.text, flex: 1 }}>
-              Usuarios ({filtered.length})
-            </h2>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar por nombre o email…"
-              style={{
-                padding: '8px 14px', borderRadius: 8, border: `1px solid ${D.border}`,
-                background: D.wine, color: D.text, fontSize: 13, width: 240, outline: 'none',
-              }}
-            />
-          </div>
-
-          {loadingData ? (
-            <div style={{ padding: 40, textAlign: 'center', color: D.muted }}>Cargando usuarios…</div>
-          ) : filtered.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: D.muted }}>No hay usuarios</div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: D.wine }}>
-                    {['Usuario', 'Email', 'Pareja', 'Creado', 'Último acceso', 'Datos', ''].map(h => (
-                      <th key={h} style={{ padding: '10px 14px', color: D.muted, fontSize: 12, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((u, i) => (
-                    <tr
-                      key={u.id}
-                      style={{ borderBottom: `1px solid ${D.border}22`, background: i % 2 === 0 ? 'transparent' : `${D.wine}44` }}
-                    >
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Avatar name={u.name} size={30} />
-                          <span style={{ color: D.text, fontSize: 14, fontWeight: 600 }}>{u.name || '(sin nombre)'}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px', color: D.muted, fontSize: 13 }}>{u.email}</td>
-                      <td style={{ padding: '10px 14px', color: D.coral, fontSize: 13 }}>{u.partner_name || '—'}</td>
-                      <td style={{ padding: '10px 14px', color: D.muted, fontSize: 12, whiteSpace: 'nowrap' }}>{fmt(u.created_at)}</td>
-                      <td style={{ padding: '10px 14px', color: D.muted, fontSize: 12, whiteSpace: 'nowrap' }}>{fmtTime(u.last_login)}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {Object.entries(u.counts || {}).map(([k, v]) => (
-                            <span key={k} style={{ background: D.border, padding: '2px 8px', borderRadius: 12, fontSize: 11, color: D.gold }}>
-                              {k[0].toUpperCase()}: {v}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <button
-                          onClick={() => setSelected(u)}
-                          style={{
-                            padding: '6px 14px', background: D.coral, color: '#fff',
-                            border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 600,
-                          }}
-                        >
-                          Ver
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {recentLogs.slice(0, 15).map(log => (
+            <div key={log.id} style={{ padding: '10px 16px', borderBottom: `1px solid ${D.border}22`, display: 'flex', gap: 12, alignItems: 'center' }}>
+              <ActionBadge action={log.action} />
+              <span style={{ color: D.muted, fontSize: 12 }}>{log.entity} #{log.entity_id}</span>
+              <span style={{ color: D.muted, fontSize: 11, marginLeft: 'auto', flexShrink: 0 }}>{fmtTime(log.created_at)}</span>
             </div>
-          )}
+          ))}
         </div>
-      </div>
-
-      {selected && (
-        <UserModal
-          user={selected}
-          secret={secret}
-          onClose={() => setSelected(null)}
-          onDelete={handleDelete}
-        />
       )}
     </div>
   );
 }
+
+// ── Users Section ─────────────────────────────────────────────────────────────
+function UsersSection({ secret }) {
+  const [users, setUsers]             = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState('');
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [selected, setSelected]       = useState(null);
+  const [error, setError]             = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const u = await adminFetch(
+        `/users?deleted=${showDeleted ? 1 : 0}${search ? `&search=${encodeURIComponent(search)}` : ''}`,
+        secret
+      );
+      setUsers(u);
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [secret, showDeleted, search]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleAction = (type, user) => {
+    if (type === 'role_changed') {
+      setUsers(u => u.map(x => x.id === user.id ? { ...x, role: user.role } : x));
+    } else {
+      setUsers(u => u.filter(x => x.id !== user.id));
+    }
+  };
+
+  return (
+    <div>
+      {error && <div style={{ background: '#3A1010', color: D.danger, padding: '10px 16px', borderRadius: 10, marginBottom: 14, fontSize: 13 }}>{error}</div>}
+      <div style={{ background: D.card, borderRadius: 14, border: `1px solid ${D.border}`, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${D.border}`, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: D.text, fontWeight: 700, fontSize: 15, flex: 1 }}>Usuarios {loading ? '' : `(${users.length})`}</span>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar nombre o email…"
+            style={{ padding: '7px 12px', borderRadius: 8, border: `1px solid ${D.border}`, background: D.wine, color: D.text, fontSize: 13, width: 220, outline: 'none' }}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: D.muted, fontSize: 13, cursor: 'pointer' }}>
+            <input type="checkbox" checked={showDeleted} onChange={e => setShowDeleted(e.target.checked)} /> Archivados
+          </label>
+          <button onClick={load} style={{ padding: '7px 12px', background: D.border, border: 'none', color: D.text, borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>⟳</button>
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: D.muted }}>Cargando…</div>
+        ) : users.length === 0 ? (
+          <div style={{ padding: 40, textAlign: 'center', color: D.muted }}>No hay usuarios</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: D.wine }}>
+                  {['Usuario', 'Email', 'Rol', 'Pareja', 'Creado', 'Último acceso', 'Datos', ''].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', color: D.muted, fontSize: 11, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, i) => (
+                  <tr key={u.id} style={{ borderBottom: `1px solid ${D.border}22`, background: i % 2 === 0 ? 'transparent' : `${D.wine}44`, opacity: u.is_deleted ? 0.55 : 1 }}>
+                    <td style={{ padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Avatar name={u.name} size={28} />
+                        <span style={{ color: D.text, fontSize: 13, fontWeight: 600 }}>{u.name || '(sin nombre)'}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 14px', color: D.muted, fontSize: 12 }}>{u.email}</td>
+                    <td style={{ padding: '10px 14px' }}><RoleBadge role={u.role} /></td>
+                    <td style={{ padding: '10px 14px', color: D.coral, fontSize: 12 }}>{u.partner_name || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: D.muted, fontSize: 11, whiteSpace: 'nowrap' }}>{fmt(u.created_at)}</td>
+                    <td style={{ padding: '10px 14px', color: D.muted, fontSize: 11, whiteSpace: 'nowrap' }}>{fmtTime(u.last_login)}</td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {Object.entries(u.counts || {}).map(([k, v]) => (
+                          <span key={k} style={{ background: D.border, padding: '2px 6px', borderRadius: 10, fontSize: 10, color: D.gold }}>{k[0].toUpperCase()}:{v}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <button onClick={() => setSelected(u)} style={{ padding: '5px 12px', background: D.coral, color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Ver</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {selected && <UserDetailModal user={selected} secret={secret} onClose={() => setSelected(null)} onAction={handleAction} />}
+    </div>
+  );
+}
+
+// ── Logs Section ──────────────────────────────────────────────────────────────
+function LogsSection({ secret }) {
+  const [logs, setLogs]     = useState([]);
+  const [total, setTotal]   = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [filterAction, setFilterAction] = useState('');
+  const LIMIT = 50;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await adminFetch(
+        `/logs?limit=${LIMIT}&offset=${offset}${filterAction ? `&action=${encodeURIComponent(filterAction)}` : ''}`,
+        secret
+      );
+      setLogs(r.logs || []); setTotal(r.total || 0);
+    } catch {}
+    finally { setLoading(false); }
+  }, [secret, offset, filterAction]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const ACTION_TYPES = ['', 'role_changed', 'user_soft_deleted', 'user_restored', 'user_hard_deleted', 'db_row_deleted', 'db_row_updated'];
+
+  return (
+    <div>
+      <div style={{ background: D.card, borderRadius: 14, border: `1px solid ${D.border}`, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${D.border}`, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: D.text, fontWeight: 700, fontSize: 15, flex: 1 }}>Audit Logs {loading ? '' : `(${total})`}</span>
+          <select value={filterAction} onChange={e => { setOffset(0); setFilterAction(e.target.value); }}
+            style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${D.border}`, background: D.wine, color: D.text, fontSize: 12 }}>
+            {ACTION_TYPES.map(a => <option key={a} value={a}>{a || 'Todas las acciones'}</option>)}
+          </select>
+          <button onClick={load} style={{ padding: '7px 12px', background: D.border, border: 'none', color: D.text, borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>⟳</button>
+        </div>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: D.muted }}>Cargando…</div>
+        ) : logs.length === 0 ? (
+          <div style={{ padding: 40, textAlign: 'center', color: D.muted }}>Sin registros</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: D.wine }}>
+                  {['Fecha', 'Acción', 'Entidad', 'ID', 'Metadata'].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', color: D.muted, fontSize: 11, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log, i) => (
+                  <tr key={log.id} style={{ borderBottom: `1px solid ${D.border}22`, background: i % 2 === 0 ? 'transparent' : `${D.wine}44` }}>
+                    <td style={{ padding: '10px 14px', color: D.muted, fontSize: 11, whiteSpace: 'nowrap' }}>{fmtTime(log.created_at)}</td>
+                    <td style={{ padding: '10px 14px' }}><ActionBadge action={log.action} /></td>
+                    <td style={{ padding: '10px 14px', color: D.text, fontSize: 12, fontFamily: 'monospace' }}>{log.entity}</td>
+                    <td style={{ padding: '10px 14px', color: D.muted, fontSize: 12 }}>{log.entity_id || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: D.muted, fontSize: 11, maxWidth: 280 }}>
+                      {log.metadata ? <code style={{ fontSize: 10, wordBreak: 'break-all' }}>{log.metadata.slice(0, 120)}{log.metadata.length > 120 ? '…' : ''}</code> : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {total > LIMIT && (
+          <div style={{ padding: '10px 16px', borderTop: `1px solid ${D.border}`, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - LIMIT))}
+              style={{ padding: '5px 12px', background: D.border, border: 'none', color: offset === 0 ? D.muted : D.text, borderRadius: 7, fontSize: 11, cursor: offset === 0 ? 'default' : 'pointer' }}>�? Prev</button>
+            <span style={{ color: D.muted, fontSize: 12, flex: 1, textAlign: 'center' }}>{offset + 1}–{Math.min(offset + LIMIT, total)} de {total}</span>
+            <button disabled={offset + LIMIT >= total} onClick={() => setOffset(offset + LIMIT)}
+              style={{ padding: '5px 12px', background: D.border, border: 'none', color: offset + LIMIT >= total ? D.muted : D.text, borderRadius: 7, fontSize: 11, cursor: offset + LIMIT >= total ? 'default' : 'pointer' }}>Next →</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Database Section ──────────────────────────────────────────────────────────
+function DatabaseSection({ secret }) {
+  const [tables, setTables]               = useState([]);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [tableData, setTableData]         = useState(null);
+  const [offset, setOffset]               = useState(0);
+  const [loading, setLoading]             = useState(false);
+  const [loadingTables, setLoadingTables] = useState(true);
+  const [editingCell, setEditingCell]     = useState(null);
+  const [editSaving, setEditSaving]       = useState(false);
+  const [confirm, setConfirm]             = useState(null);
+  const LIMIT = 30;
+  const READONLY = new Set(['id', 'user_id', 'created_at']);
+
+  useEffect(() => {
+    adminFetch('/tables', secret).then(setTables).catch(() => {}).finally(() => setLoadingTables(false));
+  }, [secret]);
+
+  const loadTable = useCallback(async (name, off = 0) => {
+    setLoading(true);
+    try {
+      const d = await adminFetch(`/tables/${name}?limit=${LIMIT}&offset=${off}`, secret);
+      setTableData(d); setOffset(off);
+    } catch {}
+    finally { setLoading(false); }
+  }, [secret]);
+
+  const selectTable = name => { setSelectedTable(name); setTableData(null); setEditingCell(null); loadTable(name, 0); };
+
+  const saveEdit = async () => {
+    if (!editingCell || editSaving) return;
+    setEditSaving(true);
+    try {
+      await adminFetch(`/tables/${selectedTable}/${editingCell.rowId}`, secret, {
+        method: 'PATCH', body: JSON.stringify({ field: editingCell.field, value: editingCell.value }),
+      });
+      setTableData(d => ({ ...d, rows: d.rows.map(r => r.id === editingCell.rowId ? { ...r, [editingCell.field]: editingCell.value } : r) }));
+    } catch {}
+    finally { setEditSaving(false); setEditingCell(null); }
+  };
+
+  const deleteRow = id => setConfirm({
+    title: 'Eliminar registro',
+    message: `¿Eliminar fila ID ${id} de "${selectedTable}"? Esta acción no se puede deshacer.`,
+    danger: true,
+    onConfirm: async () => {
+      setConfirm(null);
+      try {
+        await adminFetch(`/tables/${selectedTable}/${id}`, secret, { method: 'DELETE' });
+        setTableData(d => ({ ...d, rows: d.rows.filter(r => r.id !== id), total: d.total - 1 }));
+      } catch {}
+    },
+  });
+
+  return (
+    <>
+      {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* Table list */}
+        <div style={{ background: D.card, borderRadius: 14, border: `1px solid ${D.border}`, width: 190, flexShrink: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '10px 14px', borderBottom: `1px solid ${D.border}` }}>
+            <span style={{ color: D.muted, fontSize: 11, fontWeight: 600 }}>TABLAS</span>
+          </div>
+          {loadingTables
+            ? <div style={{ padding: 20, textAlign: 'center', color: D.muted, fontSize: 12 }}>Cargando…</div>
+            : tables.map(t => (
+              <button key={t.name} onClick={() => selectTable(t.name)} style={{
+                width: '100%', padding: '9px 14px', background: selectedTable === t.name ? `${D.coral}22` : 'none',
+                border: 'none', borderBottom: `1px solid ${D.border}22`,
+                color: selectedTable === t.name ? D.coral : D.text, cursor: 'pointer',
+                textAlign: 'left', fontSize: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <span style={{ fontFamily: 'monospace' }}>{t.name}</span>
+                <span style={{ background: D.border, padding: '1px 6px', borderRadius: 10, fontSize: 10, color: D.muted }}>{t.count}</span>
+              </button>
+            ))
+          }
+        </div>
+
+        {/* Table rows */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {!selectedTable ? (
+            <div style={{ background: D.card, borderRadius: 14, border: `1px solid ${D.border}`, padding: 40, textAlign: 'center', color: D.muted }}>
+              Selecciona una tabla para ver sus datos
+            </div>
+          ) : loading ? (
+            <div style={{ background: D.card, borderRadius: 14, border: `1px solid ${D.border}`, padding: 40, textAlign: 'center', color: D.muted }}>Cargando…</div>
+          ) : tableData ? (
+            <div style={{ background: D.card, borderRadius: 14, border: `1px solid ${D.border}`, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', borderBottom: `1px solid ${D.border}`, display: 'flex', gap: 10, alignItems: 'center' }}>
+                <span style={{ color: D.text, fontWeight: 700, fontSize: 13, fontFamily: 'monospace', flex: 1 }}>{selectedTable}</span>
+                <span style={{ color: D.muted, fontSize: 12 }}>{tableData.total} filas</span>
+                <button onClick={() => loadTable(selectedTable, offset)} style={{ padding: '4px 10px', background: D.border, border: 'none', color: D.text, borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>⟳</button>
+              </div>
+              {tableData.rows.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: D.muted }}>Tabla vacía</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: D.wine }}>
+                        {(tableData.columns || []).map(c => (
+                          <th key={c.name} style={{ padding: '7px 10px', color: D.muted, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 11 }}>
+                            {c.name}{c.pk ? ' 🔑' : ''}
+                          </th>
+                        ))}
+                        <th style={{ padding: '7px 10px' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableData.rows.map((row, i) => (
+                        <tr key={row.id} style={{ borderBottom: `1px solid ${D.border}22`, background: i % 2 === 0 ? 'transparent' : `${D.wine}33` }}>
+                          {(tableData.columns || []).map(col => {
+                            const isEditing  = editingCell?.rowId === row.id && editingCell?.field === col.name;
+                            const isReadonly = READONLY.has(col.name);
+                            const val        = String(row[col.name] ?? '');
+                            return (
+                              <td key={col.name} style={{ padding: '5px 10px', color: D.text, maxWidth: 150, verticalAlign: 'middle' }}>
+                                {isEditing ? (
+                                  <div style={{ display: 'flex', gap: 3 }}>
+                                    <input autoFocus value={editingCell.value}
+                                      onChange={e => setEditingCell(ec => ({ ...ec, value: e.target.value }))}
+                                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null); }}
+                                      style={{ width: 110, padding: '3px 6px', background: D.wine, border: `1px solid ${D.coral}`, borderRadius: 4, color: D.text, fontSize: 11, outline: 'none' }}
+                                    />
+                                    <button onClick={saveEdit} disabled={editSaving} style={{ padding: '2px 5px', background: D.green, border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 10 }}>✓</button>
+                                    <button onClick={() => setEditingCell(null)} style={{ padding: '2px 5px', background: D.border, border: 'none', borderRadius: 3, color: D.text, cursor: 'pointer', fontSize: 10 }}>✕</button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }} title={val}>
+                                      {val.length > 35 ? val.slice(0, 35) + '…' : val || <span style={{ color: D.muted }}>null</span>}
+                                    </span>
+                                    {!isReadonly && (
+                                      <button onClick={() => setEditingCell({ rowId: row.id, field: col.name, value: String(row[col.name] ?? '') })}
+                                        style={{ padding: '1px 3px', background: 'transparent', border: 'none', color: D.muted, cursor: 'pointer', fontSize: 9, opacity: 0.5, flexShrink: 0 }} title="Editar">✎</button>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td style={{ padding: '5px 10px' }}>
+                            <button onClick={() => deleteRow(row.id)} style={{ padding: '2px 7px', background: '#3A1010', color: D.danger, border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>✕</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {tableData.total > LIMIT && (
+                <div style={{ padding: '10px 14px', borderTop: `1px solid ${D.border}`, display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <button disabled={offset === 0} onClick={() => loadTable(selectedTable, Math.max(0, offset - LIMIT))}
+                    style={{ padding: '4px 10px', background: D.border, border: 'none', color: offset === 0 ? D.muted : D.text, borderRadius: 6, fontSize: 11, cursor: offset === 0 ? 'default' : 'pointer' }}>�? Prev</button>
+                  <span style={{ color: D.muted, fontSize: 12, flex: 1, textAlign: 'center' }}>{offset + 1}–{Math.min(offset + LIMIT, tableData.total)} de {tableData.total}</span>
+                  <button disabled={offset + LIMIT >= tableData.total} onClick={() => loadTable(selectedTable, offset + LIMIT)}
+                    style={{ padding: '4px 10px', background: D.border, border: 'none', color: offset + LIMIT >= tableData.total ? D.muted : D.text, borderRadius: 6, fontSize: 11, cursor: offset + LIMIT >= tableData.total ? 'default' : 'pointer' }}>Next →</button>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Main AdminPage ────────────────────────────────────────────────────────────
+const SECTIONS = [
+  { id: 'overview',  label: '📊 Overview'  },
+  { id: 'users',     label: '👥 Usuarios'  },
+  { id: 'logs',      label: '📋 Logs'      },
+  { id: 'database',  label: '💾 Database'  },
+];
+
+export default function AdminPage({ navigateTo }) {
+  const [secret, setSecret]         = useState(() => sessionStorage.getItem('adminSecret') || '');
+  const [authed, setAuthed]         = useState(false);
+  const [section, setSection]       = useState('overview');
+  const [stats, setStats]           = useState(null);
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [error, setError]           = useState('');
+
+  const loadOverview = useCallback(async (s) => {
+    const sec = s || secret;
+    if (!sec) return;
+    setLoadingStats(true); setError('');
+    try {
+      const [st, lg] = await Promise.all([
+        adminFetch('/stats', sec),
+        adminFetch('/logs?limit=15', sec),
+      ]);
+      setStats(st); setRecentLogs(lg.logs || []);
+    } catch (e) { setError(e.message); }
+    finally { setLoadingStats(false); }
+  }, [secret]);
+
+  useEffect(() => { if (authed) loadOverview(); }, [authed]);
+
+  const handleLogin = s => {
+    setSecret(s);
+    sessionStorage.setItem('adminSecret', s);
+    setAuthed(true);
+    loadOverview(s);
+  };
+  const handleLogout = () => {
+    sessionStorage.removeItem('adminSecret');
+    setAuthed(false); setSecret(''); setStats(null); setRecentLogs([]);
+  };
+
+  if (!authed) return <LoginScreen onLogin={handleLogin} />;
+
+  return (
+    <div style={{ minHeight: '100dvh', background: D.bg, fontFamily: 'Lora, Georgia, serif', color: D.text }}>
+      {/* Top bar */}
+      <div style={{ background: D.card, borderBottom: `1px solid ${D.border}`, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 100 }}>
+        <button onClick={() => navigateTo('home')} style={{ background: 'none', border: 'none', color: D.muted, cursor: 'pointer', fontSize: 18, padding: 0 }}>&#x2190;</button>
+        <span style={{ fontSize: 18 }}>🔒</span>
+        <span style={{ fontWeight: 700, fontSize: 16, color: D.coral, flex: 1 }}>Panel de Administración</span>
+        <button onClick={() => loadOverview()} disabled={loadingStats} style={{ padding: '5px 12px', background: D.border, border: 'none', color: D.text, borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+          {loadingStats ? '…' : '⟳'}
+        </button>
+        <button onClick={handleLogout} style={{ padding: '5px 12px', background: '#3A1010', border: 'none', color: D.danger, borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Salir</button>
+      </div>
+
+      {/* Section tabs */}
+      <div style={{ background: D.card, borderBottom: `1px solid ${D.border}`, display: 'flex', overflowX: 'auto' }}>
+        {SECTIONS.map(s => (
+          <button key={s.id} onClick={() => setSection(s.id)} style={{
+            padding: '11px 18px', background: 'none', border: 'none',
+            color: section === s.id ? D.coral : D.muted,
+            borderBottom: section === s.id ? `2px solid ${D.coral}` : '2px solid transparent',
+            fontWeight: section === s.id ? 700 : 400, cursor: 'pointer',
+            whiteSpace: 'nowrap', fontSize: 13, fontFamily: 'Lora, Georgia, serif',
+          }}>{s.label}</button>
+        ))}
+      </div>
+
+      <div style={{ padding: '16px', maxWidth: 1200, margin: '0 auto' }}>
+        {error && (
+          <div style={{ background: '#3A1010', border: `1px solid ${D.danger}`, borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: D.danger, fontSize: 13 }}>{error}</div>
+        )}
+        {section === 'overview' && <OverviewSection stats={stats} recentLogs={recentLogs} />}
+        {section === 'users'    && <UsersSection secret={secret} />}
+        {section === 'logs'     && <LogsSection secret={secret} />}
+        {section === 'database' && <DatabaseSection secret={secret} />}
+      </div>
+    </div>
+  );
+}
+

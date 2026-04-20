@@ -1,18 +1,12 @@
 ﻿import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Heart, ThumbsDown, RefreshCw, Sparkles, X } from "lucide-react";
-import { citasDatabase, citasPorCategoria } from "@/data/citas";
+import { Heart, ThumbsDown, RefreshCw, Sparkles, X } from "lucide-react";
+import { getAllCitasFlat, citasDatabase, citasPorCategoria } from "@/data/citas";
+const ALL_CITAS_FLAT = getAllCitasFlat;
 import { api } from "@/lib/api";
-
-// Flat lookup of all citas by id (computed once at module level)
-const ALL_CITAS_FLAT = (() => {
-  const merged = [
-    ...Object.values(citasDatabase || {}).flat(),
-    ...Object.values(citasPorCategoria || {}).flat()
-  ];
-  const seen = new Set();
-  return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
-})();
+import { D } from '@/design-system/tokens';
+import PageLayout from '@/components/PageLayout';
+import PageHeader from '@/components/PageHeader';
 
 const PERS_MAP = {
   very_calm: 'tranquilo', calm: 'tranquilo',
@@ -66,26 +60,6 @@ function buildTestPool(rejectedIds, likedIds) {
   return pool.filter(c => !rejectedIds.has(c.id) && !likedIds.has(c.id));
 }
 
-const D = {
-  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
-  border: "#FFD0DC", muted: "#9B8B95"
-};
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
-
-function BgDoodles() {
-  return (
-    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
-      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
 export default function CitasAleatoriasPage({ navigateTo }) {
   const [currentCita, setCurrentCita] = useState(null);
   const [availableCitas, setAvailableCitas] = useState([]);
@@ -110,8 +84,18 @@ export default function CitasAleatoriasPage({ navigateTo }) {
     loadAvailableCitas();
   }, []);
 
-  const refreshFavorites = () => {
-    setFavorites(JSON.parse(localStorage.getItem("favoritesCitas") || "[]"));
+  const refreshFavorites = async () => {
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      try {
+        const swipes = await api.getCitaSwipes();
+        const liked = swipes.filter(s => s.action === 'like')
+          .map(s => ALL_CITAS_FLAT.find(c => c.id === s.cita_id)).filter(Boolean);
+        setFavorites(liked);
+        return;
+      } catch {}
+    }
+    setFavorites(JSON.parse(localStorage.getItem('favoritesCitas') || '[]'));
   };
 
   const loadAvailableCitas = async () => {
@@ -161,12 +145,17 @@ export default function CitasAleatoriasPage({ navigateTo }) {
     if (!currentCita) return;
     setDirection("right");
     const token = localStorage.getItem('loversappToken');
-    if (token) api.swipeCita(currentCita.id, 'like').catch(() => {});
-    const favs = JSON.parse(localStorage.getItem("favoritesCitas") || "[]");
-    if (!favs.find(f => f.id === currentCita.id)) {
-      const updated = [currentCita, ...favs];
-      localStorage.setItem("favoritesCitas", JSON.stringify(updated));
-      setFavorites(updated);
+    if (token) {
+      // API is the source of truth — no localStorage write needed
+      api.swipeCita(currentCita.id, 'like').catch(() => {});
+    } else {
+      // Unauthenticated fallback
+      const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+      if (!favs.find(f => f.id === currentCita.id)) {
+        const updated = [currentCita, ...favs];
+        localStorage.setItem('favoritesCitas', JSON.stringify(updated));
+        setFavorites(updated);
+      }
     }
     setStats(s => ({ ...s, like: s.like + 1 }));
     setTimeout(() => { moveToNext(currentCita, availableCitas); setDirection(null); }, 300);
@@ -176,20 +165,28 @@ export default function CitasAleatoriasPage({ navigateTo }) {
     if (!currentCita) return;
     setDirection("left");
     const token = localStorage.getItem('loversappToken');
-    if (token) api.swipeCita(currentCita.id, 'dislike').catch(() => {});
-    const stored = JSON.parse(localStorage.getItem("citasAleatorias") || "[]");
-    localStorage.setItem("citasAleatorias", JSON.stringify(
-      [...stored.filter(c => c.id !== currentCita.id), { ...currentCita, rejected: true }]
-    ));
+    if (token) {
+      // API is the source of truth — no localStorage write needed
+      api.swipeCita(currentCita.id, 'dislike').catch(() => {});
+    } else {
+      // Unauthenticated fallback
+      const stored = JSON.parse(localStorage.getItem('citasAleatorias') || '[]');
+      localStorage.setItem('citasAleatorias', JSON.stringify(
+        [...stored.filter(c => c.id !== currentCita.id), { ...currentCita, rejected: true }]
+      ));
+    }
     setStats(s => ({ ...s, dislike: s.dislike + 1 }));
     setTimeout(() => { moveToNext(currentCita, availableCitas); setDirection(null); }, 300);
   };
 
   const handleReset = async () => {
     const token = localStorage.getItem('loversappToken');
-    if (token) api.resetSwipes().catch(() => {});
-    localStorage.removeItem("citasAleatorias");
-    localStorage.removeItem("favoritesCitas");
+    if (token) {
+      await api.resetSwipes().catch(() => {});
+    } else {
+      localStorage.removeItem('citasAleatorias');
+      localStorage.removeItem('favoritesCitas');
+    }
     setStats({ like: 0, dislike: 0 });
     setFavorites([]);
     loadAvailableCitas();
@@ -207,36 +204,24 @@ export default function CitasAleatoriasPage({ navigateTo }) {
     .filter(Boolean);
 
   return (
-    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto", position: 'relative', overflow: 'hidden' }}>
-      <style>{STYLE}</style>
-      <BgDoodles />
-
-      {/* Header */}
-      <div style={{ padding: '48px 20px 18px', background: D.cream, borderBottom: `1.5px solid ${D.border}`, position: 'relative', zIndex: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => navigateTo('dashboard')}
-              style={{ width: 32, height: 32, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5} />
-            </button>
-            <span className="caveat" style={{ fontSize: 12, color: '#C4AAB0', fontWeight: 600 }}>Inicio &gt; Citas para ti</span>
-          </div>
+    <PageLayout>
+      <PageHeader
+        breadcrumb="Citas para ti"
+        title="Citas para ti"
+        icon="/images/desliza.png"
+        subtitle={
+          testInfo
+            ? `${PERS_LABELS[testInfo.personality]} · Presupuesto ${BUDGET_LABELS[testInfo.budget]} 💕`
+            : 'Desliza para descubrir 💕'
+        }
+        onBack={() => navigateTo('dashboard')}
+        action={
           <button onClick={() => setConfirmReset(true)}
             style={{ width: 32, height: 32, borderRadius: '50%', background: D.white, border: `1.5px solid ${D.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <RefreshCw size={14} color={D.coral} strokeWidth={2.5} />
           </button>
-        </div>
-        <h1 className="lora" style={{ fontSize: 30, fontWeight: 700, color: D.wine, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          Citas para ti
-          <img src="/images/desliza.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-        </h1>
-        <img src="/images/subrayado1.png" alt="" style={{ display: 'block', width: '65%', maxWidth: 220, margin: '4px 0 8px' }} />
-        <p className="caveat" style={{ fontSize: 14, color: D.muted, margin: 0 }}>
-          {testInfo
-            ? `${PERS_LABELS[testInfo.personality]} · Presupuesto ${BUDGET_LABELS[testInfo.budget]} 💕`
-            : 'Desliza para descubrir 💕'}
-        </p>
-      </div>
+        }
+      />
 
       <div style={{ padding: "18px 20px", position: "relative", zIndex: 1 }}>
 
@@ -514,6 +499,6 @@ export default function CitasAleatoriasPage({ navigateTo }) {
           </>
         )}
       </AnimatePresence>
-    </div>
+    </PageLayout>
   );
 }

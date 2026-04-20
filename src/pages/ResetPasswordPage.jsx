@@ -2,12 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
-
-const D = {
-  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
-  border: "#FFD0DC", muted: "#9B8B95"
-};
+import { D } from '@/design-system/tokens';
 
 export default function ResetPasswordPage({ navigateTo }) {
   const [token, setToken] = useState('');
@@ -19,14 +14,10 @@ export default function ResetPasswordPage({ navigateTo }) {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // Parse token from hash: #reset-password?token=xxxx
-    const hash = window.location.hash; // e.g. "#reset-password?token=abc123"
-    const qIndex = hash.indexOf('?');
-    if (qIndex !== -1) {
-      const params = new URLSearchParams(hash.slice(qIndex + 1));
-      const t = params.get('token');
-      if (t) setToken(t);
-    }
+    // Parse token from path: /reset-password?token=xxxx
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('token');
+    if (t) setToken(t);
   }, []);
 
   const handleSubmit = async (e) => {

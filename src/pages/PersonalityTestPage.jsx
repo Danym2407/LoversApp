@@ -4,13 +4,7 @@ import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { upsertCalendarEvent } from "@/lib/eventSync";
 import { api } from "@/lib/api";
-
-const D = {
-  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
-  border: "#FFD0DC", muted: "#9B8B95"
-};
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+import { D } from '@/design-system/tokens';
 
 export default function PersonalityTestPage({ navigateTo }) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -199,7 +193,6 @@ export default function PersonalityTestPage({ navigateTo }) {
   if (completed) {
     return (
       <div style={{ minHeight: "100vh", background: D.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <style>{STYLE}</style>
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -285,9 +278,6 @@ export default function PersonalityTestPage({ navigateTo }) {
 
   return (
     <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 80 }}>
-      <style>{STYLE}</style>
-
-      {/* Header */}
       <div style={{
         position: "sticky", top: 0, zIndex: 10, background: D.cream,
         borderBottom: `1.5px solid ${D.border}`, padding: "48px 20px 14px"

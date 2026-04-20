@@ -180,15 +180,93 @@ CREATE TABLE IF NOT EXISTS countdowns (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- citas  (100 base date ideas + user-created custom citas)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS citas (
+  id          INTEGER PRIMARY KEY,          -- 1-100 reserved for base; >100 for custom
+  title       TEXT    NOT NULL,
+  description TEXT,
+  category    TEXT,
+  budget      INTEGER,                      -- 1=very_low … 5=very_high
+  personality TEXT,                         -- tranquilo | hibrido | extremo
+  is_custom   INTEGER NOT NULL DEFAULT 0,   -- 1 = user-created
+  created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- cita_completions  (user marks a cita as completed, with optional review)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS cita_completions (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  cita_id      INTEGER NOT NULL,
+  lugar        TEXT,
+  sentimiento  TEXT,
+  romantica    INTEGER DEFAULT 0,
+  divertida    INTEGER DEFAULT 0,
+  fecha        TEXT,
+  photos       TEXT,                        -- JSON array of image URLs
+  completed_at TEXT    NOT NULL DEFAULT (datetime('now')),
+
+  UNIQUE(user_id, cita_id)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- achievements  (static catalog — seeded once by the route module)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS achievements (
+  id          TEXT    PRIMARY KEY,  -- e.g. 'first_week', '10_citas'
+  title       TEXT    NOT NULL,
+  description TEXT    NOT NULL,
+  type        TEXT    NOT NULL,     -- days_together | citas | experiencia
+  target      INTEGER NOT NULL,
+  icon        TEXT
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- user_achievements  (unlocks — immutable once inserted)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_achievements (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  achievement_id TEXT    NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+  unlocked_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+
+  UNIQUE(user_id, achievement_id)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Indexes for common lookups
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_couple_dates_user   ON couple_dates(user_id);
-CREATE INDEX IF NOT EXISTS idx_cita_swipes_user    ON cita_swipes(user_id);
-CREATE INDEX IF NOT EXISTS idx_cita_prefs_user     ON cita_preferences(user_id);
-CREATE INDEX IF NOT EXISTS idx_letters_user        ON letters(user_id);
-CREATE INDEX IF NOT EXISTS idx_moments_user        ON moments(user_id);
-CREATE INDEX IF NOT EXISTS idx_challenges_user     ON challenges(user_id);
-CREATE INDEX IF NOT EXISTS idx_calendar_user       ON calendar_events(user_id);
-CREATE INDEX IF NOT EXISTS idx_timeline_user       ON timeline_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_couple_dates_user    ON couple_dates(user_id);
+CREATE INDEX IF NOT EXISTS idx_cita_swipes_user     ON cita_swipes(user_id);
+CREATE INDEX IF NOT EXISTS idx_cita_prefs_user      ON cita_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_letters_user         ON letters(user_id);
+CREATE INDEX IF NOT EXISTS idx_moments_user         ON moments(user_id);
+CREATE INDEX IF NOT EXISTS idx_challenges_user      ON challenges(user_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_user        ON calendar_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_user        ON timeline_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_important_dates_user ON important_dates(user_id);
-CREATE INDEX IF NOT EXISTS idx_countdowns_user     ON countdowns(user_id);
+CREATE INDEX IF NOT EXISTS idx_countdowns_user      ON countdowns(user_id);
+CREATE INDEX IF NOT EXISTS idx_citas_personality    ON citas(personality);
+CREATE INDEX IF NOT EXISTS idx_completions_user     ON cita_completions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- game_interactions  (memory system for games)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS game_interactions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  game_type   TEXT    NOT NULL CHECK(game_type IN ('question','truth','dare','dice')),
+  content_id  TEXT    NOT NULL,   -- stable string key for the content item
+  status      TEXT    NOT NULL DEFAULT 'seen'
+              CHECK(status IN ('seen','answered','liked','skipped')),
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+
+  UNIQUE(user_id, game_type, content_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_interactions_user ON game_interactions(user_id, game_type);

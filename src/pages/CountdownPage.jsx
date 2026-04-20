@@ -1,31 +1,16 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { getCountdownEvents, removeCountdownEventBySource, upsertCalendarEvent } from '@/lib/eventSync';
 import { api } from '@/lib/api';
-
-const D = {
-  cream: '#FFF5F7', wine: '#2D1B2E', coral: '#FF6B8A',
-  gold: '#D4A520', blue: '#5B8ECC', green: '#5BAA6A',
-  blush: '#FFD0DC', white: '#FFFFFF', border: '#FFD0DC', muted: '#9B8B95',
-};
+import { D } from '@/design-system/tokens';
+import PageLayout from '@/components/PageLayout';
+import PageHeader from '@/components/PageHeader';
 const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}select,input{font-family:'Caveat',cursive}`;
 
 const ACCENTS = [D.coral, D.gold, D.blue, D.green];
 
-function BgDoodles() {
-  return (
-    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.25}} viewBox="0 0 390 700" fill="none">
-      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M15 340 Q35 335 43 348" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
-  );
-}
 
 const defaultCountdowns = [
   { id:1, title:'Viaje a la Playa',  date:'2026-08-14', emoji:'🏖️' },
@@ -148,34 +133,20 @@ export default function CountdownPage({ navigateTo }) {
   };
 
   return (
-    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', position:'relative', overflow:'hidden', paddingBottom:88, fontFamily:"'Lora',Georgia,serif" }}>
+    <PageLayout doodleHeight={700}>
       <style>{STYLE}</style>
-      <BgDoodles/>
-
-      {/* ── HEADER ── */}
-      <div style={{ padding:'48px 20px 18px', background:D.cream, borderBottom:`1.5px solid ${D.border}` }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <button onClick={() => window.history.back()}
-              style={{ width:32, height:32, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5}/>
-            </button>
-            <span className="caveat" style={{ fontSize:12, color:'#C4AAB0', fontWeight:600 }}>Inicio &gt; Countdown</span>
-          </div>
+      <PageHeader
+        breadcrumb="Countdown"
+        title="Countdown"
+        icon="/images/cohete.png"
+        subtitle="Cuenta regresiva para sus momentos 💕"
+        action={
           <button onClick={() => setShowAdd(true)}
             style={{ width:32, height:32, borderRadius:'50%', background:D.coral, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'2px 2px 0 rgba(196,68,100,0.28)', flexShrink:0 }}>
             <Plus size={16} color="#fff" strokeWidth={2.5}/>
           </button>
-        </div>
-        <div>
-          <h1 className="lora" style={{ fontSize:30, fontWeight:700, color:D.wine, margin:0, lineHeight:1.1, display:'flex', alignItems:'center', gap:8 }}>
-            Countdown
-            <img src="/images/cohete.png" alt="" style={{ width:28, height:28, objectFit:'contain' }}/>
-          </h1>
-          <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'65%', maxWidth:220, margin:'4px 0 8px' }}/>
-          <p className="caveat" style={{ fontSize:14, color:D.muted, margin:0 }}>Cuenta regresiva para sus momentos 💕</p>
-        </div>
-      </div>
+        }
+      />
 
       <div style={{ padding:'20px 20px 0', position:'relative', zIndex:1 }}>
 
@@ -332,7 +303,7 @@ export default function CountdownPage({ navigateTo }) {
           </>
         )}
       </AnimatePresence>
-    </div>
+    </PageLayout>
   );
 }
 

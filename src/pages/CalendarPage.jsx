@@ -4,20 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { upsertCountdownEvent } from '@/lib/eventSync';
 import { api } from '@/lib/api';
-
-// ── palette ───────────────────────────────────────────────────────────────────
-const D = {
-  cream:  '#FFF5F7',
-  wine:   '#2D1B2E',
-  coral:  '#FF6B8A',
-  gold:   '#D4A520',
-  blue:   '#5B8ECC',
-  green:  '#5BAA6A',
-  blush:  '#FFD0DC',
-  white:  '#FFFFFF',
-  border: '#FFD0DC',
-  muted:  '#9B8B95',
-};
+import { D } from '@/design-system/tokens';
+import PageLayout from '@/components/PageLayout';
+import PageHeader from '@/components/PageHeader';
 
 const STYLE = `
   .caveat { font-family: 'Caveat', cursive; }
@@ -32,18 +21,6 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
 const DAY_LABELS  = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
 
 // ── BgDoodles ─────────────────────────────────────────────────────────────────
-function BgDoodles() {
-  return (
-    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.25}} viewBox="0 0 390 820" fill="none">
-      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M15 340 Q35 335 43 348" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
-  );
-}
 
 function getEventPhotos(event) {
   if (!event) return [];
@@ -221,36 +198,20 @@ export default function CalendarPage({ navigateTo }) {
   const uniqueMonths = [...new Set(events.map(e => parseInt(e.dateKey.split('-')[1])))].sort((a,b)=>a-b);
 
   return (
-    <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', position:'relative', overflow:'hidden', paddingBottom:88, fontFamily:"'Lora',Georgia,serif" }}>
+    <PageLayout>
       <style>{STYLE}</style>
-      <BgDoodles />
-
-      {/* ── HEADER ────────────────────────────────────────────────────── */}
-      <div style={{ padding:'48px 20px 18px', background:D.cream, borderBottom:`1.5px solid ${D.border}` }}>
-        {/* Top row: back + add button */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <button onClick={() => window.history.back()}
-              style={{ width:32, height:32, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5}/>
-            </button>
-            <span className="caveat" style={{ fontSize:12, color:'#C4AAB0', fontWeight:600 }}>Inicio &gt; Calendario</span>
-          </div>
+      <PageHeader
+        breadcrumb="Calendario"
+        title="Calendario"
+        icon="/images/calendario.png"
+        subtitle="Eventos & momentos 💕"
+        action={
           <button onClick={() => selectedDay && openAdd(selectedDay)}
             style={{ width:32, height:32, borderRadius:'50%', background: selectedDay ? D.coral : D.border, border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor: selectedDay ? 'pointer' : 'default', boxShadow: selectedDay ? '2px 2px 0 rgba(196,68,100,0.28)' : 'none', flexShrink:0 }}>
             <Plus size={16} color="#fff" strokeWidth={2.5}/>
           </button>
-        </div>
-        {/* Title */}
-        <div style={{ flex:1, minWidth:0 }}>
-          <h1 className="lora" style={{ fontSize:30, fontWeight:700, color:D.wine, margin:0, lineHeight:1.1, display:'flex', alignItems:'center', gap:8 }}>
-            Calendario
-            <img src="/images/calendario.png" alt="" style={{ width:28, height:28, objectFit:'contain' }}/>
-          </h1>
-          <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'65%', maxWidth:220, margin:'4px 0 8px' }}/>
-          <p className="caveat" style={{ fontSize:14, color:D.muted, margin:0 }}>Eventos & momentos 💕</p>
-        </div>
-      </div>
+        }
+      />
 
       <div style={{ padding:'20px 20px 0', position:'relative', zIndex:1 }}>
 
@@ -625,6 +586,6 @@ export default function CalendarPage({ navigateTo }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </PageLayout>
   );
 }

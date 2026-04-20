@@ -164,4 +164,10 @@ const citasPorCategoria = {
   ],
 };
 
+export const getAllCitasFlat = (() => {
+  const merged = [...Object.values(citasDatabase).flat(), ...Object.values(citasPorCategoria).flat()];
+  const seen = new Set();
+  return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+})();
+
 export { citasDatabase, citasPorCategoria };

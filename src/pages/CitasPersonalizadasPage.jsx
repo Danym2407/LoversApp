@@ -3,13 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ThumbsUp, ThumbsDown, Heart } from "lucide-react";
 import { citasDatabase, citasPorCategoria } from "@/data/citas";
 import { api } from "@/lib/api";
-
-const D = {
-  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
-  border: "#FFD0DC", muted: "#9B8B95"
-};
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+import { D } from '@/design-system/tokens';
 
 const FILTERS = ["Todas", "Exterior", "Interior", "Cultural", "Gastronómica", "Deportes"];
 const ACCENT_COLORS = [D.coral, D.gold, D.blue, D.green];
@@ -131,7 +125,6 @@ export default function CitasPersonalizadasPage({ navigateTo }) {
   if (!testCompleted) {
     return (
       <div style={{ minHeight: "100vh", background: D.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <style>{STYLE}</style>
         <div style={{
           background: D.white, border: `1.5px solid ${D.border}`,
           borderLeft: `5px solid ${D.coral}`, borderRadius: 24, padding: "40px 28px", textAlign: "center", maxWidth: 360
@@ -163,8 +156,6 @@ export default function CitasPersonalizadasPage({ navigateTo }) {
 
   return (
     <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto" }}>
-      <style>{STYLE}</style>
-
       {/* Header */}
       <div style={{
         position: "sticky", top: 0, zIndex: 10, background: D.cream,

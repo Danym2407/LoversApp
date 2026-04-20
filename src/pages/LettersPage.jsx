@@ -2,48 +2,49 @@
 import { ChevronLeft, Plus, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import PageLayout from '@/components/PageLayout';
 
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}textarea,input{font-family:'Caveat',cursive}`;
-
-function BgDoodles() {
-  return (
-    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.25}} viewBox="0 0 390 820" fill="none">
-      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M15 340 Q35 335 43 348" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
-  );
-}
+const STYLE = `textarea,input{font-family:'Caveat',cursive}`;
 
 const DEFAULT_LETTERS = [
   { id:1, from:'Tú',        title:'Te Amo',          date:'2026-01-20', content:'Quería decirte cuánto significas para mí...', favorite:true },
   { id:2, from:'Tu Pareja', title:'Un Día Especial',  date:'2026-01-15', content:'Este fue uno de nuestros mejores días juntos...', favorite:false },
 ];
 
-export default function LettersPage({ navigateTo }) {
+export default function LettersPage({ navigateTo, user }) {
   const [letters, setLetters]         = useState([]);
   const [received, setReceived]       = useState([]);
   const [selected, setSelected]       = useState(null);
   const [selectedIsReceived, setSelectedIsReceived] = useState(false);
   const [showAdd, setShowAdd]         = useState(false);
-  const [form, setForm]               = useState({ from:'Tú', title:'', content:'' });
+  const [form, setForm]               = useState({ from: user?.name || 'Tú', title:'', content:'' });
   const [activeTab, setActiveTab]     = useState('sent'); // 'sent' | 'received'
+  const [loadError, setLoadError]     = useState(null);  // null | string
 
   useEffect(() => {
     const token = localStorage.getItem('loversappToken');
-    if (token) {
-      api.getLetters()
-        .then(data => setLetters(data))
-        .catch(() => setLetters(DEFAULT_LETTERS));
-      api.getReceivedLetters()
-        .then(data => setReceived(data))
-        .catch(() => {});
-    } else {
-      setLetters(DEFAULT_LETTERS);
+    if (!token) {
+      // Not authenticated — nothing to show; no fake DEFAULT_LETTERS
+      console.log('[Letters] Sin token — usuario no autenticado');
+      return;
     }
+    console.log('[Letters] Cargando cartas...');
+    api.getLetters()
+      .then(data => {
+        console.log('[Letters] Enviadas cargadas:', data.length);
+        setLetters(data);
+        setLoadError(null);
+      })
+      .catch(err => {
+        console.warn('[Letters] getLetters falló:', err.message);
+        setLoadError(err.message);
+      });
+    api.getReceivedLetters()
+      .then(data => {
+        console.log('[Letters] Recibidas cargadas:', data.length);
+        setReceived(data);
+      })
+      .catch(err => console.warn('[Letters] getReceivedLetters falló:', err.message));
   }, []);
 
   const deleteLetter = async (id) => {
@@ -101,9 +102,8 @@ export default function LettersPage({ navigateTo }) {
   };
 
   return (
-    <div style={{background:'#FFF5F7',minHeight:'100vh',maxWidth:430,margin:'0 auto',position:'relative',overflow:'hidden',paddingBottom:88,fontFamily:"'Lora',Georgia,serif"}}>
+    <PageLayout>
       <style>{STYLE}</style>
-      <BgDoodles />
 
       {/* ── HEADER ── */}
       <div style={{padding:'48px 20px 18px',background:'#FFF5F7',borderBottom:'1.5px solid #FFD0DC'}}>
@@ -155,6 +155,17 @@ export default function LettersPage({ navigateTo }) {
       )}
 
       <div style={{padding:'16px 20px',position:'relative',zIndex:1}}>
+        {/* Error banner — visible in devtools AND on screen so the user knows what failed */}
+        {loadError && (
+          <div style={{background:'#FFF0F0',border:'1.5px solid #F5A0A0',borderRadius:14,padding:'12px 16px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
+            <span style={{fontSize:18}}>⚠️</span>
+            <div>
+              <p style={{fontWeight:700,color:'#C0202A',fontSize:14,margin:0}}>Error al cargar las cartas</p>
+              <p style={{color:'#9B4A4A',fontSize:13,margin:'4px 0 0'}}>{loadError}</p>
+              <p style={{color:'#9B4A4A',fontSize:12,margin:'4px 0 0'}}>Revisa la consola del navegador (F12) para más detalles.</p>
+            </div>
+          </div>
+        )}
         {!selected ? (
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
             {(activeTab === 'sent' ? letters : received).map((l,i)=>(
@@ -308,6 +319,6 @@ export default function LettersPage({ navigateTo }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </PageLayout>
   );
 }

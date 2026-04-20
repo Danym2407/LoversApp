@@ -1,180 +1,339 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Plus } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Lock, CheckCircle2, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import { D } from '@/design-system/tokens';
+import PageLayout from '@/components/PageLayout';
+import PageHeader from '@/components/PageHeader';
 
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+// ── Category metadata ─────────────────────────────────────────────────────────
+const CATEGORIES = [
+  { key: 'basico',      label: 'Conexión Básica',  emoji: '💕', color: D.coral,  bg: '#FEE8EC' },
+  { key: 'romantico',   label: 'Romance',           emoji: '🌹', color: D.gold,   bg: '#FFF8E0' },
+  { key: 'experiencia', label: 'Experiencias',      emoji: '✈️', color: D.blue,   bg: '#EBF3FF' },
+];
 
-function BgDoodles() {
+// ── Single challenge card ─────────────────────────────────────────────────────
+function ChallengeCard({ ch, onToggle, justCompleted }) {
+  const cat     = CATEGORIES.find(c => c.key === ch.category) || CATEGORIES[0];
+  const locked  = ch.locked && !ch.completed;
+
   return (
-    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',opacity:0.25}} viewBox="0 0 390 820" fill="none">
-      <text x="355" y="90"  fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20"  y="160" fontSize="9"  fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8"  fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18"  y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M15 340 Q35 335 43 348" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileTap={locked ? {} : { scale: 0.97 }}
+      onClick={() => !locked && onToggle(ch.id)}
+      style={{
+        background: ch.completed ? '#F4FBF6' : locked ? D.cream : D.white,
+        borderRadius: 20,
+        border: `1.5px solid ${ch.completed ? D.green : locked ? D.border : D.border}`,
+        borderLeft: `4px solid ${ch.completed ? D.green : locked ? D.border : cat.color}`,
+        padding: '16px',
+        cursor: locked ? 'default' : 'pointer',
+        position: 'relative',
+        overflow: 'hidden',
+        opacity: locked ? 0.45 : 1,
+        boxShadow: justCompleted ? `0 0 0 3px ${D.green}44, 0 4px 16px ${D.green}22` : 'none',
+        transition: 'box-shadow 0.4s ease, opacity 0.2s ease',
+      }}
+    >
+      {/* Watermark icon */}
+      <img src={ch.img} alt="" style={{
+        position: 'absolute', right: -6, top: '50%', transform: 'translateY(-50%)',
+        width: 80, height: 80, objectFit: 'contain',
+        opacity: locked ? 0.06 : 0.09, pointerEvents: 'none', userSelect: 'none',
+        filter: locked ? 'grayscale(1)' : 'none',
+      }}/>
+
+      {/* Lock icon top-right */}
+      {locked && (
+        <div style={{
+          position: 'absolute', top: 10, right: 10,
+          width: 24, height: 24, borderRadius: '50%',
+          background: D.border,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Lock size={12} color={D.muted} />
+        </div>
+      )}
+
+      {/* Completion overlay */}
+      {ch.completed && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(91,170,106,0.06)',
+          borderRadius: 19, pointerEvents: 'none',
+        }}/>
+      )}
+
+      {/* Just-completed glow halo */}
+      <AnimatePresence>
+        {justCompleted && (
+          <motion.div
+            initial={{ opacity: 0.6, scale: 0.85 }}
+            animate={{ opacity: 0, scale: 2 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            style={{
+              position: 'absolute', inset: 0, borderRadius: 20,
+              background: `radial-gradient(circle, ${D.green}44 0%, transparent 70%)`,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, position: 'relative' }}>
+        {/* Icon box */}
+        <div style={{
+          flexShrink: 0, width: 50, height: 50, borderRadius: 14,
+          background: ch.completed ? '#D4F0DD' : locked ? `${D.border}77` : cat.bg,
+          border: `1.5px solid ${ch.completed ? '#A8D8A8' : locked ? D.border : cat.color}55`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22,
+          filter: locked ? 'grayscale(1)' : 'none',
+        }}>
+          {ch.icon}
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p className="lora" style={{
+            fontSize: 15, fontWeight: 700, color: locked ? D.muted : D.wine,
+            margin: '0 0 3px', lineHeight: 1.2,
+          }}>{ch.title}</p>
+          <p className="caveat" style={{
+            fontSize: 13, color: D.muted, margin: 0, lineHeight: 1.4,
+          }}>{ch.description}</p>
+
+          {/* Status pill */}
+          <div style={{ marginTop: 8 }}>
+            {ch.completed ? (
+              <span className="caveat" style={{
+                fontSize: 12, fontWeight: 700,
+                background: '#D4F0DD', color: '#2A6A2A',
+                borderRadius: 20, padding: '3px 10px',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}>
+                <CheckCircle2 size={11} color="#2A6A2A" /> ¡Completado!
+              </span>
+            ) : locked ? (
+              <span className="caveat" style={{
+                fontSize: 12, color: D.muted,
+                background: D.cream, border: `1px solid ${D.border}`,
+                borderRadius: 20, padding: '3px 10px',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}>
+                <Lock size={10} color={D.muted} /> {ch.lockReason}
+              </span>
+            ) : (
+              <span className="caveat" style={{
+                fontSize: 12, fontWeight: 700,
+                background: cat.bg, color: cat.color,
+                borderRadius: 20, padding: '3px 10px',
+              }}>
+                Toca para completar ✓
+              </span>
+            )}
+          </div>
+
+          {ch.completed && ch.completed_at && (
+            <p className="caveat" style={{ fontSize: 11, color: D.muted, margin: '5px 0 0' }}>
+              {new Date(ch.completed_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
-const DEFAULT_CHALLENGES = [
-  { id:1, type:'kiss',       title:'Beso Sorpresa',      description:'Dale un beso sorpresa en un momento inesperado', img:'/images/corazon.png',  accentBg:'#FEE8EC', accentBorder:'#FF6B8A', accentText:'#FF6B8A' },
-  { id:2, type:'compliment', title:'Cumplido del Día',   description:'Dale un cumplido sincero que lo/la haga sonreír',  img:'/images/feliz.png',    accentBg:'#FFF8E0', accentBorder:'#D4A520', accentText:'#8A6010' },
-  { id:3, type:'surprise',   title:'Sorpresa Romántica', description:'Planea una pequeña sorpresa especial para hoy',   img:'/images/sorpresa.png', accentBg:'#EBF3FF', accentBorder:'#5B8ECC', accentText:'#1A3A7A' },
-];
-
-const STAT_IMGS = {
-  kiss:       '/images/corazon.png',
-  compliment: '/images/feliz.png',
-  surprise:   '/images/sorpresa.png',
-};
-
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function ChallengesPage({ navigateTo }) {
-  const [challenges] = useState(DEFAULT_CHALLENGES);
-  const [completed, setCompleted] = useState({});
+  const [challenges, setChallenges] = useState([]);
+  const [context, setContext]       = useState({ daysTogether: 0, citasCompleted: 0 });
+  const [loading, setLoading]       = useState(true);
+  const [justDone, setJustDone]     = useState(null); // id of just-completed challenge
 
   useEffect(() => {
     const token = localStorage.getItem('loversappToken');
-    if (token) {
-      api.getChallenges()
-        .then(rows => {
-          const map = {};
-          rows.forEach(r => { if (r.completed) map[r.challenge_id] = true; });
-          setCompleted(map);
-        })
-        .catch(() => {});
-    }
+    if (!token) { setLoading(false); return; }
+
+    api.getChallenges()
+      .then(data => {
+        if (data && Array.isArray(data.challenges)) {
+          setChallenges(data.challenges);
+          setContext(data.context || {});
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const toggle = async (id) => {
+    // Optimistic update
+    setChallenges(prev => prev.map(c => c.id === id ? { ...c, completed: !c.completed } : c));
+    setJustDone(id);
+    setTimeout(() => setJustDone(null), 1200);
+
     const ch = challenges.find(c => c.id === id);
-    setCompleted(p => ({ ...p, [id]: !p[id] }));
     const token = localStorage.getItem('loversappToken');
     if (token) {
-      api.toggleChallenge(id, ch?.type).catch(() => {});
+      try {
+        await api.toggleChallenge(id, ch?.type);
+        // Re-fetch to get fresh lock state after a completion may unlock others
+        const fresh = await api.getChallenges();
+        if (fresh && Array.isArray(fresh.challenges)) {
+          setChallenges(fresh.challenges);
+          setContext(fresh.context || {});
+        }
+      } catch {}
     }
   };
 
-  const counts = { kiss: 0, compliment: 0, surprise: 0 };
-  Object.entries(completed).forEach(([id, done]) => {
-    if (done) {
-      const ch = challenges.find(c => c.id === Number(id));
-      if (ch) counts[ch.type]++;
-    }
+  const totalDone  = challenges.filter(c => c.completed).length;
+  const totalCount = challenges.length;
+
+  const catStats = CATEGORIES.map(cat => {
+    const group = challenges.filter(c => c.category === cat.key);
+    return { ...cat, done: group.filter(c => c.completed).length, total: group.length };
   });
 
-  const totalDone = Object.values(completed).filter(Boolean).length;
-
   return (
-    <div style={{background:'#FFF5F7',minHeight:'100vh',maxWidth:430,margin:'0 auto',position:'relative',overflow:'hidden',paddingBottom:88,fontFamily:"'Lora',Georgia,serif"}}>
-      <style>{STYLE}</style>
-      <BgDoodles />
-
-      {/* ── HEADER ── */}
-      <div style={{padding:'48px 20px 18px',background:'#FFF5F7',borderBottom:'1.5px solid #FFD0DC'}}>
-        {/* Top row: back + breadcrumb */}
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
-          <button onClick={() => window.history.back()}
-            style={{width:32,height:32,borderRadius:'50%',background:'#fff',border:'1.5px solid #FFD0DC',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>
-            <ChevronLeft size={14} color="#FF6B8A" strokeWidth={2.5}/>
-          </button>
-          <span className="caveat" style={{fontSize:12,color:'#C4AAB0',fontWeight:600}}>Inicio &gt; Retos</span>
-        </div>
-
-        {/* Title + icon */}
-        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
-          <div style={{flex:1,minWidth:0}}>
-            <h1 className="lora" style={{fontSize:30,fontWeight:700,color:'#2D1B2E',margin:0,lineHeight:1.1,display:'flex',alignItems:'center',gap:8}}>
-              Retos Diarios
-              <img src="/images/retos.png" alt="" style={{width:28,height:28,objectFit:'contain'}}/>
-            </h1>
-            <img src="/images/subrayado1.png" alt="" style={{display:'block',width:'65%',maxWidth:230,margin:'4px 0 8px'}}/>
-            <p className="caveat" style={{fontSize:14,color:'#9B8B95',margin:0}}>¡Haz al menos uno hoy! ✨</p>
+    <PageLayout>
+      <PageHeader
+        breadcrumb="Retos"
+        title="Retos de Pareja"
+        icon="/images/retos.png"
+        subtitle={context.daysTogether > 0 ? `${context.daysTogether} días juntos 💖` : '¡Haz al menos uno hoy! ✨'}
+        titleAction={
+          <div style={{
+            flexShrink: 0, background: '#FFF0F4', border: `1.5px solid ${D.border}`,
+            borderRadius: 16, padding: '8px 14px', textAlign: 'center', minWidth: 56,
+          }}>
+            <div className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.coral, lineHeight: 1 }}>{totalDone}</div>
+            <div className="caveat" style={{ fontSize: 11, color: D.muted, fontWeight: 600 }}>hechos</div>
           </div>
-          {/* completed badge */}
-          <div style={{flexShrink:0,background:'#FFF0F4',border:'1.5px solid #FFD0DC',borderRadius:16,padding:'8px 14px',textAlign:'center',minWidth:56}}>
-            <div className="lora" style={{fontSize:22,fontWeight:700,color:'#FF6B8A',lineHeight:1}}>{totalDone}</div>
-            <div className="caveat" style={{fontSize:11,color:'#C4AAB0',fontWeight:600}}>hechos</div>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
-      <div style={{padding:'16px 20px 0',position:'relative',zIndex:1}}>
+      <div style={{ padding: '16px 20px 0', position: 'relative', zIndex: 1 }}>
 
-        {/* ── STATS STRIP ── */}
-        <div style={{background:'#FF6B8A',borderRadius:18,padding:'14px 20px',display:'flex',justifyContent:'space-around',marginBottom:20,boxShadow:'0 4px 16px rgba(255,107,138,0.28)'}}>
-          {[
-            {type:'kiss',       label:'Besos'},
-            {type:'compliment', label:'Cumplidos'},
-            {type:'surprise',   label:'Sorpresas'},
-          ].map(s => (
-            <div key={s.type} style={{textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
-              <img src={STAT_IMGS[s.type]} alt="" style={{width:26,height:26,objectFit:'contain',filter:'brightness(0) invert(1)'}}/>
-              <div className="caveat" style={{fontSize:22,fontWeight:700,color:'#fff',lineHeight:1}}>{counts[s.type]}</div>
-              <div className="caveat" style={{fontSize:11,color:'rgba(255,255,255,0.75)'}}>{s.label}</div>
+        {/* ── Progress header ─────────────────────────────────────────── */}
+        <div style={{
+          background: D.wine, borderRadius: 20, padding: '18px 20px',
+          marginBottom: 20, position: 'relative', overflow: 'hidden',
+        }}>
+          {/* deco circles */}
+          <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,208,220,0.08)' }}/>
+          <div style={{ position: 'absolute', right: 18, bottom: -28, width: 55, height: 55, borderRadius: '50%', background: 'rgba(212,165,32,0.12)' }}/>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, position: 'relative' }}>
+            <div>
+              <p className="lora" style={{ fontSize: 15, fontWeight: 700, color: D.white, margin: '0 0 2px' }}>Progreso General</p>
+              <p className="caveat" style={{ fontSize: 13, color: D.blush, margin: 0 }}>
+                {totalDone} de {totalCount} completados
+                {context.citasCompleted > 0 && ` · ${context.citasCompleted} citas`}
+              </p>
             </div>
-          ))}
+            <span className="lora" style={{ fontSize: 22, fontWeight: 700, color: D.gold }}>
+              {totalCount ? Math.round((totalDone / totalCount) * 100) : 0}%
+            </span>
+          </div>
+
+          {/* Overall bar */}
+          <div style={{ height: 8, borderRadius: 8, background: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 14, position: 'relative' }}>
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: totalCount ? `${Math.round((totalDone / totalCount) * 100)}%` : '0%' }}
+              transition={{ duration: 1.1, ease: 'easeOut', delay: 0.2 }}
+              style={{ height: '100%', borderRadius: 8, background: `linear-gradient(90deg, ${D.gold}, #F5C842)` }}
+            />
+          </div>
+
+          {/* Category mini-stats */}
+          <div style={{ display: 'flex', gap: 10, position: 'relative' }}>
+            {catStats.map(cat => (
+              <div key={cat.key} style={{
+                flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 16, marginBottom: 2 }}>{cat.emoji}</div>
+                <div className="lora" style={{ fontSize: 14, fontWeight: 700, color: D.white, lineHeight: 1 }}>{cat.done}/{cat.total}</div>
+                <div className="caveat" style={{ fontSize: 10, color: D.blush, marginTop: 2 }}>{cat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* ── CHALLENGE CARDS ── */}
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
-          {challenges.map((ch, i) => {
-            const isDone = !!completed[ch.id];
-            return (
-              <motion.div key={ch.id}
-                initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*0.08}}
-                whileTap={{scale:0.97}} onClick={() => toggle(ch.id)}
-                style={{background: isDone ? '#F4FBF6' : '#fff',
-                  borderRadius:18,
-                  border:'1.5px solid #FFD0DC',
-                  borderLeft: isDone ? '3.5px solid #5BAA6A' : `3.5px solid ${ch.accentBorder}`,
-                  padding:'16px',cursor:'pointer',position:'relative',overflow:'hidden'}}>
+        {/* ── Loading state ────────────────────────────────────────────── */}
+        {loading && (
+          <p className="caveat" style={{ textAlign: 'center', color: D.muted, fontSize: 15, padding: '32px 0' }}>
+            Cargando retos...
+          </p>
+        )}
 
-                {/* watermark deco */}
-                <img src={ch.img} alt="" style={{position:'absolute',right:-6,top:'50%',transform:'translateY(-50%)',width:90,height:90,objectFit:'contain',opacity:0.10,pointerEvents:'none',userSelect:'none'}}/>
+        {!loading && challenges.length === 0 && (
+          <div style={{
+            background: D.white, border: `1.5px dashed ${D.border}`,
+            borderRadius: 20, padding: '32px 20px', textAlign: 'center',
+          }}>
+            <span style={{ fontSize: 32 }}>🔐</span>
+            <p className="lora" style={{ fontSize: 15, fontWeight: 600, color: D.wine, margin: '10px 0 4px' }}>
+              Inicia sesión para ver tus retos
+            </p>
+          </div>
+        )}
 
-                {isDone && (
-                  <div style={{position:'absolute',inset:0,background:'rgba(91,170,106,0.08)',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:17,zIndex:2,pointerEvents:'none'}}>
-                    <img src="/images/trofeo.png" alt="" style={{width:44,height:44,objectFit:'contain',opacity:0.35}}/>
-                  </div>
-                )}
+        {/* ── Categories ──────────────────────────────────────────────── */}
+        {!loading && CATEGORIES.map(cat => {
+          const group = challenges.filter(c => c.category === cat.key);
+          if (!group.length) return null;
+          const groupDone = group.filter(c => c.completed).length;
 
-                <div style={{display:'flex',alignItems:'center',gap:14,position:'relative',zIndex:1}}>
-                  {/* icon box */}
-                  <div style={{flexShrink:0,width:52,height:52,borderRadius:14,background: isDone ? '#D4F0DD' : ch.accentBg,border:'1.5px solid',borderColor: isDone ? '#A8D8A8' : '#FFD0DC',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <img src={ch.img} alt="" style={{width:32,height:32,objectFit:'contain'}}/>
-                  </div>
-
-                  {/* content */}
-                  <div style={{flex:1,minWidth:0}}>
-                    <div className="lora" style={{fontSize:16,fontWeight:700,color:'#2D1B2E',marginBottom:4,lineHeight:1.2}}>{ch.title}</div>
-                    <div className="caveat" style={{fontSize:13,color:'#9B8B95',lineHeight:1.5}}>{ch.description}</div>
-                    <div style={{marginTop:7,display:'flex',alignItems:'center',gap:5}}>
-                      {isDone
-                        ? <span className="caveat" style={{fontSize:12,fontWeight:700,background:'#D4F0DD',color:'#2A6A2A',borderRadius:20,padding:'2px 10px',display:'inline-flex',alignItems:'center',gap:4}}>
-                            <img src="/images/trofeo.png" style={{width:11,height:11,objectFit:'contain'}}/> ¡Completado!
-                          </span>
-                        : <span className="caveat" style={{fontSize:12,fontWeight:700,background: ch.accentBg,color: ch.accentText,borderRadius:20,padding:'2px 10px'}}>
-                            Toca para completar ✓
-                          </span>
-                      }
-                    </div>
-                  </div>
+          return (
+            <div key={cat.key} style={{ marginBottom: 24 }}>
+              {/* Category header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                marginBottom: 12, paddingLeft: 2,
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                  background: `${cat.color}22`, border: `1.5px solid ${cat.color}44`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                }}>
+                  {cat.emoji}
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                <span className="lora" style={{ fontSize: 16, fontWeight: 700, color: D.wine }}>{cat.label}</span>
+                <span className="caveat" style={{
+                  fontSize: 12, color: groupDone === group.length ? D.green : D.muted,
+                  background: D.cream, border: `1px solid ${D.border}`,
+                  borderRadius: 20, padding: '1px 8px',
+                }}>
+                  {groupDone}/{group.length}
+                </span>
+                {groupDone === group.length && group.length > 0 && (
+                  <span className="caveat" style={{ fontSize: 12, color: D.green, fontWeight: 700 }}>¡Todo completado! 🎉</span>
+                )}
+              </div>
 
-        {/* ── ADD CUSTOM CHALLENGE ── */}
-        <motion.button whileTap={{scale:0.97}}
-          style={{marginTop:18,width:'100%',padding:'14px',borderRadius:16,background:'#FF6B8A',border:'2px solid #FF6B8A',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:'3px 3px 0 rgba(196,68,100,0.28)'}}>
-          <Plus size={18} color="#fff"/>
-          <span className="caveat" style={{fontSize:16,fontWeight:700,color:'#fff'}}>Crear Reto Personalizado</span>
-        </motion.button>
+              {/* Challenge cards */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {group.map((ch, i) => (
+                  <motion.div key={ch.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                    <ChallengeCard ch={ch} onToggle={toggle} justCompleted={justDone === ch.id && ch.completed} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
 
+        <div style={{ height: 20 }} />
       </div>
-    </div>
+    </PageLayout>
   );
 }
+

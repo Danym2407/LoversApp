@@ -4,16 +4,8 @@ import { ChevronLeft, Search, Heart, GripVertical, CheckCircle, Plus, X, MapPin,
 import { useToast } from '@/components/ui/use-toast';
 import { api } from '@/lib/api';
 import { upsertCalendarEvent, upsertTimelineEvent } from '@/lib/eventSync';
-import { citasDatabase, citasPorCategoria } from '@/data/citas';
-
-const ALL_CITAS_FLAT = (() => {
-  const merged = [
-    ...Object.values(citasDatabase || {}).flat(),
-    ...Object.values(citasPorCategoria || {}).flat()
-  ];
-  const seen = new Set();
-  return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
-})();
+import { getAllCitasFlat } from '@/data/citas';
+const ALL_CITAS_FLAT = getAllCitasFlat;
 
 const BUDGET_STR = { 1: 'Muy bajo', 2: 'Bajo', 3: 'Medio', 4: 'Alto', 5: 'Muy alto' };
 
@@ -144,20 +136,30 @@ export default function DatesListPage({ navigateTo }) {
   const audioRef = useRef(null);
   const { toast } = useToast();
 
-  useEffect(() => { fetchDates(); }, []);
+  useEffect(() => {
+    fetchDates();
+    const initialFilter = sessionStorage.getItem('datesViewFilter');
+    if (initialFilter) {
+      setViewFilter(initialFilter);
+      sessionStorage.removeItem('datesViewFilter');
+    }
+  }, []);
 
   const fetchDates = async () => {
     const token = localStorage.getItem('loversappToken');
     let swipedItems = [];
     let newMatchIds = new Set();
     let newPartnerIds = new Set();
+    let dbCompletedIds = new Set();
 
     if (token) {
       try {
-        const [swipes, matchRes] = await Promise.all([
+        const [swipes, matchRes, completedRows] = await Promise.all([
           api.getCitaSwipes(),
-          api.getSwipeMatches().catch(() => [])
+          api.getSwipeMatches().catch(() => []),
+          api.getCompletedCitas().catch(() => []),
         ]);
+        dbCompletedIds = new Set(completedRows.map(r => r.cita_id));
         const liked = swipes.filter(s => s.action === 'like');
         swipedItems = liked
           .map(s => ALL_CITAS_FLAT.find(c => c.id === s.cita_id))
@@ -195,12 +197,13 @@ export default function DatesListPage({ navigateTo }) {
     }
 
     const manualItems = JSON.parse(localStorage.getItem('manualDates') || '[]');
-    // merge completed status and pins from localStorage
-    const completedIds = JSON.parse(localStorage.getItem('completedCitas') || '[]');
+    // When authenticated, use DB as source of truth; otherwise fall back to localStorage
+    const localCompletedIds = JSON.parse(localStorage.getItem('completedCitas') || '[]');
+    const completedSet = token ? dbCompletedIds : new Set(localCompletedIds);
     const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinnedCitas') || '[]'));
     const mergedSwipe = swipedItems.map(d => ({
       ...d,
-      status: completedIds.includes(d.id) ? 'completed' : 'pending',
+      status: completedSet.has(d.id) ? 'completed' : 'pending',
       liked: pinnedIds.has(d.id),
     }));
     const mergedManual = manualItems.map(d => ({ ...d, liked: pinnedIds.has(d.id) || d.liked }));
@@ -247,36 +250,99 @@ export default function DatesListPage({ navigateTo }) {
     setShowReviewModal(true);
   };
 
-  const markComplete = (id, review = null, isEdit = false) => {
+  const markComplete = async (id, review = null, isEdit = false) => {
+    const token = localStorage.getItem('loversappToken');
+    const isManual = String(id).startsWith('m-');
+
+    // effectiveId tracks the real backend ID (may differ from local m- id)
+    let effectiveId = id;
+
+    const reviewPayload = review ? {
+      lugar: review.lugar,
+      sentimiento: review.sentimiento,
+      romantica: review.romantica,
+      divertida: review.divertida,
+      fecha: review.fecha,
+      photos: (review.photos || []).filter(p => !p.startsWith('data:'))
+    } : {};
+
     if (!isEdit) {
+      // Optimistic UI update
       setDates(prev => prev.map(d => d.id === id ? { ...d, status: 'completed' } : d));
-      // persist
-      const prev = JSON.parse(localStorage.getItem('completedCitas') || '[]');
-      if (!prev.includes(id)) localStorage.setItem('completedCitas', JSON.stringify([...prev, id]));
-      // If it's a manual cita, persist completed status in manualDates
-      if (String(id).startsWith('m-')) {
-        const manuals = JSON.parse(localStorage.getItem('manualDates') || '[]');
-        localStorage.setItem('manualDates', JSON.stringify(
-          manuals.map(d => d.id === id ? { ...d, status: 'completed' } : d)
-        ));
+
+      if (token && !isManual) {
+        // Standard path: numeric ID → save directly to DB
+        try {
+          await api.completeCita(id, reviewPayload);
+        } catch {
+          setDates(prev => prev.map(d => d.id === id ? { ...d, status: 'pending' } : d));
+          toast({ title: '❌ Error al guardar', description: 'No se pudo guardar la cita. Verifica tu conexión.' });
+          return;
+        }
+      } else if (token && isManual) {
+        // Custom cita with m- id: create in backend first to get a real ID, then complete it
+        try {
+          const dateItem = dates.find(d => d.id === id);
+          const created = await api.createCita({
+            title: dateItem?.name || 'Cita personalizada',
+            description: dateItem?.description || null,
+            category: dateItem?.category || null,
+          });
+          effectiveId = created.id;
+          await api.completeCita(effectiveId, reviewPayload);
+          // Promote local item from m- id to real backend id
+          const currentManual = JSON.parse(localStorage.getItem('manualDates') || '[]');
+          localStorage.setItem('manualDates', JSON.stringify(
+            currentManual.map(d => d.id === id ? { ...d, id: effectiveId, status: 'completed' } : d)
+          ));
+          setDates(prev => prev.map(d => d.id === id ? { ...d, id: effectiveId, status: 'completed' } : d));
+        } catch {
+          // Non-fatal: keep completion locally only
+          const currentManual = JSON.parse(localStorage.getItem('manualDates') || '[]');
+          localStorage.setItem('manualDates', JSON.stringify(
+            currentManual.map(d => d.id === id ? { ...d, status: 'completed' } : d)
+          ));
+        }
+      } else {
+        // Unauthenticated: localStorage only
+        const prev = JSON.parse(localStorage.getItem('completedCitas') || '[]');
+        if (!prev.includes(id)) localStorage.setItem('completedCitas', JSON.stringify([...prev, id]));
+        if (isManual) {
+          const manuals = JSON.parse(localStorage.getItem('manualDates') || '[]');
+          localStorage.setItem('manualDates', JSON.stringify(
+            manuals.map(d => d.id === id ? { ...d, status: 'completed' } : d)
+          ));
+        }
+      }
+    } else {
+      // isEdit=true: update review in DB (effectiveId is already numeric from prior completion)
+      if (token && !String(effectiveId).startsWith('m-')) {
+        try {
+          await api.completeCita(effectiveId, reviewPayload);
+        } catch {
+          toast({ title: '❌ Error al actualizar', description: 'No se pudo actualizar la reseña.' });
+          return;
+        }
       }
     }
-    // save review if provided
+
+    // Save review to localStorage as cache (keyed by effectiveId)
     if (review) {
       const reviews = JSON.parse(localStorage.getItem('completedCitasReviews') || '{}');
-      reviews[id] = { ...review, date: new Date().toISOString() };
+      reviews[effectiveId] = { ...review, date: new Date().toISOString() };
       localStorage.setItem('completedCitasReviews', JSON.stringify(reviews));
-      // Save to calendar and timeline
+      // Sync to local calendar and timeline
       const allManuals = JSON.parse(localStorage.getItem('manualDates') || '[]');
-      const citaName = dates.find(d => d.id === id)?.name
-        || allManuals.find(d => d.id === id)?.name
+      const citaName = dates.find(d => d.id === id || d.id === effectiveId)?.name
+        || allManuals.find(d => d.id === id || d.id === effectiveId)?.name
         || ALL_CITAS_FLAT.find(c => c.id === id)?.title
         || 'Cita';
       const dateStr = review.fecha || new Date().toISOString().slice(0, 10);
       const photo = (review.photos || [])[0] || null;
-      upsertCalendarEvent({ title: citaName, description: review.sentimiento || review.lugar || '', dateStr, photo, sourceType: 'cita-review', sourceId: String(id) });
-      upsertTimelineEvent({ title: citaName, description: review.sentimiento || '', dateStr, image: photo || '', sourceType: 'cita-review', sourceId: String(id) });
+      upsertCalendarEvent({ title: citaName, description: review.sentimiento || review.lugar || '', dateStr, photo, sourceType: 'cita-review', sourceId: String(effectiveId) });
+      upsertTimelineEvent({ title: citaName, description: review.sentimiento || '', dateStr, image: photo || '', sourceType: 'cita-review', sourceId: String(effectiveId) });
     }
+
     if (!isEdit) {
       // celebration
       setShowConfetti(true);
@@ -305,6 +371,9 @@ export default function DatesListPage({ navigateTo }) {
     setDates(prev => prev.map(d => d.id === id ? { ...d, status: 'pending' } : d));
     const prev2 = JSON.parse(localStorage.getItem('completedCitas') || '[]');
     localStorage.setItem('completedCitas', JSON.stringify(prev2.filter(x => x !== id)));
+    // Undo completion in backend
+    const token = localStorage.getItem('loversappToken');
+    if (token && !String(id).startsWith('m-')) api.uncompleteCita(id).catch(() => {});
   };
 
   const reconsiderPartner = async (citaId) => {
@@ -376,6 +445,25 @@ export default function DatesListPage({ navigateTo }) {
     };
     localStorage.setItem('manualDates', JSON.stringify([...manual, nd]));
     setDates(prev => [...prev, nd]);
+    // Persist custom cita to backend and update local ID with real backend ID
+    const token = localStorage.getItem('loversappToken');
+    if (token) {
+      api.createCita({
+        title: nd.name,
+        description: nd.description || null,
+        category: nd.category || null,
+        budget: nd.budget ? Number(nd.budget) : null
+      }).then(created => {
+        if (created?.id) {
+          // Replace the temporary m- id with the real backend id
+          const currentManual = JSON.parse(localStorage.getItem('manualDates') || '[]');
+          localStorage.setItem('manualDates', JSON.stringify(
+            currentManual.map(d => d.id === nd.id ? { ...d, id: created.id } : d)
+          ));
+          setDates(prev => prev.map(d => d.id === nd.id ? { ...d, id: created.id } : d));
+        }
+      }).catch(() => {});
+    }
     setShowAddModal(false);
     setNewDateForm({ name: '', category: '', description: '', budget: '' });
     toast({ title: '✨ Cita añadida', description: `"${name}" agregada a la lista.` });

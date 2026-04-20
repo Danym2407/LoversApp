@@ -3,17 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, X, Eye, EyeOff } from "lucide-react";
 import PersonalityTestModal from "@/components/PersonalityTestModal";
 import { api } from "@/lib/api";
-
-const D = {
-  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
-  border: "#FFD0DC", muted: "#9B8B95"
-};
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
+import { D } from '@/design-system/tokens';
 
 export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login", onStartTest }) {
   const [isLogin, setIsLogin] = useState(defaultTab === "login");
-  const [formData, setFormData] = useState({ name: "", partner: "", email: "", password: "", confirmPassword: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", password: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showTestModal, setShowTestModal] = useState(false);
@@ -24,6 +18,15 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState('');
+
+  // OTP verification step
+  const [step, setStep] = useState('form');          // 'form' | 'verify'
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -45,16 +48,23 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
           setLoading(false);
           return;
         }
-        const { token, user } = await api.register(
-          formData.name, formData.partner, formData.email, formData.password
+        const result = await api.register(
+          formData.name, formData.email, formData.password
         );
-        localStorage.setItem('loversappToken', token);
-        localStorage.setItem('loversappUser', JSON.stringify(user));
-        setLoading(false);
         setIsRegistration(true);
-        setShowTestModal(true);
+        setPendingEmail(result.email || formData.email.toLowerCase());
+        setLoading(false);
+        setStep('verify');
       }
     } catch (err) {
+      // Login blocked due to unverified email → redirect to OTP screen
+      if (err.pendingVerification) {
+        setIsRegistration(false);
+        setPendingEmail(err.email || formData.email.toLowerCase());
+        setStep('verify');
+        setLoading(false);
+        return;
+      }
       setError(err.message || 'Error al conectar con el servidor.');
       setLoading(false);
     }
@@ -71,6 +81,48 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
     onLoginSuccess();
   };
 
+  const handleVerify = async () => {
+    if (otpCode.length !== 6) { setOtpError('Ingresa el código de 6 dígitos'); return; }
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const { token, user } = await api.verifyEmail(pendingEmail, otpCode);
+      localStorage.setItem('loversappToken', token);
+      localStorage.setItem('loversappUser', JSON.stringify(user));
+      setOtpLoading(false);
+      if (isRegistration) {
+        setShowTestModal(true);  // offer personality test to new users
+      } else {
+        onLoginSuccess();
+      }
+    } catch (err) {
+      setOtpLoading(false);
+      // If already verified, redirect to login form with a clear message
+      if (err.message && err.message.toLowerCase().includes('ya fue verificado')) {
+        setStep('form');
+        setIsLogin(true);
+        setError('Tu correo ya está verificado. Inicia sesión con tu contraseña.');
+        return;
+      }
+      setOtpError(err.message || 'Código incorrecto');
+    }
+  };
+
+  const handleResend = async () => {
+    setResendLoading(true);
+    setResendMsg('');
+    setOtpError('');
+    try {
+      await api.resendOtp(pendingEmail);
+      setResendMsg('¡Código reenviado! Revisa tu correo.');
+      setOtpCode('');
+    } catch (err) {
+      setOtpError(err.message || 'No se pudo reenviar el código');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   const inputStyle = {
     width: "100%", padding: "11px 14px", border: `1.5px solid ${D.border}`,
     borderRadius: 12, background: D.cream, outline: "none",
@@ -80,7 +132,6 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
 
   return (
     <>
-      <style>{STYLE}</style>
       {showTestModal && (
         <PersonalityTestModal
           onStartTest={handleStartTest}
@@ -142,6 +193,8 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
             </p>
           </div>
 
+          {/* Tabs + Form — hidden during OTP step */}
+          {step === 'form' ? (<>
           {/* Tabs */}
           <div style={{
             display: "flex", gap: 6, marginBottom: 24,
@@ -171,13 +224,7 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
                   <input name="name" value={formData.name} onChange={handleChange} required
                     placeholder="Ej. Daniela" style={inputStyle} />
                 </div>
-                <div>
-                  <label className="caveat" style={{ fontSize: 15, color: D.wine, display: "block", marginBottom: 5 }}>
-                    Nombre de tu pareja
-                  </label>
-                  <input name="partner" value={formData.partner} onChange={handleChange}
-                    placeholder="Ej. Eduardo" style={inputStyle} />
-                </div>
+
               </>
             )}
             <div>
@@ -250,6 +297,94 @@ export default function LoginPage({ onLoginSuccess, onClose, defaultTab = "login
               </button>
             )}
           </form>
+          </>) : (
+            /* ── OTP verification screen ───────────────────────────── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 44, margin: '0 0 8px' }}>💌</p>
+                <h2 className="lora" style={{ color: D.wine, fontSize: 22, margin: '0 0 8px', fontWeight: 700 }}>
+                  Verifica tu correo
+                </h2>
+                <p className="caveat" style={{ color: D.muted, fontSize: 15, margin: 0, lineHeight: 1.5 }}>
+                  Enviamos un código de 6 dígitos a<br />
+                  <strong style={{ color: D.coral }}>{pendingEmail}</strong>
+                </p>
+              </div>
+
+              <div>
+                <label className="caveat" style={{ fontSize: 15, color: D.wine, display: 'block', marginBottom: 6 }}>
+                  Código de verificación
+                </label>
+                <input
+                  value={otpCode}
+                  onChange={e => { setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpError(''); setResendMsg(''); }}
+                  placeholder="000000"
+                  maxLength={6}
+                  inputMode="numeric"
+                  autoFocus
+                  style={{
+                    ...inputStyle, textAlign: 'center', fontSize: 30,
+                    fontFamily: "'Lora', Georgia, serif", letterSpacing: 10
+                  }}
+                />
+              </div>
+
+              {otpError && (
+                <div style={{ padding: '10px 14px', background: '#FEE8EC', borderRadius: 12, border: `1px solid ${D.coral}44` }}>
+                  <p className="caveat" style={{ fontSize: 14, color: D.coral, margin: 0, textAlign: 'center' }}>{otpError}</p>
+                </div>
+              )}
+              {resendMsg && (
+                <p className="caveat" style={{ fontSize: 14, color: '#4CAF50', textAlign: 'center', margin: 0 }}>{resendMsg}</p>
+              )}
+
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={handleVerify}
+                disabled={otpLoading || otpCode.length !== 6}
+                style={{
+                  width: '100%', padding: '13px 0', borderRadius: 14, border: 'none',
+                  background: (otpLoading || otpCode.length !== 6) ? D.muted : D.coral,
+                  color: D.white,
+                  cursor: (otpLoading || otpCode.length !== 6) ? 'not-allowed' : 'pointer',
+                  fontFamily: "'Lora', Georgia, serif", fontSize: 16, fontWeight: 700,
+                  marginTop: 4,
+                  boxShadow: (otpLoading || otpCode.length !== 6) ? 'none' : '3px 3px 0 rgba(196,68,100,0.28)',
+                  transition: 'background 0.2s',
+                }}
+              >
+                {otpLoading ? 'Verificando...' : 'Confirmar código'}
+              </motion.button>
+
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  type="button"
+                  disabled={resendLoading}
+                  onClick={handleResend}
+                  style={{
+                    background: 'none', border: 'none',
+                    color: D.muted, cursor: resendLoading ? 'not-allowed' : 'pointer',
+                    fontFamily: "'Caveat', cursive", fontSize: 14, textDecoration: 'underline',
+                  }}
+                >
+                  {resendLoading ? 'Reenviando...' : '¿No llegó el código? Reenviar'}
+                </button>
+              </div>
+
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => { setStep('form'); setOtpCode(''); setOtpError(''); setResendMsg(''); }}
+                  style={{
+                    background: 'none', border: 'none', color: D.muted, cursor: 'pointer',
+                    fontFamily: "'Caveat', cursive", fontSize: 13, textDecoration: 'underline',
+                  }}
+                >
+                  ← Volver al formulario
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Forgot password inline modal */}
           {showForgot && (

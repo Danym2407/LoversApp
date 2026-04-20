@@ -1,28 +1,11 @@
-﻿import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { ChevronLeft, Heart, Copy, Check, LogOut } from "lucide-react";
+﻿import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { Heart, Copy, Check, LogOut, Lock, ChevronRight, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { api } from "@/lib/api";
-
-const D = {
-  cream: "#FFF5F7", wine: "#2D1B2E", coral: "#FF6B8A", gold: "#D4A520",
-  blue: "#5B8ECC", green: "#5BAA6A", blush: "#FFD0DC", white: "#FFFFFF",
-  border: "#FFD0DC", muted: "#9B8B95"
-};
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
-
-function BgDoodles() {
-  return (
-    <svg style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
-      <text x="355" y="90" fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20" y="160" fontSize="9" fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8" fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18" y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
-  );
-}
+import { D } from '@/design-system/tokens';
+import PageLayout from '@/components/PageLayout';
+import PageHeader from '@/components/PageHeader';
 
 function SectionCard({ title, icon, accent = D.coral, children }) {
   return (
@@ -46,8 +29,331 @@ const inputSt = {
   fontFamily: "Lora, Georgia, serif", fontSize: 14, color: D.wine, boxSizing: "border-box"
 };
 
-export default function ProfilePage({ navigateTo }) {
+// ── Achievement categories ────────────────────────────────────────────────────
+const ACH_CATEGORIES = [
+  { key: 'days_together', label: 'Tiempo juntos',  emoji: '💖' },
+  { key: 'citas',         label: 'Citas',          emoji: '🎡' },
+  { key: 'experiencia',   label: 'Experiencias',   emoji: '✈️'  },
+];
+
+// ── Single achievement card ───────────────────────────────────────────────────
+function AchievementCard({ ach, isNew }) {
+  const controls = useAnimation();
+  const isUnlocked  = ach.unlocked;
+  const isInProgress = !isUnlocked && ach.progress > 0;
+  const pct = Math.min(100, Math.round((ach.progress / ach.target) * 100));
+
+  // Unlock animation: scale-bounce + glow pulse
+  useEffect(() => {
+    if (isNew) {
+      controls.start({
+        scale: [1, 1.12, 0.96, 1.05, 1],
+        transition: { duration: 0.55, ease: 'easeOut' },
+      });
+    }
+  }, [isNew, controls]);
+
+  const bg         = isUnlocked  ? '#FFFBEE'  : isInProgress ? '#FFF9F0' : D.cream;
+  const borderCol  = isUnlocked  ? D.gold     : isInProgress ? '#F5C842' : D.border;
+  const iconOpacity = isUnlocked ? 1 : isInProgress ? 0.75 : 0.35;
+
+  return (
+    <motion.div
+      animate={controls}
+      whileHover={{ y: -2, transition: { duration: 0.15 } }}
+      style={{
+        background: bg,
+        border: `1.5px solid ${borderCol}`,
+        borderRadius: 20,
+        padding: '16px 16px 14px',
+        position: 'relative',
+        overflow: 'hidden',
+        opacity: isUnlocked || isInProgress ? 1 : 0.5,
+        boxShadow: isNew
+          ? `0 0 0 3px ${D.gold}55, 0 4px 16px ${D.gold}33`
+          : isUnlocked
+            ? `0 2px 10px ${D.gold}22`
+            : 'none',
+        transition: 'box-shadow 0.4s ease',
+      }}
+    >
+      {/* Glow halo for newly unlocked */}
+      <AnimatePresence>
+        {isNew && (
+          <motion.div
+            initial={{ opacity: 0.7, scale: 0.8 }}
+            animate={{ opacity: 0, scale: 2.2 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.9, ease: 'easeOut' }}
+            style={{
+              position: 'absolute', inset: 0,
+              borderRadius: 20,
+              background: `radial-gradient(circle, ${D.gold}44 0%, transparent 70%)`,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Lock overlay for fully blocked */}
+      {!isUnlocked && !isInProgress && (
+        <div style={{
+          position: 'absolute', top: 10, right: 10,
+          width: 22, height: 22, borderRadius: '50%',
+          background: D.border,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Lock size={11} color={D.muted} />
+        </div>
+      )}
+
+      {/* NEW badge */}
+      <AnimatePresence>
+        {isNew && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.7, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            style={{
+              position: 'absolute', top: 10, right: 10,
+              background: D.gold, color: D.white,
+              borderRadius: 8, padding: '2px 8px',
+              fontFamily: 'Caveat, cursive', fontSize: 11, fontWeight: 700,
+              boxShadow: `0 2px 8px ${D.gold}55`,
+            }}
+          >✨ NUEVO
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Icon + title row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+        <div style={{
+          width: 46, height: 46, borderRadius: 14, flexShrink: 0,
+          background: isUnlocked ? `${D.gold}22` : isInProgress ? `${D.coral}11` : `${D.border}55`,
+          border: `1.5px solid ${isUnlocked ? D.gold : isInProgress ? D.coral : D.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22, opacity: iconOpacity,
+        }}>
+          {ach.icon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p className="lora" style={{
+            fontSize: 14, fontWeight: 700, color: D.wine,
+            margin: 0, lineHeight: 1.2,
+          }}>
+            {ach.title}
+          </p>
+          <p className="caveat" style={{
+            fontSize: 12, color: D.muted, margin: '3px 0 0', lineHeight: 1.3,
+          }}>
+            {ach.description}
+          </p>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{
+        height: 6, borderRadius: 6,
+        background: isUnlocked ? `${D.gold}33` : D.border,
+        overflow: 'hidden', marginBottom: 4,
+      }}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 1, ease: 'easeOut', delay: 0.1 }}
+          style={{
+            height: '100%', borderRadius: 6,
+            background: isUnlocked
+              ? `linear-gradient(90deg, ${D.gold}, #F5C842)`
+              : isInProgress
+                ? `linear-gradient(90deg, ${D.coral}, #FF9AAB)`
+                : D.border,
+          }}
+        />
+      </div>
+
+      {/* Progress label */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="caveat" style={{
+          fontSize: 11,
+          color: isUnlocked ? D.gold : isInProgress ? D.coral : D.muted,
+          fontWeight: isUnlocked ? 700 : 400,
+        }}>
+          {isUnlocked
+            ? `✓ Completado · ${pct}%`
+            : `${ach.progress} / ${ach.target}`}
+        </span>
+        {ach.unlocked && ach.unlocked_at && (
+          <span className="caveat" style={{ fontSize: 10, color: D.muted }}>
+            {new Date(ach.unlocked_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Full achievements section with preview + grouped view ─────────────────────
+function AchievementsSection({ achievements, newUnlocks, showAll, onToggleAll }) {
+  const unlockedCount  = achievements.filter(a => a.unlocked).length;
+  const total          = achievements.length;
+
+  // Find the "days together" progress for the summary line
+  const daysAch = achievements.find(a => a.type === 'days_together' && a.progress > 0);
+  const daysVal = daysAch?.progress ?? 0;
+
+  // Preview: 2 unlocked + 1 nearest in-progress
+  const preview = [
+    ...achievements.filter(a => a.unlocked).slice(0, 2),
+    ...achievements.filter(a => !a.unlocked && a.progress > 0).slice(0, 1),
+    ...achievements.filter(a => !a.unlocked && a.progress === 0).slice(0, 1),
+  ].slice(0, 4);
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {/* ── Header card ────────────────────────────────────────────── */}
+      <div style={{
+        background: D.wine, borderRadius: 20, padding: '18px 20px',
+        marginBottom: 12, position: 'relative', overflow: 'hidden',
+      }}>
+        {/* decorative circles */}
+        <div style={{
+          position: 'absolute', right: -20, top: -20,
+          width: 90, height: 90, borderRadius: '50%',
+          background: 'rgba(255,208,220,0.08)',
+        }}/>
+        <div style={{
+          position: 'absolute', right: 20, bottom: -30,
+          width: 60, height: 60, borderRadius: '50%',
+          background: 'rgba(212,165,32,0.12)',
+        }}/>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, position: 'relative' }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: `${D.gold}33`, border: `1.5px solid ${D.gold}66`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+          }}>🏆</div>
+          <div>
+            <p className="lora" style={{ fontSize: 16, fontWeight: 700, color: D.white, margin: 0 }}>
+              Mis Logros
+            </p>
+            <p className="caveat" style={{ fontSize: 13, color: D.blush, margin: '1px 0 0' }}>
+              {unlockedCount} de {total} desbloqueados
+            </p>
+          </div>
+        </div>
+
+        {/* Overall progress bar */}
+        <div style={{ height: 7, borderRadius: 8, background: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 8, position: 'relative' }}>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: total ? `${Math.round((unlockedCount / total) * 100)}%` : '0%' }}
+            transition={{ duration: 1.2, ease: 'easeOut', delay: 0.2 }}
+            style={{
+              height: '100%', borderRadius: 8,
+              background: `linear-gradient(90deg, ${D.gold}, #F5C842)`,
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+          <span className="caveat" style={{ fontSize: 13, color: D.blush }}>
+            {daysVal > 0 ? `Llevan ${daysVal} días juntos 💖` : 'Completa citas para ganar logros'}
+          </span>
+          <span className="caveat" style={{ fontSize: 13, color: D.gold, fontWeight: 700 }}>
+            {total ? Math.round((unlockedCount / total) * 100) : 0}%
+          </span>
+        </div>
+      </div>
+
+      {achievements.length === 0 ? (
+        <div style={{
+          background: D.white, border: `1.5px dashed ${D.border}`,
+          borderRadius: 20, padding: '32px 20px', textAlign: 'center',
+        }}>
+          <span style={{ fontSize: 32 }}>🏆</span>
+          <p className="lora" style={{ fontSize: 15, fontWeight: 600, color: D.wine, margin: '10px 0 4px' }}>
+            Inicia sesión para ver tus logros
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* ── Preview strip (collapsed) ─────────────────────────── */}
+          {!showAll && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {preview.map(ach => (
+                <AchievementCard key={ach.id} ach={ach} isNew={newUnlocks.includes(ach.id)} />
+              ))}
+            </div>
+          )}
+
+          {/* ── Full grouped view (expanded) ─────────────────────── */}
+          <AnimatePresence>
+            {showAll && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.35, ease: 'easeInOut' }}
+                style={{ overflow: 'hidden' }}
+              >
+                {ACH_CATEGORIES.map(cat => {
+                  const group = achievements.filter(a => a.type === cat.key);
+                  if (!group.length) return null;
+                  return (
+                    <div key={cat.key} style={{ marginBottom: 20 }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        marginBottom: 10, paddingLeft: 4,
+                      }}>
+                        <span style={{ fontSize: 18 }}>{cat.emoji}</span>
+                        <span className="lora" style={{ fontSize: 15, fontWeight: 700, color: D.wine }}>
+                          {cat.label}
+                        </span>
+                        <span className="caveat" style={{
+                          fontSize: 12, color: D.muted,
+                          background: D.cream, border: `1px solid ${D.border}`,
+                          borderRadius: 20, padding: '1px 8px',
+                        }}>
+                          {group.filter(a => a.unlocked).length}/{group.length}
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        {group.map(ach => (
+                          <AchievementCard key={ach.id} ach={ach} isNew={newUnlocks.includes(ach.id)} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Toggle button ──────────────────────────────────────── */}
+          <button
+            onClick={onToggleAll}
+            style={{
+              width: '100%', marginTop: 10, padding: '11px 0',
+              borderRadius: 14, border: `1.5px solid ${D.border}`,
+              background: D.white, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              fontFamily: 'Caveat, cursive', fontSize: 15, color: D.wine,
+            }}
+          >
+            {showAll ? <><ChevronDown size={16} /> Ocultar logros</> : <><ChevronRight size={16} /> Ver todos los logros ({total})</>}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function ProfilePage({ navigateTo, onOpenLogin }) {
   const [user, setUser] = useState(null);
+  const [redirecting, setRedirecting] = useState(!localStorage.getItem('loversappToken'));
   const [partnerCode, setPartnerCode] = useState("");
   const [inputCode, setInputCode] = useState("");
   const [copied, setCopied] = useState(false);
@@ -61,9 +367,18 @@ export default function ProfilePage({ navigateTo }) {
   const [personalityTest, setPersonalityTest] = useState(null);
   const [preferences, setPreferences] = useState({});
   const [prefStats, setPrefStats] = useState({ likes: 0, dislikes: 0 });
+  const [achievements, setAchievements]       = useState([]);
+  const [newUnlocks, setNewUnlocks]           = useState([]);
+  const [showAllAchievements, setShowAllAchievements] = useState(false);
+  const seenAchievements = useRef(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
+    if (redirecting) {
+      if (onOpenLogin) onOpenLogin('login');
+      else navigateTo('home');
+      return;
+    }
     const userData = localStorage.getItem("loversappUser");
     if (userData) {
       const parsed = JSON.parse(userData);
@@ -105,6 +420,22 @@ export default function ProfilePage({ navigateTo }) {
         localStorage.setItem('loversappUser', JSON.stringify(merged));
         setUser(merged);
       }).catch(() => {});
+
+      // Load achievements (live from API)
+      api.getAchievements()
+        .then(list => {
+          // detect newly unlocked since last render
+          const justUnlocked = list
+            .filter(a => a.unlocked && !seenAchievements.current.has(a.id))
+            .map(a => a.id);
+          list.forEach(a => seenAchievements.current.add(a.id));
+          setAchievements(list);
+          if (justUnlocked.length) {
+            setNewUnlocks(justUnlocked);
+            setTimeout(() => setNewUnlocks([]), 3000);
+          }
+        })
+        .catch(err => console.warn('[Profile] getAchievements failó:', err.message));
     }
   }, []);
 
@@ -220,10 +551,10 @@ export default function ProfilePage({ navigateTo }) {
     toast({ title: "Fecha guardada", description: "Se guardó la fecha de cuando se volvieron novios" });
   };
 
-  if (!user) {
+  if (redirecting || !user) {
+    if (redirecting) return null;
     return (
       <div style={{ minHeight: "100vh", background: D.cream, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <style>{STYLE}</style>
         <p className="caveat" style={{ fontSize: 18, color: D.muted }}>Cargando perfil...</p>
       </div>
     );
@@ -232,26 +563,13 @@ export default function ProfilePage({ navigateTo }) {
   const initials = ((user.name?.[0] || "") + (user.partner?.[0] || "")).toUpperCase();
 
   return (
-    <div style={{ minHeight: "100vh", background: D.cream, paddingBottom: 88, maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden" }}>
-      <style>{STYLE}</style>
-      <BgDoodles />
-
-      {/* Header */}
-      <div style={{ padding:'48px 20px 18px', background:D.cream, borderBottom:`1.5px solid ${D.border}`, position:'relative', zIndex:10 }}>
-        <div style={{ display:'flex', alignItems:'center', marginBottom:14 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <button onClick={() => navigateTo("dashboard")} style={{ width:32, height:32, borderRadius:'50%', background:D.white, border:`1.5px solid ${D.border}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-              <ChevronLeft size={14} color={D.coral} strokeWidth={2.5}/>
-            </button>
-            <span className="caveat" style={{ fontSize:12, color:'#C4AAB0', fontWeight:600 }}>Inicio &gt; Mi Perfil</span>
-          </div>
-        </div>
-        <h1 className="lora" style={{ fontSize:30, fontWeight:700, color:D.wine, margin:0, display:'flex', alignItems:'center', gap:8 }}>
-          Mi Perfil
-          <img src="/images/perfil.png" alt="" style={{ width:28, height:28, objectFit:'contain' }}/>
-        </h1>
-        <img src="/images/subrayado1.png" alt="" style={{ display:'block', width:'65%', maxWidth:220, margin:'4px 0 8px' }}/>
-      </div>
+    <PageLayout>
+      <PageHeader
+        breadcrumb="Mi Perfil"
+        title="Mi Perfil"
+        icon="/images/perfil.png"
+        onBack={() => navigateTo("dashboard")}
+      />
 
       <div style={{ padding: "18px 20px" }}>
         {/* Profile card */}
@@ -349,7 +667,7 @@ export default function ProfilePage({ navigateTo }) {
 
         {/* Relationship Dates */}
         <SectionCard title="Fechas de la Relación" icon="/images/calendario.png" accent={D.gold}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
             <div>
               <label className="caveat" style={{ fontSize: 14, color: D.wine, display: "block", marginBottom: 5 }}>
                 Saliendo desde 💕
@@ -534,29 +852,13 @@ export default function ProfilePage({ navigateTo }) {
           )}
         </SectionCard>
 
-        {/* Achievements */}
-        <SectionCard title="Logros" icon="/images/trofeo.png" accent={D.gold}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {[
-              { icon: "❤️", label: "Primer Mes", desc: "1 mes juntos", color: D.coral },
-              { icon: "🎯", label: "100 Citas", desc: "Meta completada", color: D.gold },
-              { icon: "✈️", label: "Amante del Viaje", desc: "5 citas de viaje", color: D.blue },
-              { icon: "📝", label: "Poeta", desc: "3 cartas escritas", color: D.green }
-            ].map((a, i) => (
-              <div key={i} style={{
-                background: D.cream, border: `1.5px solid ${D.border}`,
-                borderLeft: `3px solid ${a.color}`, borderRadius: 14, padding: "12px 12px",
-                textAlign: "center"
-              }}>
-                <div style={{ fontSize: 24, marginBottom: 4 }}>{a.icon}</div>
-                <div className="lora" style={{ fontSize: 13, fontWeight: 700, color: D.wine, margin: "0 0 2px" }}>
-                  {a.label}
-                </div>
-                <div className="caveat" style={{ fontSize: 12, color: D.muted }}>{a.desc}</div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
+        {/* ── Achievements ─────────────────────────────────────────── */}
+        <AchievementsSection
+          achievements={achievements}
+          newUnlocks={newUnlocks}
+          showAll={showAllAchievements}
+          onToggleAll={() => setShowAllAchievements(v => !v)}
+        />
 
         {/* Logout */}
         <button onClick={() => {
@@ -574,6 +876,6 @@ export default function ProfilePage({ navigateTo }) {
           Cerrar sesión
         </button>
       </div>
-    </div>
+    </PageLayout>
   );
 }

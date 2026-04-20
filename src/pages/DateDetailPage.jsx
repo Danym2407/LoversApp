@@ -5,22 +5,8 @@ import {
   upsertCalendarEvent, upsertTimelineEvent, upsertCountdownEvent,
   removeCalendarEventBySource, removeTimelineEventBySource, removeCountdownEventBySource
 } from '@/lib/eventSync';
-
-const D = { cream:'#FFF5F7', wine:'#2D1B2E', coral:'#FF6B8A', gold:'#D4A520', blue:'#5B8ECC', green:'#5BAA6A', blush:'#FFD0DC', white:'#FFFFFF', border:'#FFD0DC', muted:'#9B8B95' };
-const STYLE = `.caveat{font-family:'Caveat',cursive}.lora{font-family:'Lora',Georgia,serif}::-webkit-scrollbar{display:none}`;
-
-function BgDoodles() {
-  return (
-    <svg style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.25 }} viewBox="0 0 390 820" fill="none" aria-hidden>
-      <text x="355" y="90" fontSize="12" fill="#E8A020" fontFamily="serif">✦</text>
-      <text x="20" y="160" fontSize="9" fill="#E05060" fontFamily="serif">✦</text>
-      <text x="360" y="280" fontSize="8" fill="#5B8ECC" fontFamily="serif">★</text>
-      <text x="18" y="420" fontSize="10" fill="#5BAA6A" fontFamily="serif">✦</text>
-      <ellipse cx="356" cy="130" rx="18" ry="16" stroke="#5B8ECC" strokeWidth="1.5" strokeDasharray="4 3" fill="none" transform="rotate(-8 356 130)"/>
-      <path d="M30 320 Q50 300 70 320 Q90 340 110 320" stroke="#E05060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-    </svg>
-  );
-}
+import { D } from '@/design-system/tokens';
+import BgDoodles from '@/design-system/BgDoodles';
 
 function Input({ value, onChange, placeholder, type='text', style={} }) {
   return (
@@ -209,7 +195,6 @@ export default function DateDetailPage({ dateId, navigateTo, backTo = 'dates' })
 
   return (
     <div style={{ background:D.cream, minHeight:'100vh', maxWidth:430, margin:'0 auto', paddingBottom:88, position:'relative', overflow:'hidden' }}>
-      <style>{STYLE}</style>
       <BgDoodles/>
       {msg && (
         <div style={{ position:'fixed', bottom:100, left:'50%', transform:'translateX(-50%)', background:msg.color, color:'#fff', borderRadius:20, padding:'10px 20px', zIndex:500, fontFamily:"'Caveat',cursive", fontSize:14, fontWeight:700, pointerEvents:'none', whiteSpace:'nowrap' }}>

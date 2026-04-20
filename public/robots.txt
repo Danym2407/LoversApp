@@ -1,0 +1,37 @@
+# LoversApp - robots.txt
+# Optimizado para SEO
+
+# Default rules for all bots
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /reset-password
+Allow: /sitemap.xml
+
+# Google-specific
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+# Bing-specific
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Facebook
+User-agent: facebookexternalhit
+Allow: /
+
+# Specific crawlers
+User-agent: AdsBot-Google
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# Sitemap
+Sitemap: https://loversapp.donydonitasss.com/sitemap.xml

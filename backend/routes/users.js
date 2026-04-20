@@ -76,9 +76,11 @@ router.post('/couple', (req, res) => {
   if (partner.id === req.user.id)
     return res.status(400).json({ error: 'No puedes vincularte contigo mismo' });
 
+  const me = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id);
+
   const linkBoth = db.transaction(() => {
-    db.prepare('UPDATE users SET coupled_user_id = ? WHERE id = ?').run(partner.id, req.user.id);
-    db.prepare('UPDATE users SET coupled_user_id = ? WHERE id = ?').run(req.user.id, partner.id);
+    db.prepare('UPDATE users SET coupled_user_id = ?, partner_name = ? WHERE id = ?').run(partner.id, partner.name, req.user.id);
+    db.prepare('UPDATE users SET coupled_user_id = ?, partner_name = ? WHERE id = ?').run(req.user.id, me.name, partner.id);
   });
   linkBoth();
 
@@ -90,9 +92,9 @@ router.delete('/couple', (req, res) => {
   const me = db.prepare('SELECT coupled_user_id FROM users WHERE id = ?').get(req.user.id);
 
   const unlinkBoth = db.transaction(() => {
-    db.prepare('UPDATE users SET coupled_user_id = NULL WHERE id = ?').run(req.user.id);
+    db.prepare('UPDATE users SET coupled_user_id = NULL, partner_name = NULL WHERE id = ?').run(req.user.id);
     if (me?.coupled_user_id) {
-      db.prepare('UPDATE users SET coupled_user_id = NULL WHERE id = ?').run(me.coupled_user_id);
+      db.prepare('UPDATE users SET coupled_user_id = NULL, partner_name = NULL WHERE id = ?').run(me.coupled_user_id);
     }
   });
   unlinkBoth();

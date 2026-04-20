@@ -1,17 +1,14 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, MoreVertical, ChevronRight, LogOut, Settings, Heart,
+import { User, MoreVertical, ChevronRight, LogOut, Settings, HelpCircle, Heart,
          Zap, Mail, Calendar, Activity, BookOpen, Bell, Timer, BarChart2, Shuffle,
          ThumbsUp, Star } from 'lucide-react';
 import { initialDates } from '@/data/dates';
-import { citasDatabase, citasPorCategoria } from '@/data/citas';
+import { getAllCitasFlat } from '@/data/citas';
+const ALL_CITAS_FLAT = getAllCitasFlat;
 import { api } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 
-const ALL_CITAS_FLAT = (() => {
-  const merged = [...Object.values(citasDatabase).flat(), ...Object.values(citasPorCategoria).flat()];
-  const seen = new Set();
-  return merged.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
-})();
 
 // ── Paleta doodle (estética rosa ilustrada) ──────────────────────────────────────────────────────
 const D = {
@@ -205,7 +202,7 @@ const QUICK_CARDS = [
     deco:'dots', dots:['#5BAA6A','#F5A623','#FF6B8A','#6B9FD4','#5BAA6A'],
   },
   {
-    id:'registry', img:'/images/historial.png',
+    id:'moments', img:'/images/historial.png',
     cardBg:'#FFF5F7', cardBorder:'#FFD0DC', badgeColor:'#FF6B8A',
     badge:'Historial', title:'Historial', sub:'Citas que ya vivimos',
     deco:'bar', barPct:20, trackBg:'#FFD6E0', barBg:'#FF6B8A',
@@ -242,8 +239,8 @@ const QUICK_CARDS = [
   },
 ];
 
-export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAuthenticated }) {
-  const [user, setUser]                     = useState(null);
+export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAuthenticated, user: propUser, onUserUpdate }) {
+  const [user, setUser]                     = useState(propUser ?? null);
   const [days, setDays]                     = useState(null);
   const [dates, setDates]                   = useState([]);
   const [dateIdx, setDateIdx]               = useState(0);
@@ -256,59 +253,145 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
   const [citasPendientes, setCitasPendientes] = useState(0);
   const [surpriseCita, setSurpriseCita]     = useState(null);
   const [showSurpriseModal, setShowSurpriseModal] = useState(false);
+  const [myCompletedIds, setMyCompletedIds] = useState(new Set());
+  const [myLikedIds, setMyLikedIds]         = useState(new Set());
+
+  // Sync with centralized user from App.jsx when it loads or changes
+  useEffect(() => {
+    if (!propUser) return;
+    setUser(propUser);
+    setDays(daysDiff(propUser.relationship_start_date || propUser.relationshipStartDate));
+    // Fetch partner greeting once we know the coupled_user_id
+    if (propUser.coupled_user_id) {
+      console.log('[Dashboard] Pareja vinculada. Cargando greeting de pareja...');
+      api.getPartnerGreeting()
+        .then(pg => {
+          console.log('[Dashboard] Greeting pareja:', pg);
+          if (pg?.greeting_message)
+            setPartnerGreeting({ message: pg.greeting_message, subtext: pg.greeting_subtext });
+        })
+        .catch(err => console.warn('[Dashboard] getPartnerGreeting falló:', err.message));
+    }
+  }, [propUser]);
 
   // Show partner's greeting if available, else own greeting, else default
   const greeting    = partnerGreeting?.message ?? user?.greetingMessage ?? user?.greeting_message ?? 'Buenos días, mi amor';
   const subGreeting = partnerGreeting?.subtext  ?? user?.greetingSubtext  ?? user?.greeting_subtext  ?? 'Hoy les toca una cita especial ✦';
   const toFirst = str => str ? str.trim().split(/\s+/)[0].charAt(0).toUpperCase() + str.trim().split(/\s+/)[0].slice(1).toLowerCase() : '';
-  const couple  = (user?.name && user?.partner)
-    ? `${toFirst(user.name)} & ${toFirst(user.partner)}`
+  const couple  = (user?.name && (user?.partner_name ?? user?.partner))
+    ? `${toFirst(user.name)} & ${toFirst(user?.partner_name ?? user?.partner)}`
     : 'LoversApp';
 
   useEffect(() => {
-    const raw = localStorage.getItem('loversappUser');
-    if (raw) {
-      const u = JSON.parse(raw);
-      setUser(u);
-      setDays(daysDiff(u.relationshipStartDate || u.relationship_start_date));
+    // Prefer user from App.jsx prop (already loaded via api.getMe())
+    // Only read localStorage if prop is not yet available
+    if (!propUser) {
+      const raw = localStorage.getItem('loversappUser');
+      if (raw) {
+        const u = JSON.parse(raw);
+        setUser(u);
+        setDays(daysDiff(u.relationshipStartDate || u.relationship_start_date));
+      }
     }
-    const all = getDates();
-    const pending = all.filter(d => d.status === 'pending');
-    setDates(pending.length ? pending : all.length ? all : []);
-    // Citas 100 — completed count from completedCitas key
-    const completedIds = JSON.parse(localStorage.getItem('completedCitas') || '[]');
-    const manualDates  = JSON.parse(localStorage.getItem('manualDates')    || '[]');
-    const manualCompletedIds = manualDates.filter(d => d.status === 'completed').map(d => d.id);
-    const allCompletedIds = [...new Set([...completedIds, ...manualCompletedIds])];
-    setCitasHechas(allCompletedIds.length);
-    const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
-    const totalCitas = favs.length + manualDates.length;
-    setCitasPendientes(Math.max(0, totalCitas - allCompletedIds.length));
+    // Determine auth state first — API is source of truth when authenticated.
+    // localStorage counts must NEVER override API data to prevent the reset-to-0 bug.
+    const token = localStorage.getItem('loversappToken');
+    if (!token) {
+      // Unauthenticated fallback only — localStorage is the only available source
+      const all = getDates();
+      const pending = all.filter(d => d.status === 'pending');
+      setDates(pending.length ? pending : all.length ? all : []);
+      const completedIds = JSON.parse(localStorage.getItem('completedCitas') || '[]');
+      const manualDates  = JSON.parse(localStorage.getItem('manualDates')    || '[]');
+      const manualCompletedIds = manualDates.filter(d => d.status === 'completed').map(d => d.id);
+      const allCompletedIds = [...new Set([...completedIds, ...manualCompletedIds])];
+      setCitasHechas(allCompletedIds.length);
+      const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+      const totalCitas = favs.length + manualDates.length;
+      setCitasPendientes(Math.max(0, totalCitas - allCompletedIds.length));
+    }
 
     // Load partner's greeting from API (what your partner wrote for you)
-    const token = localStorage.getItem('loversappToken');
     if (token) {
-      api.getMe().then(me => {
-        if (me.coupled_user_id) {
-          // partner_greeting is a separate endpoint we check
-          api.getPartnerGreeting().then(pg => {
-            if (pg?.greeting_message) {
-              setPartnerGreeting({ message: pg.greeting_message, subtext: pg.greeting_subtext });
+      console.log('[Dashboard] Usuario autenticado. Cargando datos...');
+      // Load couple-dates from API for fresh swipeable card data
+      api.getCoupleDates()
+        .then(rows => {
+          const mapped = rows.map(r => {
+            const initial = initialDates.find(d => d.id === r.date_item_id) || {};
+            return {
+              id: r.date_item_id,
+              name: initial.name || `Cita ${r.date_item_id}`,
+              status: r.status || 'pending',
+              priority: r.date_item_id,
+              imageUrl: initial.imageUrl || '',
+              categories: initial.categories || [],
+            };
+          });
+          const pending = mapped.filter(d => d.status === 'pending');
+          setDates(pending.length ? pending : mapped.length ? mapped : getDates());
+        })
+        .catch(() => {
+          // API failed — fall back to localStorage for the swipeable date card
+          const all = getDates();
+          const pend = all.filter(d => d.status === 'pending');
+          setDates(pend.length ? pend : all.length ? all : []);
+        });
+
+      // Use consistent API data for both counters
+      Promise.all([api.getCompletedCitas(), api.getCitaSwipes()])
+        .then(([completedRows, swipes]) => {
+          console.log('[Dashboard] Citas completadas:', completedRows.length, '| Swipes:', swipes.length);
+          const completedSet = new Set(completedRows.map(r => r.cita_id));
+          setMyCompletedIds(completedSet);
+          setCitasHechas(completedRows.length);
+          const liked = swipes.filter(s => s.action === 'like');
+          setMyLikedIds(new Set(liked.map(s => s.cita_id)));
+          setCitasPendientes(Math.max(0, liked.length - completedSet.size));
+        })
+        .catch(err => console.warn('[Dashboard] Error cargando citas:', err.message));
+
+      // api.getMe() is handled by App.jsx (propUser). Here we only need what
+      // App doesn't provide: partner greeting (if not yet loaded) + unread letters.
+      if (!propUser) {
+        // Fallback: App.jsx hasn't loaded user yet — load profile ourselves
+        api.getMe()
+          .then(me => {
+            console.log('[Dashboard] getMe (fallback) OK:', me.name, '| coupled:', me.coupled_user_id);
+            if (me.coupled_user_id) {
+              api.getPartnerGreeting()
+                .then(pg => {
+                  console.log('[Dashboard] Greeting pareja:', pg);
+                  if (pg?.greeting_message)
+                    setPartnerGreeting({ message: pg.greeting_message, subtext: pg.greeting_subtext });
+                })
+                .catch(err => console.warn('[Dashboard] getPartnerGreeting falló:', err.message));
             }
-          }).catch(() => {});
-        }
-        // Also refresh local user with latest server data
-        const cached = JSON.parse(localStorage.getItem('loversappUser') || '{}');
-        const merged = { ...cached, ...me, partner: me.partner_name || cached.partner, partnerCode: me.partner_code || cached.partnerCode };
-        localStorage.setItem('loversappUser', JSON.stringify(merged));
-        setUser(merged);
-        setDays(daysDiff(me.relationship_start_date || cached.relationshipStartDate));
-        // Load unread received letters
-        api.getReceivedLetters().then(msgs => {
-          const unread = msgs.filter(m => !m.read_at);
-          if (unread.length) setUnreadLetters(unread);
-        }).catch(() => {});
-      }).catch(() => {});
+            const cached = JSON.parse(localStorage.getItem('loversappUser') || '{}');
+            const merged = { ...cached, ...me, partner: me.partner_name || cached.partner, partnerCode: me.partner_code || cached.partnerCode };
+            localStorage.setItem('loversappUser', JSON.stringify(merged));
+            setUser(merged);
+            onUserUpdate?.(merged);
+            setDays(daysDiff(me.relationship_start_date || cached.relationshipStartDate));
+            api.getReceivedLetters()
+              .then(msgs => {
+                console.log('[Dashboard] Cartas recibidas:', msgs.length, '| no leídas:', msgs.filter(m => !m.read_at).length);
+                const unread = msgs.filter(m => !m.read_at);
+                if (unread.length) setUnreadLetters(unread);
+              })
+              .catch(err => console.warn('[Dashboard] getReceivedLetters falló:', err.message));
+          })
+          .catch(err => console.warn('[Dashboard] getMe falló:', err.message));
+      } else {
+        // User already provided by App.jsx — only load unread letters
+        api.getReceivedLetters()
+          .then(msgs => {
+            console.log('[Dashboard] Cartas recibidas:', msgs.length, '| no leídas:', msgs.filter(m => !m.read_at).length);
+            const unread = msgs.filter(m => !m.read_at);
+            if (unread.length) setUnreadLetters(unread);
+          })
+          .catch(err => console.warn('[Dashboard] getReceivedLetters falló:', err.message));
+      }
     }
   }, []);
 
@@ -322,10 +405,13 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
   const DOTS      = Math.min(5, dates.length);
   const nextDate  = () => setDateIdx(p => (p + 1) % Math.max(dates.length, 1));
   const surprise  = () => {
-    const completedIds = new Set(JSON.parse(localStorage.getItem('completedCitas') || '[]'));
-    const favs   = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
-    const manual = JSON.parse(localStorage.getItem('manualDates') || '[]');
-    const allMineIds = new Set([...favs.map(f => f.id), ...manual.map(m => m.id)]);
+    // Prefer API-loaded IDs; fall back to localStorage for unauthenticated users
+    const completedIds = myCompletedIds.size > 0
+      ? myCompletedIds
+      : new Set(JSON.parse(localStorage.getItem('completedCitas') || '[]'));
+    const allMineIds = myLikedIds.size > 0
+      ? myLikedIds
+      : new Set(JSON.parse(localStorage.getItem('favoritesCitas') || '[]').map(f => f.id));
     const pool = ALL_CITAS_FLAT.filter(c => !completedIds.has(c.id));
     if (!pool.length) return;
     const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -335,18 +421,23 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
 
   const addSurpriseToList = () => {
     if (!surpriseCita) return;
-    const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
-    if (!favs.find(f => f.id === surpriseCita.id)) {
-      localStorage.setItem('favoritesCitas', JSON.stringify([surpriseCita, ...favs]));
-    }
+    // API is the source of truth; localStorage only as unauthenticated fallback
     const token = localStorage.getItem('loversappToken');
-    if (token) api.swipeCita(surpriseCita.id, 'like').catch(() => {});
+    if (token) {
+      api.swipeCita(surpriseCita.id, 'like').catch(() => {});
+    } else {
+      const favs = JSON.parse(localStorage.getItem('favoritesCitas') || '[]');
+      if (!favs.find(f => f.id === surpriseCita.id)) {
+        localStorage.setItem('favoritesCitas', JSON.stringify([surpriseCita, ...favs]));
+      }
+    }
+    setMyLikedIds(prev => new Set([...prev, surpriseCita.id]));
     setSurpriseCita(prev => prev ? { ...prev, inMyList: true } : null);
     setCitasPendientes(p => p + 1);
   };
 
   return (
-    <div style={{ background:'#FFF5F7', minHeight:'100vh', maxWidth:480, margin:'0 auto', position:'relative', paddingBottom:88, fontFamily:"'Inter',-apple-system,sans-serif" }}>
+    <div style={{ background:'#FFF5F7', minHeight:'100vh', width:'100%', maxWidth:480, margin:'0 auto', position:'relative', paddingBottom:88, fontFamily:"'Inter',-apple-system,sans-serif", boxSizing:'border-box', overflowX:'hidden' }}>
 
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
       <div className="lg:hidden mobile-only-header" style={{ padding:'52px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#FFFFFF', position:'sticky', top:0, zIndex:40, borderBottom:'1px solid #EDE0D0', boxShadow:'0 1px 8px rgba(0,0,0,0.04)' }}>
@@ -370,9 +461,14 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
               <motion.div initial={{ opacity:0, y:-8, scale:0.95 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0, y:-8, scale:0.95 }} transition={{ duration:0.14 }}
                 style={{ position:'absolute', right:0, top:'110%', background:'#FFFFFF', borderRadius:16, border:'1.5px solid #EDE0D0', boxShadow:'0 8px 28px rgba(0,0,0,0.11)', minWidth:190, overflow:'hidden', zIndex:50 }}>
                 {isAuthenticated ? (<>
-                  <button onClick={() => { setMenuOpen(false); navigateTo('profile'); }}
+                  <button onClick={() => { setMenuOpen(false); navigateTo(ROUTES.settings); }}
                     style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 18px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:'#2D1B2E', fontFamily:"'Inter',sans-serif" }}>
                     <Settings size={16} /> Ajustes
+                  </button>
+                  <div style={{ height:1, background:'#F5D0DC' }} />
+                  <button onClick={() => { setMenuOpen(false); navigateTo(ROUTES.help); }}
+                    style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 18px', background:'none', border:'none', cursor:'pointer', fontSize:15, fontWeight:600, color:'#2D1B2E', fontFamily:"'Inter',sans-serif" }}>
+                    <HelpCircle size={16} /> Ayuda
                   </button>
                   <div style={{ height:1, background:'#F5D0DC' }} />
                   <button onClick={() => { setMenuOpen(false); onLogout?.(); }}
@@ -416,18 +512,18 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
           </div>
 
           {/* Right: CTA Buttons */}
-          <div style={{ flex:'0 0 auto', display:'flex', flexDirection:'column', gap:12, minWidth:220 }}>
+          <div style={{ flex:'1 1 auto', display:'flex', flexDirection:'column', gap:12, width:'100%' }}>
             <div style={{ display:'flex', gap:12 }}>
               <motion.button whileTap={{ scale:0.95, rotate:-1 }} onClick={() => navigateTo('dates')}
                 className="doodle-btn-primary"
-                style={{ flex:1, padding:'15px 20px', background:'#FF6B8A', color:'#FFFFFF', borderRadius:16, fontWeight:700, fontSize:16, border:'2px solid #FF6B8A', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontFamily:"'Inter',sans-serif", boxShadow:'3px 3px 0 rgba(196,68,100,0.30)', whiteSpace:'nowrap' }}>
-                <img src="/images/citas.png" alt="" style={{ width:36, height:36, objectFit:'contain' }} />
+                style={{ flex:1, minWidth:0, padding:'13px 14px', background:'#FF6B8A', color:'#FFFFFF', borderRadius:16, fontWeight:700, fontSize:15, border:'2px solid #FF6B8A', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontFamily:"'Inter',sans-serif", boxShadow:'3px 3px 0 rgba(196,68,100,0.30)' }}>
+                <img src="/images/citas.png" alt="" style={{ width:30, height:30, objectFit:'contain', flexShrink:0 }} />
                 Ver Citas
               </motion.button>
               <motion.button whileTap={{ scale:0.95, rotate:1 }} onClick={surprise}
                 className="doodle-btn-primary"
-                style={{ flex:1, padding:'15px 20px', background:'transparent', border:'2px solid #FF6B8A', color:'#FF6B8A', borderRadius:16, fontWeight:700, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
-                <img src="/images/sorpresa.png" alt="" className="doodle-icon" style={{ width:36, height:36, objectFit:'contain' }} />
+                style={{ flex:1, minWidth:0, padding:'13px 14px', background:'transparent', border:'2px solid #FF6B8A', color:'#FF6B8A', borderRadius:16, fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontFamily:"'Inter',sans-serif" }}>
+                <img src="/images/sorpresa.png" alt="" className="doodle-icon" style={{ width:30, height:30, objectFit:'contain', flexShrink:0 }} />
                 Sorpresa ✦
               </motion.button>
             </div>
@@ -437,29 +533,29 @@ export default function DashboardPage({ navigateTo, onLogout, onOpenLogin, isAut
         {/* Stats cards */}
         {days !== null && (
           <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }}
-            style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:28 }}>
+            style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:10, marginBottom:28, width:'100%' }}>
             {/* días juntos */}
-            <div style={{ background:'#FFF0F4', borderRadius:16, padding:'14px 14px', border:'2px solid #FF6B8A', display:'flex', alignItems:'center', gap:10, boxShadow:'3px 3px 0 rgba(255,107,138,0.20)' }}>
-              <img src="/images/metas.png" alt="" style={{ width:40, height:40, objectFit:'contain', flexShrink:0 }} />
-              <div>
-                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:28, fontWeight:700, color:'black', lineHeight:1 }}>{days}</div>
-                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:11, color:'#CF8FA0', marginTop:4 }}>días juntos</div>
+            <div style={{ background:'#FFF0F4', borderRadius:16, padding:'12px 10px', border:'2px solid #FF6B8A', display:'flex', alignItems:'center', gap:8, boxShadow:'3px 3px 0 rgba(255,107,138,0.20)', minWidth:0, boxSizing:'border-box' }}>
+              <img src="/images/metas.png" alt="" style={{ width:34, height:34, objectFit:'contain', flexShrink:0 }} />
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:24, fontWeight:700, color:'black', lineHeight:1 }}>{days}</div>
+                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:10, color:'#CF8FA0', marginTop:3 }}>días juntos</div>
               </div>
             </div>
             {/* citas hechas */}
-            <div style={{ background:'#F0FFF5', borderRadius:16, padding:'14px 14px', border:'2px solid #4CAF79', display:'flex', alignItems:'center', gap:10, boxShadow:'3px 3px 0 rgba(76,175,121,0.20)' }}>
-              <img src="/images/feliz.png" alt="" style={{ width:40, height:40, objectFit:'contain', flexShrink:0 }} />
-              <div>
-                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:28, fontWeight:700, color:'black', lineHeight:1 }}>{citasHechas}</div>
-                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:11, color:'#5BAA6A', marginTop:4 }}>citas hechas</div>
+            <div onClick={() => { sessionStorage.setItem('datesViewFilter', 'terminadas'); navigateTo('dates'); }} style={{ background:'#F0FFF5', borderRadius:16, padding:'12px 10px', border:'2px solid #4CAF79', display:'flex', alignItems:'center', gap:8, boxShadow:'3px 3px 0 rgba(76,175,121,0.20)', cursor:'pointer', minWidth:0, boxSizing:'border-box' }}>
+              <img src="/images/feliz.png" alt="" style={{ width:34, height:34, objectFit:'contain', flexShrink:0 }} />
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:24, fontWeight:700, color:'black', lineHeight:1 }}>{citasHechas}</div>
+                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:10, color:'#5BAA6A', marginTop:3 }}>citas hechas</div>
               </div>
             </div>
             {/* por vivir */}
-            <div style={{ background:'#FFFBF0', borderRadius:16, padding:'14px 14px', border:'2px solid #C4973E', display:'flex', alignItems:'center', gap:10, boxShadow:'3px 3px 0 rgba(196,151,62,0.20)' }}>
-              <img src="/images/triste.png" alt="" style={{ width:40, height:40, objectFit:'contain', flexShrink:0 }} />
-              <div>
-                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:28, fontWeight:700, color:'black', lineHeight:1 }}>{citasPendientes}</div>
-                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:11, color:'#C4973E', marginTop:4 }}>por vivir</div>
+            <div onClick={() => navigateTo('dates')} style={{ background:'#FFFBF0', borderRadius:16, padding:'12px 10px', border:'2px solid #C4973E', display:'flex', alignItems:'center', gap:8, boxShadow:'3px 3px 0 rgba(196,151,62,0.20)', cursor:'pointer', minWidth:0, boxSizing:'border-box' }}>
+              <img src="/images/triste.png" alt="" style={{ width:34, height:34, objectFit:'contain', flexShrink:0 }} />
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontFamily:"'Lora',Georgia,serif", fontSize:24, fontWeight:700, color:'black', lineHeight:1 }}>{citasPendientes}</div>
+                <div style={{ fontFamily:"'Inter',sans-serif", fontSize:10, color:'#C4973E', marginTop:3 }}>por vivir</div>
               </div>
             </div>
           </motion.div>

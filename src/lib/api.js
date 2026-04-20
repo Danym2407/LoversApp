@@ -23,7 +23,11 @@ async function request(method, path, body) {
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(data.error || res.statusText);
+    const err = new Error(data.error || res.statusText);
+    // Propagate extra fields so callers can act on them (e.g. pendingVerification)
+    if (data.pendingVerification) err.pendingVerification = true;
+    if (data.email) err.email = data.email;
+    throw err;
   }
 
   return res.json();
@@ -66,8 +70,14 @@ export const api = {
   login: (email, password) =>
     request('POST', '/auth/login', { email, password }),
 
-  register: (name, partner_name, email, password) =>
-    request('POST', '/auth/register', { name, partner_name, email, password }),
+  register: (name, email, password) =>
+    request('POST', '/auth/register', { name, email, password }),
+
+  verifyEmail: (email, code) =>
+    request('POST', '/auth/verify-email', { email, code }),
+
+  resendOtp: (email) =>
+    request('POST', '/auth/resend-otp', { email }),
 
   // User profile
   getMe:               ()     => request('GET',    '/users/me'),
@@ -138,9 +148,27 @@ export const api = {
   updateCountdown:  (id, data)  => request('PATCH',  `/countdowns/${id}`, data),
   deleteCountdown:  (id)        => request('DELETE', `/countdowns/${id}`),
 
+  // Citas (100 base date ideas + custom)
+  getCitas:          ()        => request('GET',    '/citas'),
+  getCitaById:       (id)      => request('GET',    `/citas/${id}`),
+  getRandomCita:     ()        => request('GET',    '/citas/random'),
+  createCita:        (data)    => request('POST',   '/citas', data),
+  getCompletedCitas: ()        => request('GET',    '/citas/completed'),
+  completeCita:      (id, data) => request('POST',  `/citas/${id}/complete`, data || {}),
+  uncompleteCita:    (id)      => request('DELETE', `/citas/completed/${id}`),
+
   // Password reset
   forgotPassword: (email) =>
     request('POST', '/auth/forgot-password', { email }),
   resetPassword: (token, password) =>
     request('POST', '/auth/reset-password', { token, password }),
+
+  // Achievements
+  getAchievements: () => request('GET', '/achievements'),
+
+  // Games memory system
+  getGameInteractions:    (game_type)                     => request('GET',    `/games/interactions${game_type ? `?game_type=${game_type}` : ''}`),
+  upsertGameInteraction:  (game_type, content_id, status) => request('POST',   '/games/interactions', { game_type, content_id, status }),
+  resetGameInteractions:  (game_type)                     => request('DELETE', `/games/interactions${game_type ? `?game_type=${game_type}` : ''}`),
+  getGameMemories:        ()                              => request('GET',    '/games/memories'),
 };
