@@ -7,7 +7,7 @@
 		"dev": "concurrently \"node backend/server.js\" \"vite --host :: --port 3000\"",
 		"dev:frontend": "vite --host :: --port 3000",
 		"dev:backend": "node backend/server.js",
-		"build": "node tools/generate-llms.js || true && vite build && npm install --prefix backend --omit=dev",
+		"build": "node tools/generate-llms.js || true && vite build && node tools/prepare-hostinger.cjs",
 		"preview": "vite preview --host :: --port 3000",
 		"start": "node backend/server.js"
 	},
