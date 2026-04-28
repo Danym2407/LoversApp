@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Download, RotateCcw, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Download, RotateCcw, AlertTriangle, Smartphone } from 'lucide-react';
 import { api } from '@/lib/api';
 import { D } from '@/design-system/tokens';
 import { useToast } from '@/components/ui/use-toast';
@@ -110,6 +110,37 @@ export default function SettingsPage({ navigateTo }) {
   // Reset confirm
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetting, setResetting]               = useState(false);
+
+  // PWA install
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [pwaInstalled, setPwaInstalled]   = useState(false);
+
+  useEffect(() => {
+    // Check if already installed (standalone mode)
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+      setPwaInstalled(true);
+    }
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => {
+      setPwaInstalled(true);
+      setInstallPrompt(null);
+    });
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setPwaInstalled(true);
+      setInstallPrompt(null);
+    }
+  };
 
   useEffect(() => {
     // Load from API
@@ -343,7 +374,35 @@ export default function SettingsPage({ navigateTo }) {
             right={<Toggle value={hideSensitive} onChange={setHideSensitive} color={D.wine} />}
           />
         </SettingsSection>
-
+        {/* ── APP ────────────────────────────────────────────────── */}
+        {!pwaInstalled && (
+          <SettingsSection title="Aplicación" emoji="📱">
+            <SettingsRow
+              label="Instalar LoversApp"
+              sublabel={installPrompt ? 'Añade la app a tu pantalla de inicio' : 'Abre desde Chrome / Edge para instalar'}
+              borderless
+              right={
+                <button
+                  onClick={handleInstallPWA}
+                  disabled={!installPrompt}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '7px 14px', borderRadius: 12,
+                    border: `1.5px solid ${installPrompt ? D.coral : D.border}`,
+                    background: installPrompt ? D.coral : D.cream,
+                    color: installPrompt ? D.white : D.muted,
+                    cursor: installPrompt ? 'pointer' : 'not-allowed',
+                    fontFamily: 'Caveat, cursive', fontSize: 13, fontWeight: 700,
+                    opacity: installPrompt ? 1 : 0.6,
+                  }}
+                >
+                  <Smartphone size={13} />
+                  {installPrompt ? 'Instalar' : 'No disponible'}
+                </button>
+              }
+            />
+          </SettingsSection>
+        )}
         {/* ── DATOS ─────────────────────────────────────────────────── */}
         <SettingsSection title="Datos" emoji="💾">
           <SettingsRow
