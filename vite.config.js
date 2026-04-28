@@ -211,7 +211,8 @@ export default defineConfig({
 				scope: '/',
 				icons: [
 					{ src: 'icono_192_192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-					{ src: 'icono_512_512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+					{ src: 'icono_512_512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+					{ src: 'icono_512_512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
 				]
 			},
 			workbox: {
@@ -220,6 +221,10 @@ export default defineConfig({
 				cleanupOutdatedCaches: true,
 				navigateFallback: '/index.html',
 				navigateFallbackDenylist: [/^\/api\//]
+			},
+			devOptions: {
+				enabled: true,
+				type: 'module',
 			}
 		})
 	],
