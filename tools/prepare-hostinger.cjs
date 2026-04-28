@@ -49,14 +49,16 @@ function copyDir(src, dest, excludes = []) {
 
 copyDir(BACKEND_SRC, BACKEND_DEST, ['node_modules', '.env', '.env.local']);
 
-// ── Step 3: Install production dependencies in dist/backend ────────────────
-console.log('Installing production dependencies in dist/backend...');
+// ── Step 3: Install production dependencies in backend/ (entry file location) ─
+// Hostinger runs `node backend/server.js` from the project root,
+// so Node.js resolves requires from backend/node_modules/.
+console.log('Installing production dependencies in backend/...');
 try {
   execSync('npm install --omit=dev', {
-    cwd: BACKEND_DEST,
+    cwd: BACKEND_SRC,
     stdio: 'inherit',
   });
-  console.log('✅ Dependencies installed\n');
+  console.log('✅ Dependencies installed in backend/\n');
 } catch (err) {
   console.error('❌ Failed to install dependencies:', err.message);
   process.exit(1);

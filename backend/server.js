@@ -105,9 +105,9 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 // ── Frontend estático (producción) ────────────────────────────────────────────
 if (isProd) {
-  // In production the server runs from dist/backend/server.js
-  // so __dirname = dist/backend/ and the frontend files are in dist/ (parent)
-  const distPath = path.join(__dirname, '..');
+  // Entry file is backend/server.js, so __dirname = <root>/backend
+  // and the Vite build output is at <root>/dist
+  const distPath = path.join(__dirname, '../dist');
   app.use(express.static(distPath));
   // SPA fallback — cualquier ruta no-API devuelve index.html
   app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
