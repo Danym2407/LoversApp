@@ -29,7 +29,7 @@ export default function BottomNav({ currentPage, navigateTo, onLogout, isAuthent
     inicio:  '/images/corazon.png',
     citas:   '/images/citas.png',
     memoria: '/images/recuerdos.png',
-    juegos:  '/images/videojuegos.png',
+    juegos:  '/images/Nuevo/videojuegos.png',
     perfil:  '/images/perfil.png',
   };
 
@@ -45,10 +45,7 @@ export default function BottomNav({ currentPage, navigateTo, onLogout, isAuthent
     const src = NAV_IMG_MAP[imgKey];
     return src && !imgFails[imgKey]
       ? <img src={src} alt="" onError={() => failImg(imgKey)}
-          style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0,
-            filter: active
-              ? 'invert(41%) sepia(85%) saturate(500%) hue-rotate(306deg) brightness(105%)'
-              : 'invert(80%) sepia(15%) saturate(300%) hue-rotate(306deg) brightness(105%)' }} />
+          style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0 }} />
       : <FallbackIcon size={20} style={{ color: active ? '#FF6B8A' : '#FFD0DC', strokeWidth: active ? 2.5 : 1.8, flexShrink: 0 }} />;
   };
 
