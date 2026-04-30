@@ -108,7 +108,13 @@ if (isProd) {
   // Entry file is backend/server.js, so __dirname = <root>/backend
   // and the Vite build output is at <root>/dist
   const distPath = path.join(__dirname, '../dist');
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.webmanifest')) {
+        res.setHeader('Content-Type', 'application/manifest+json');
+      }
+    },
+  }));
   // SPA fallback — cualquier ruta no-API devuelve index.html
   app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
 } else {

@@ -1,3 +1,9 @@
+# MIME types for files Apache may not know about
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType application/javascript .js
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
@@ -9,9 +15,13 @@
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
   
-  # Don't rewrite API requests
+  # Don't rewrite API requests or PWA critical files
   RewriteCond %{REQUEST_URI} ^/api/ [OR]
-  RewriteCond %{REQUEST_URI} ^/backend/
+  RewriteCond %{REQUEST_URI} ^/backend/ [OR]
+  RewriteCond %{REQUEST_URI} ^/registerSW\.js$ [OR]
+  RewriteCond %{REQUEST_URI} ^/sw\.js$ [OR]
+  RewriteCond %{REQUEST_URI} ^/workbox- [OR]
+  RewriteCond %{REQUEST_URI} ^/manifest\.webmanifest$
   RewriteRule ^ - [L]
   
   # Rewrite all other requests to index.html (SPA routing)
