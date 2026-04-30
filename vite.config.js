@@ -216,11 +216,11 @@ export default defineConfig({
 				]
 			},
 			workbox: {
-				globPatterns: ['**/*.{js,css,html,woff,woff2}'],
+				globPatterns: ['**/*.{js,css,html,woff,woff2,webmanifest}'],
 				globIgnores: ['**/images/**'],
 				cleanupOutdatedCaches: true,
 				navigateFallback: '/index.html',
-				navigateFallbackDenylist: [/^\/api\//]
+				navigateFallbackDenylist: [/^\/api\//, /\.webmanifest$/]
 			},
 			devOptions: {
 				enabled: true,

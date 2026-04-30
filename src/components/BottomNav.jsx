@@ -24,6 +24,15 @@ export default function BottomNav({ currentPage, navigateTo, onLogout, isAuthent
 
   const failImg = (key) => setImgFails(p => ({ ...p, [key]: true }));
 
+  // Map nav keys to existing images in public/images/
+  const NAV_IMG_MAP = {
+    inicio:  '/images/corazon.png',
+    citas:   '/images/citas.png',
+    memoria: '/images/recuerdos.png',
+    juegos:  '/images/videojuegos.png',
+    perfil:  '/images/perfil.png',
+  };
+
   const firstName = user?.name ? user.name.trim().split(/\s+/)[0] : null;
   const partnerFirst = (user?.partner_name || user?.partner)
     ? (user.partner_name || user.partner).trim().split(/\s+/)[0]
@@ -32,15 +41,16 @@ export default function BottomNav({ currentPage, navigateTo, onLogout, isAuthent
     ? (partnerFirst ? `${firstName} & ${partnerFirst}` : firstName)
     : 'LoversApp';
 
-  const NavIcon = ({ imgKey, FallbackIcon, active }) => (
-    !imgFails[imgKey]
-      ? <img src={`/images/nav-${imgKey}.png`} alt="" onError={() => failImg(imgKey)}
+  const NavIcon = ({ imgKey, FallbackIcon, active }) => {
+    const src = NAV_IMG_MAP[imgKey];
+    return src && !imgFails[imgKey]
+      ? <img src={src} alt="" onError={() => failImg(imgKey)}
           style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0,
             filter: active
               ? 'invert(41%) sepia(85%) saturate(500%) hue-rotate(306deg) brightness(105%)'
               : 'invert(80%) sepia(15%) saturate(300%) hue-rotate(306deg) brightness(105%)' }} />
-      : <FallbackIcon size={20} style={{ color: active ? '#FF6B8A' : '#FFD0DC', strokeWidth: active ? 2.5 : 1.8, flexShrink: 0 }} />
-  );
+      : <FallbackIcon size={20} style={{ color: active ? '#FF6B8A' : '#FFD0DC', strokeWidth: active ? 2.5 : 1.8, flexShrink: 0 }} />;
+  };
 
   // Portal the mobile nav directly to document.body so it can never be
   // trapped inside an ancestor with transform / filter / overflow.
